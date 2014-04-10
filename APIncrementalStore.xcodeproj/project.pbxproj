@@ -36,6 +36,7 @@
 		7278C13018E0A87F001E749A /* ListAuthorsTVC.m in Sources */ = {isa = PBXBuildFile; fileRef = 724ADADE18C9226800DEE706 /* ListAuthorsTVC.m */; };
 		7278C13718E4C424001E749A /* Author.m in Sources */ = {isa = PBXBuildFile; fileRef = 7278C13618E4C424001E749A /* Author.m */; };
 		7278C14218E4D906001E749A /* CoreDataControllerTestCase.m in Sources */ = {isa = PBXBuildFile; fileRef = 7278C14118E4D906001E749A /* CoreDataControllerTestCase.m */; };
+		72A1BCC518F72CAB00980A10 /* APIncrementalStore.podspec in Resources */ = {isa = PBXBuildFile; fileRef = 72A1BCC418F72CAB00980A10 /* APIncrementalStore.podspec */; };
 		72AB4F0118C9F41A005D1FB6 /* CoreDataController.m in Sources */ = {isa = PBXBuildFile; fileRef = 72AB4F0018C9F41A005D1FB6 /* CoreDataController.m */; };
 		72B1D10918F4667400703BDD /* Page.m in Sources */ = {isa = PBXBuildFile; fileRef = 72B1D10818F4667400703BDD /* Page.m */; };
 		72B1D10C18F4B47100703BDD /* Book.m in Sources */ = {isa = PBXBuildFile; fileRef = 72B1D10B18F4B47100703BDD /* Book.m */; };
@@ -113,6 +114,7 @@
 		7278C13518E4C424001E749A /* Author.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Author.h; sourceTree = "<group>"; };
 		7278C13618E4C424001E749A /* Author.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Author.m; sourceTree = "<group>"; };
 		7278C14118E4D906001E749A /* CoreDataControllerTestCase.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CoreDataControllerTestCase.m; sourceTree = "<group>"; };
+		72A1BCC418F72CAB00980A10 /* APIncrementalStore.podspec */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = APIncrementalStore.podspec; sourceTree = "<group>"; };
 		72AB4EFF18C9F41A005D1FB6 /* CoreDataController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CoreDataController.h; sourceTree = "<group>"; };
 		72AB4F0018C9F41A005D1FB6 /* CoreDataController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CoreDataController.m; sourceTree = "<group>"; };
 		72B1D10218F2E4A200703BDD /* APIncrementalStore.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = APIncrementalStore.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -192,6 +194,7 @@
 		724ADAB918C9226800DEE706 = {
 			isa = PBXGroup;
 			children = (
+				72A1BCC418F72CAB00980A10 /* APIncrementalStore.podspec */,
 				726EE18818D4DE8F005C5675 /* APIncrementalStore */,
 				724ADACB18C9226800DEE706 /* Example */,
 				724ADAED18C9226800DEE706 /* Unit Testing */,
@@ -402,6 +405,7 @@
 				724ADAD918C9226800DEE706 /* Main.storyboard in Resources */,
 				726B971E18F6BDAA00149290 /* Sample_495KB.jpg in Resources */,
 				724ADAD018C9226800DEE706 /* InfoPlist.strings in Resources */,
+				72A1BCC518F72CAB00980A10 /* APIncrementalStore.podspec in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
