@@ -7,9 +7,10 @@ Pod::Spec.new do |s|
   s.author           = { "Flavio Negrao Torres" => "flavio@apetis.com" }
 
   s.source           = { :git => "https://github.com/flavionegrao/APIncrementalStore.git", :tag => "#{s.version}" }
-  s.source_files     = 'APIncrementalStore/**'
+  s.source_files     = "APIncrementalStore/**"
   
   s.framework  = 'CoreData'
+  s.library = 'Parse'
 
   s.ios.deployment_target = '6.0'
   s.requires_arc = true

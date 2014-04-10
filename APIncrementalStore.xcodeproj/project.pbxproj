@@ -7,10 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		720E4D0718F71142002BF367 /* FacebookSDK.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72CE78A418CC92E400F24F9F /* FacebookSDK.framework */; };
-		720E4D0818F71142002BF367 /* Parse.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72CE78A218CC92BD00F24F9F /* Parse.framework */; };
 		7217EC1B18EC7E9E0032D559 /* Common.m in Sources */ = {isa = PBXBuildFile; fileRef = 7217EC1A18EC7E9E0032D559 /* Common.m */; };
 		7217EC1D18EC82F40032D559 /* Common.m in Sources */ = {isa = PBXBuildFile; fileRef = 7217EC1A18EC7E9E0032D559 /* Common.m */; };
+		72201BC818F733F7007D933C /* Parse.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72201BC718F733F7007D933C /* Parse.framework */; };
 		722A804318D4EF59001E6643 /* APIncrementalStore.m in Sources */ = {isa = PBXBuildFile; fileRef = 722A804218D4EF59001E6643 /* APIncrementalStore.m */; };
 		722A804818D5D6C6001E6643 /* APError.m in Sources */ = {isa = PBXBuildFile; fileRef = 722A804718D5D6C6001E6643 /* APError.m */; };
 		722A804C18D5DEA4001E6643 /* NSArray+Enumerable.m in Sources */ = {isa = PBXBuildFile; fileRef = 722A804B18D5DEA4001E6643 /* NSArray+Enumerable.m */; };
@@ -27,8 +26,6 @@
 		724ADAE918C9226800DEE706 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 724ADAC518C9226800DEE706 /* Foundation.framework */; };
 		724ADAEA18C9226800DEE706 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 724ADAC918C9226800DEE706 /* UIKit.framework */; };
 		724ADAF218C9226800DEE706 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 724ADAF018C9226800DEE706 /* InfoPlist.strings */; };
-		724D59D118F716130005D0BF /* FacebookSDK.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72CE78A418CC92E400F24F9F /* FacebookSDK.framework */; };
-		724D59D218F716130005D0BF /* Parse.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72CE78A218CC92BD00F24F9F /* Parse.framework */; };
 		726B971D18F6BAC000149290 /* Sample_495KB.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 726B971C18F6BAC000149290 /* Sample_495KB.jpg */; };
 		726B971E18F6BDAA00149290 /* Sample_495KB.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 726B971C18F6BAC000149290 /* Sample_495KB.jpg */; };
 		726EE18B18D4ED7A005C5675 /* APLocalCache.m in Sources */ = {isa = PBXBuildFile; fileRef = 726EE18A18D4ED7A005C5675 /* APLocalCache.m */; };
@@ -81,6 +78,7 @@
 /* Begin PBXFileReference section */
 		7217EC1A18EC7E9E0032D559 /* Common.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Common.m; sourceTree = "<group>"; };
 		7217EC1C18EC7F750032D559 /* NSLogEmoji.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NSLogEmoji.h; sourceTree = "<group>"; };
+		72201BC718F733F7007D933C /* Parse.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Parse.framework; path = ../../Frameworks/Parse.framework; sourceTree = "<group>"; };
 		722A804218D4EF59001E6643 /* APIncrementalStore.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = APIncrementalStore.m; sourceTree = "<group>"; };
 		722A804418D5D68B001E6643 /* APError.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = APError.h; sourceTree = "<group>"; };
 		722A804718D5D6C6001E6643 /* APError.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = APError.m; sourceTree = "<group>"; };
@@ -123,8 +121,6 @@
 		72B1D10818F4667400703BDD /* Page.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Page.m; sourceTree = "<group>"; };
 		72B1D10A18F4B47100703BDD /* Book.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Book.h; sourceTree = "<group>"; };
 		72B1D10B18F4B47100703BDD /* Book.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Book.m; sourceTree = "<group>"; };
-		72CE78A218CC92BD00F24F9F /* Parse.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Parse.framework; sourceTree = "<group>"; };
-		72CE78A418CC92E400F24F9F /* FacebookSDK.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = FacebookSDK.framework; sourceTree = "<group>"; };
 		72CE78A618CC931A00F24F9F /* CFNetwork.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CFNetwork.framework; path = System/Library/Frameworks/CFNetwork.framework; sourceTree = SDKROOT; };
 		72CE78A818CC932100F24F9F /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
 		72CE78AA18CC932C00F24F9F /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
@@ -149,8 +145,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				720E4D0718F71142002BF367 /* FacebookSDK.framework in Frameworks */,
-				720E4D0818F71142002BF367 /* Parse.framework in Frameworks */,
+				72201BC818F733F7007D933C /* Parse.framework in Frameworks */,
 				72CE78B318CC935300F24F9F /* StoreKit.framework in Frameworks */,
 				72FD020A18CA002300CC7E78 /* Security.framework in Frameworks */,
 				72CE78B118CC934800F24F9F /* QuartzCore.framework in Frameworks */,
@@ -170,8 +165,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				724D59D118F716130005D0BF /* FacebookSDK.framework in Frameworks */,
-				724D59D218F716130005D0BF /* Parse.framework in Frameworks */,
 				72DE79FC18DDBFD400AC972F /* SystemConfiguration.framework in Frameworks */,
 				72DE79FB18DDBFCC00AC972F /* StoreKit.framework in Frameworks */,
 				72DE79FA18DDBFC700AC972F /* Security.framework in Frameworks */,
@@ -207,6 +200,7 @@
 		724ADAC418C9226800DEE706 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				72201BC718F733F7007D933C /* Parse.framework */,
 				72CE78B218CC935300F24F9F /* StoreKit.framework */,
 				72CE78B018CC934800F24F9F /* QuartzCore.framework */,
 				72CE78AE18CC933A00F24F9F /* libz.dylib */,
@@ -214,8 +208,6 @@
 				72CE78AA18CC932C00F24F9F /* CoreGraphics.framework */,
 				72CE78A818CC932100F24F9F /* AudioToolbox.framework */,
 				72CE78A618CC931A00F24F9F /* CFNetwork.framework */,
-				72CE78A418CC92E400F24F9F /* FacebookSDK.framework */,
-				72CE78A218CC92BD00F24F9F /* Parse.framework */,
 				72FD021018CA094A00CC7E78 /* MobileCoreServices.framework */,
 				72FD020E18CA094400CC7E78 /* SystemConfiguration.framework */,
 				72FD020918CA002300CC7E78 /* Security.framework */,
@@ -576,6 +568,7 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Frameworks",
+					/Users/flavio/Developer/Frameworks,
 				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = Example/Prefix.pch;
@@ -595,6 +588,7 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Frameworks",
+					/Users/flavio/Developer/Frameworks,
 				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = Example/Prefix.pch;
