@@ -10,7 +10,6 @@
 		7217EC1B18EC7E9E0032D559 /* Common.m in Sources */ = {isa = PBXBuildFile; fileRef = 7217EC1A18EC7E9E0032D559 /* Common.m */; };
 		7217EC1D18EC82F40032D559 /* Common.m in Sources */ = {isa = PBXBuildFile; fileRef = 7217EC1A18EC7E9E0032D559 /* Common.m */; };
 		72201BC818F733F7007D933C /* Parse.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72201BC718F733F7007D933C /* Parse.framework */; };
-		72201BCA18F7368B007D933C /* Parse.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72201BC918F7368B007D933C /* Parse.framework */; };
 		722A804318D4EF59001E6643 /* APIncrementalStore.m in Sources */ = {isa = PBXBuildFile; fileRef = 722A804218D4EF59001E6643 /* APIncrementalStore.m */; };
 		722A804818D5D6C6001E6643 /* APError.m in Sources */ = {isa = PBXBuildFile; fileRef = 722A804718D5D6C6001E6643 /* APError.m */; };
 		722A804C18D5DEA4001E6643 /* NSArray+Enumerable.m in Sources */ = {isa = PBXBuildFile; fileRef = 722A804B18D5DEA4001E6643 /* NSArray+Enumerable.m */; };
@@ -80,7 +79,6 @@
 		7217EC1A18EC7E9E0032D559 /* Common.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Common.m; sourceTree = "<group>"; };
 		7217EC1C18EC7F750032D559 /* NSLogEmoji.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NSLogEmoji.h; sourceTree = "<group>"; };
 		72201BC718F733F7007D933C /* Parse.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Parse.framework; path = ../../Frameworks/Parse.framework; sourceTree = "<group>"; };
-		72201BC918F7368B007D933C /* Parse.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Parse.framework; sourceTree = "<group>"; };
 		722A804218D4EF59001E6643 /* APIncrementalStore.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = APIncrementalStore.m; sourceTree = "<group>"; };
 		722A804418D5D68B001E6643 /* APError.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = APError.h; sourceTree = "<group>"; };
 		722A804718D5D6C6001E6643 /* APError.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = APError.m; sourceTree = "<group>"; };
@@ -157,7 +155,6 @@
 				72CE78AB18CC932C00F24F9F /* CoreGraphics.framework in Frameworks */,
 				72CE78A918CC932100F24F9F /* AudioToolbox.framework in Frameworks */,
 				72CE78A718CC931A00F24F9F /* CFNetwork.framework in Frameworks */,
-				72201BCA18F7368B007D933C /* Parse.framework in Frameworks */,
 				72FD020F18CA094400CC7E78 /* SystemConfiguration.framework in Frameworks */,
 				724ADACA18C9226800DEE706 /* UIKit.framework in Frameworks */,
 				724ADAC618C9226800DEE706 /* Foundation.framework in Frameworks */,
@@ -276,7 +273,6 @@
 		726EE18818D4DE8F005C5675 /* APIncrementalStore */ = {
 			isa = PBXGroup;
 			children = (
-				72201BC918F7368B007D933C /* Parse.framework */,
 				726EE18618D4DE89005C5675 /* APIncrementalStore.h */,
 				722A804218D4EF59001E6643 /* APIncrementalStore.m */,
 				726EE18918D4ED7A005C5675 /* APLocalCache.h */,

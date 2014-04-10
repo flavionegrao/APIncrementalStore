@@ -10,7 +10,6 @@ Pod::Spec.new do |s|
   s.source_files     = "APIncrementalStore/**"
   
   s.framework  = 'CoreData'
-  s.library = 'Parse'
 
   s.ios.deployment_target = '6.0'
   s.requires_arc = true
