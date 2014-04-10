@@ -18,15 +18,20 @@
 #import "AppDelegate.h"
 #import <Parse/Parse.h>
 
-static NSString* const kParsepApplicationId = @"";
-static NSString* const kParseClientKey =  @"";
+static NSString* const APParsepApplicationId = @"";
+static NSString* const APParseClientKey =  @"";
 
 @implementation AppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
     // Override point for customization after application launch.
-    [Parse setApplicationId:kParsepApplicationId clientKey:kParseClientKey];
+    
+    if ([APParseClientKey length] == 0 ||
+        [APParsepApplicationId length] == 0) {
+        [NSException raise:@"App config exception" format:@"Set the correct Parse keys on AppDelegate.m"];
+    }
+    [Parse setApplicationId:APParsepApplicationId clientKey:APParseClientKey];
     return YES;
 }
 							
