@@ -23,7 +23,7 @@ Few tips:
 - Login a user and pass it as paramenter to APIncrementalStore.
 - The parse connector will sync all entities found on you model, and will use the exactly same naming to find the classes at Parse.
 - I have done nothing in regards to Parse ACL yet, so that it will sync everything that the logged user has access to.
-- I yet to do something about the situation when the user changes, for example invalidate the cache or some other smarter aproach.
+- I'm still planning to do something about the situation when the user changes, for example invalidate the cache or some other smarter aproach.
 
 Well, that's it, sorry about the short README and the English as it's not my first idiome as you have probably notice at this point.
 
