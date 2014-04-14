@@ -285,7 +285,9 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
         BOOL mergeSuccess = [self.remoteDBConnector
                              mergeManagedContext: self.syncContext
                              onSyncObject:^{
-                                 if (syncObjectBlock) syncObjectBlock(NO);
+                                 [[NSOperationQueue mainQueue]addOperationWithBlock:^{
+                                     if (syncObjectBlock) syncObjectBlock(YES);
+                                 }];
                              } error:&error];
         
         if (!mergeSuccess) {
@@ -299,7 +301,9 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
         syncedFromServerManagedObjectIDs = [self.remoteDBConnector
                                             mergeRemoteObjectsWithContext:self.syncContext
                                             fullSync:allObjects onSyncObject:^{
-                                                if (syncObjectBlock) syncObjectBlock(YES);
+                                                [[NSOperationQueue mainQueue]addOperationWithBlock:^{
+                                                    if (syncObjectBlock) syncObjectBlock(YES);
+                                                }];
                                             } error:&error];
         
         if (error) {
