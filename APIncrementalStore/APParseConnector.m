@@ -132,7 +132,7 @@ static NSUInteger APParseObjectIDLenght = 10;
         if (!fullSync) {
             NSDate* lastSync = [self latestObjectSyncedDateForEntityName:entityDescription.name];
             if (lastSync) {
-                [query whereKey:@"updatedAt" greaterThanOrEqualTo:lastSync];
+                [query whereKey:@"updatedAt" greaterThan:lastSync];
             }
         }
         
@@ -384,7 +384,7 @@ static NSUInteger APParseObjectIDLenght = 10;
         if (!fullSync) {
             NSDate* lastSync = [self latestObjectSyncedDateForEntityName:entityDescription.name];
             if (lastSync) {
-                [query whereKey:@"updatedAt" greaterThanOrEqualTo:lastSync];
+                [query whereKey:@"updatedAt" greaterThan:lastSync];
             }
         }
         numberOfObjects += [query countObjects:&countError];
