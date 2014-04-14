@@ -15,12 +15,12 @@
  * limitations under the License.
  */
 
-#import <XCTest/XCTest.h>
+@import XCTest;
+@import CoreData;
 
 #import "CoreDataController.h"
 
 #import <Parse/Parse.h>
-#import <CoreData/CoreData.h>
 #import "NSLogEmoji.h"
 #import "Common.h"
 

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#import <XCTest/XCTest.h>
+@import XCTest;
 
 #import "APLocalCache.h"
 #import "APParseConnector.h"

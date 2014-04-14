@@ -422,6 +422,46 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
 }
 
+
+#pragma mark - Tests - Counting objects to sync
+
+- (void) testCountRemoteObjectsToSync {
+    
+    dispatch_group_async(self.group, self.queue, ^{
+        
+        NSError* countingError;
+        NSUInteger numberOfObjectsToBeSynced = [self.parseConnector countRemoteObjectsToBeSyncedInContext:self.testContext fullSync:YES error:&countingError];
+        
+        XCTAssertNil(countingError);
+        XCTAssertTrue(numberOfObjectsToBeSynced == 3);
+    });
+    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+}
+
+
+- (void) testCountLocalObjectsToSync {
+    
+    NSUInteger const numberOfBooksToBeCreated = 10;
+    
+    for (NSUInteger i = 0; i < numberOfBooksToBeCreated; i++) {
+        Book* newBook = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.testContext];
+        newBook.name = [NSString stringWithFormat:@"book#%lu",(unsigned long) i];
+        [newBook setValue:@YES forKey:APObjectIsDirtyAttributeName];
+    }
+    XCTAssertTrue([[self.testContext registeredObjects]count] == numberOfBooksToBeCreated);
+    
+    NSError* savingError;
+    [self.testContext save:&savingError];
+    XCTAssertNil(savingError);
+    
+    NSError* countingError;
+    NSUInteger numberOfObjectsToBeSynced = [self.parseConnector countLocalObjectsToBeSyncedInContext:self.testContext error:&countingError];
+    
+    XCTAssertNil(countingError);
+    XCTAssertTrue(numberOfObjectsToBeSynced == numberOfBooksToBeCreated);
+}
+
+
 #pragma mark - Tests - Binary Attributes
 
 /*
