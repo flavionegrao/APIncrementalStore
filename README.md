@@ -20,6 +20,10 @@ I will include descent documentation in the next weeks, for the time being take 
 
 Well, that's it, sorry about the short README and the English as it's not my first idiom as you have probably noticed at this point.
 
+###Parse Framework
+I have not managed to find a way to staticly include the Parse library or even better include it as a dependency (Parse doesn't have a Pod available). Therefore you need to include it manually:
+![Link parse framework](https://dl.dropboxusercontent.com/u/628444/GitHub%20Images/APIncrementalStore_parse.png)
+
 ###Few tips:
 - Set Parse keys at appDelegate.m
 - Login a user and pass it as paramenter to APIncrementalStore.
