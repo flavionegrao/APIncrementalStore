@@ -18,14 +18,18 @@ There are basically three main classes:
 
 I will include descent documentation in the next weeks, for the time being take a look at the folder Example in the repository, you are going to find a very basic usade of this library.
 
-Few tips:
+Well, that's it, sorry about the short README and the English as it's not my first idiom as you have probably noticed at this point.
+
+###Few tips:
 - Set Parse keys at appDelegate.m
 - Login a user and pass it as paramenter to APIncrementalStore.
 - The parse connector will sync all entities found on you model, and will use the exactly same naming to find the classes at Parse.
 - I have done nothing in regards to Parse ACL yet, so that it will sync everything that the logged user has access to.
 - I'm still planning to do something about the situation when the user changes, for example invalidate the cache or some other smarter aproach.
 
-Well, that's it, sorry about the short README and the English as it's not my first idiome as you have probably notice at this point.
+###Unit Testing
+On UnitTestingCommon.m config Parse keys and a valid user. Use a test Parse App as it will include few Classes for testing. 
+
 
 Cheers. Flavio
 
