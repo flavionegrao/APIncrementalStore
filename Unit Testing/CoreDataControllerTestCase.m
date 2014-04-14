@@ -28,11 +28,7 @@
 #import "Book.h"
 #import "Page.h"
 
-/* Parse config */
-static NSString* const kParsepApplicationId = @"";
-static NSString* const kParseClientKey =  @"";
-static NSString* const kParseUserName = @"test";
-static NSString* const kParsePassword = @"__test__";
+#import "UnitTestingCommon.h"
 
 static NSString* const kAuthorName = @"George R. R. Martin";
 static NSString* const kBookName1 = @"A Game of Thrones";
@@ -42,7 +38,6 @@ static NSString* const kBookName2 = @"A Clash of Kings";
 
 @property (strong, nonatomic) dispatch_queue_t queue;
 @property (strong, nonatomic) dispatch_group_t group;
-@property (strong, atomic) NSString* currentTestName;
 @property CoreDataController* coreDataController;
 
 @end
@@ -54,6 +49,7 @@ static NSString* const kBookName2 = @"A Clash of Kings";
 - (void)setUp {
     
     MLog();
+    
     [super setUp];
     NSLog(@"---------Setting up the test environement----------");
     
@@ -72,13 +68,13 @@ static NSString* const kBookName2 = @"A Clash of Kings";
      
      */
     
-    [Parse setApplicationId:kParsepApplicationId clientKey:kParseClientKey];
+    [Parse setApplicationId:APUnitTestingParsepApplicationId clientKey:APUnitTestingParseClientKey];
     
     __block PFUser* authenticatedUser;
     dispatch_group_async(self.group, self.queue, ^{
         authenticatedUser = [PFUser currentUser];
         if (!authenticatedUser ) {
-            authenticatedUser = [PFUser logInWithUsername:kParseUserName password:kParsePassword];
+            authenticatedUser = [PFUser logInWithUsername:APUnitTestingParseUserName password:APUnitTestingParseUserName];
         }
         [self removeAllEntriesFromParse];
     });
@@ -127,6 +123,7 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     DLog(@"Set-up finished");
 }
 
+
 - (void) tearDown {
     
     MLog();
@@ -155,12 +152,15 @@ static NSString* const kBookName2 = @"A Clash of Kings";
 #pragma mark - Tests
 
 - (void) testCoreDataControllerIsNotNil {
+    
     MLog();
     
     XCTAssertNotNil(self.coreDataController);
 }
 
+
 - (void) testExistingRelationshipBetweenBookAndAuthor {
+    
     MLog();
     
     Author* fetchedAuthor = [self fetchAuthor];
@@ -171,7 +171,8 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     XCTAssertEqualObjects(bookRelatedToFetchedAuthor, fetchedBook);
 }
 
-- (void) testCountNumberOfAuthorsAndBooks {
+
+- (void) testCountNumberOfAuthors {
     
     MLog();
     
@@ -337,7 +338,7 @@ Below are how much time each attempt took when using more than one thread.
     NSDate* start = [NSDate date];
     
     NSUInteger const numberOfAuthorsToBeCreated = 1000;
-    NSUInteger const numberOfThreads = 1;
+    NSUInteger const numberOfThreads = 4;
     NSUInteger skip = numberOfAuthorsToBeCreated / numberOfThreads;
     
     __block NSUInteger numberOfAuthorsCreated;

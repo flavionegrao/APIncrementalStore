@@ -18,8 +18,6 @@
 
 #import "APIncrementalStore.h"
 
-#import <CoreData/CoreData.h>
-
 #import "APLocalCache.h"
 #import "APParseConnector.h"
 
@@ -27,7 +25,6 @@
 #import "Common.h"
 #import "APError.h"
 #import "NSLogEmoji.h"
-
 
 
 #pragma mark - Notifications
@@ -38,8 +35,14 @@
 
 NSString* const APNotificationRequestCacheSync = @"APNotificationRequestCacheSync";
 NSString* const APNotificationRequestCacheFullSync = @"APNotificationRequestCacheFullSync";
+
+NSString* const APNotificationCacheWillStartSync = @"APNotificationCacheWillStartSync";
 NSString* const APNotificationCacheDidStartSync = @"APNotificationCacheDidStartSync";
+NSString *const APNotificationCacheDidSyncObject = @"APNotificationCacheDidSyncObject";
 NSString* const APNotificationCacheDidFinishSync = @"APNotificationCacheDidFinishSync";
+
+NSString *const APNotificationCacheNumberOfLocalObjectsKey = @"APNotificationCacheNumberOfLocalObjectsKey";
+NSString *const APNotificationCacheNumberOfRemoteObjectsKey = @"APNotificationCacheNumberOfRemoteObjectsKey";
 NSString* const APNotificationObjectsIDsKey = @"APNotificationObjectsIDsKey";
 
 
@@ -163,6 +166,8 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
 }
 
 
+#pragma mark - Notification Observation
+
 - (void)registerForNotifications {
     
     if (AP_DEBUG_METHODS) { MLog()}
@@ -232,7 +237,6 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     
     [self setMetadata:@{NSStoreUUIDKey: [[NSProcessInfo processInfo] globallyUniqueString],
                         NSStoreTypeKey: NSStringFromClass([self class])}];
-    
     return YES;
 }
 
@@ -257,11 +261,9 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
                                                error:(NSError **)error {
     if (AP_DEBUG_METHODS) { MLog()}
     
-    if (AP_DEBUG_INFO) { DLog(@"new values for object with id %@", [context objectWithID:objectID]) }
+    if (AP_DEBUG_INFO) {DLog(@"new values for object with id %@", [context objectWithID:objectID])}
     
     NSString* objectUID = [self referenceObjectForObjectID:objectID];
-    
-    
     NSDictionary *objectFromCache = [self.localCache fetchObjectRepresentationForObjectUUID:objectUID entityName:objectID.entity.name];
     
     if (!objectFromCache) {
@@ -271,7 +273,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     // Create dictionary of keys and values for incremental store node
     NSMutableDictionary *dictionaryRepresentationOfCacheObject = [NSMutableDictionary dictionary];
     
-    //Attributes
+    // Attributes
     NSArray* entityAttributes = [[[objectID entity] attributesByName] allKeys];
     [[objectFromCache dictionaryWithValuesForKeys:entityAttributes] enumerateKeysAndObjectsUsingBlock:^(id attributeName, id attributeValue, BOOL *stop) {
         if (attributeValue != [NSNull null]) {
@@ -279,7 +281,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         }
     }];
     
-    //To-One relationships
+    // To-One relationships
     NSArray* entityRelationships = [[[objectID entity] relationshipsByName] allKeys];
     [[objectFromCache dictionaryWithValuesForKeys:entityRelationships] enumerateKeysAndObjectsUsingBlock:^(id relationshipName, id relationshipValue, BOOL *stop) {
         
@@ -295,11 +297,8 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
             }
         }
     }];
-    
     NSIncrementalStoreNode *node = [[NSIncrementalStoreNode alloc] initWithObjectID:objectID withValues:dictionaryRepresentationOfCacheObject version:1];
-    
     return node;
-    
 }
 
 
@@ -390,7 +389,6 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     
     if (AP_DEBUG_METHODS) { MLog() }
     
-    // check if array is null, return empty array if so
     if (array == nil) {
         return @[];
     }
@@ -443,8 +441,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
                 withContext:(NSManagedObjectContext *)context
                       error:(NSError * __autoreleasing *)error {
     
-     if (AP_DEBUG_METHODS) { MLog() }
-    
+    if (AP_DEBUG_METHODS) { MLog() }
     
     switch (request.resultType) {
             
@@ -483,7 +480,6 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     NSError *localCacheError = nil;
     NSArray *cacheRepresentations = [self.localCache fetchObjectRepresentations:fetchRequest error:&localCacheError];
     
-    // Error check
     if (localCacheError != nil) {
         if (error != NULL) {
             *error = localCacheError;
@@ -526,7 +522,6 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     
     NSArray *objects = [self AP_fetchManagedObjects:fetchCopy withContext:context error:error];
     
-    // Error check
     if (error != NULL && *error != nil) {
         return nil;
     }
@@ -676,6 +671,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     }
 }
 
+
 /*
  Once the incremental store a managedObjectID we check if its reference count and
  decrease it by 1 and remove it from the objectIDsAndRefereceCountByObjectUUID if the count == 0
@@ -759,9 +755,20 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
 - (void) syncLocalCacheAllRemoteObjects:(BOOL) allRemoteObjects {
     
     if (AP_DEBUG_METHODS) { MLog()}
-    [self.localCache syncAllObjects:allRemoteObjects withCompletion:^(NSArray *managedObjectIDs, NSError *syncError) {
+    
+    [self.localCache syncAllObjects:allRemoteObjects onCountingObjects:^(NSUInteger localObjects, NSUInteger remoteObjects) {
+        NSDictionary* userInfo = @{APNotificationCacheNumberOfLocalObjectsKey: @(localObjects),
+                                   APNotificationCacheNumberOfRemoteObjectsKey: @(remoteObjects)};
+        [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationCacheWillStartSync object:self userInfo:userInfo];
+    
+    } onSyncObject:^(BOOL isRemoteObject) {
+        NSString* userInfoKey = (isRemoteObject)? APNotificationCacheNumberOfRemoteObjectsKey: APNotificationCacheNumberOfLocalObjectsKey;
+        NSDictionary* userInfo = @{userInfoKey: @1};
+        [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationCacheDidSyncObject object:self userInfo:userInfo];
+    
+    } onCompletion:^(NSArray *objectUIDs, NSError *syncError) {
         if (!syncError) {
-            NSDictionary* userInfo = @{APNotificationObjectsIDsKey: managedObjectIDs};
+            NSDictionary* userInfo = @{APNotificationObjectsIDsKey: objectUIDs};
             [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationCacheDidFinishSync object:self userInfo:userInfo];
             
         } else {
@@ -880,7 +887,6 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
             }
         }
     }];
-    
     return representation;
 }
 
@@ -919,6 +925,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
                     if (relatedObjects != nil) {
                         [relatedObjects removeAllObjects];
                         NSArray *serializedDictSet = dictionary[propertyName];
+                        
                         [serializedDictSet enumerateObjectsUsingBlock:^(NSString* objectUUID, NSUInteger idx, BOOL *stop) {
                             NSManagedObjectID* relatedManagedObjectID = [self managedObjectIDForEntity:relationshipDescription.destinationEntity withObjectUUID:objectUUID];
                             [relatedObjects addObject:[[managedObject managedObjectContext] objectWithID:relatedManagedObjectID]];
@@ -939,7 +946,6 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
             }
         }
     }];
-    
 }
 
 @end

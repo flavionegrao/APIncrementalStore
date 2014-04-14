@@ -98,11 +98,15 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
 
 /**
  Requests the localCache to start the sync process with its remoteDBConnector
- @param allObjects if YES it will ignores whether a object had been already syncronized previously
- @param completion the block to be called when the sync is done using the objects that were synced from the server as argument
+ @param allObjects if YES it will ignore whether an object had been already syncronized previously
+ @param numberOfObjectsBlock before starting merging the objects this block will be called passing the total number of objects to be synced
+ @param didSyncedObjectBlock whenever a object is synced this block gets called. The block parameter isRemoteObject is set to YES if the synced objects merged from the server otherwise it is a local object merged.
+ @param completionBlock the block to be called when the sync is done passing the objects that were synced from the server as argument
  */
 - (void) syncAllObjects: (BOOL) allObjects
-         withCompletion: (void (^)(NSArray* objectUUIDs, NSError* syncError)) completion;
+                onCountingObjects: (void (^)(NSUInteger localObjects, NSUInteger remoteObjects)) countingBlock
+           onSyncObject: (void (^)(BOOL isRemoteObject)) syncObjectBlock
+           onCompletion: (void (^)(NSArray* objectUIDs, NSError* syncError)) conpletionBlock;
 
 - (void) resetCache;
 
@@ -127,6 +131,7 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
  */
 - (NSArray*) mergeRemoteObjectsWithContext: (NSManagedObjectContext*) context
                                   fullSync: (BOOL) fullSync
+                               onSyncObject: (void (^)(void)) onSyncObject
                                      error: (NSError*__autoreleasing*) error;
 
 /**
@@ -135,14 +140,15 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
  @returns YES if the merge was successful otherwise NO.
  */
 - (BOOL) mergeManagedContext:(NSManagedObjectContext *)context
+                 onSyncObject: (void (^)(void)) onSyncObject
                        error:(NSError*__autoreleasing*) error;
 
-/**
- Insert, populate and save into Parse a new object.
- It also sets the objectUID provided from Parse.
- @returns objectUID assigned to the object.
- */
-//- (NSString*) insertObject:(NSManagedObject *) managedObject
-//                error:(NSError *__autoreleasing *)error;
+
+- (NSUInteger) countLocalObjectsToBeSyncedInContext: (NSManagedObjectContext *)context
+                                              error: (NSError*__autoreleasing*) error;
+
+- (NSUInteger) countRemoteObjectsToBeSyncedInContext: (NSManagedObjectContext *)context
+                                            fullSync: (BOOL) fullSync
+                                               error: (NSError*__autoreleasing*) error;
 
 @end

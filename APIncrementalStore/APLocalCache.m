@@ -169,7 +169,7 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
     
     self.psc = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:self.model];
     NSDictionary *options = @{ NSMigratePersistentStoresAutomaticallyOption: @YES,
-                               //NSSQLitePragmasOption:@{@"journal_mode":@"DELETE"}, // DEBUG ONLY: Disable WAL mode to be able to visualize the content of the sqlite file.
+                               NSSQLitePragmasOption:@{@"journal_mode":@"DELETE"}, // DEBUG ONLY: Disable WAL mode to be able to visualize the content of the sqlite file.
                                NSInferMappingModelAutomaticallyOption: @YES};
     
     NSURL *storeURL = [NSURL fileURLWithPath:[self pathToLocalStore]];
@@ -243,8 +243,10 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
 #pragma mark - Sync
 
 - (void) syncAllObjects: (BOOL) allObjects
-         withCompletion: (void (^)(NSArray* managedObjectIDs, NSError* syncError)) completion {
-    
+      onCountingObjects: (void (^)(NSUInteger localObjects, NSUInteger remoteObjects)) countingBlock
+           onSyncObject: (void (^)(BOOL isRemoteObject)) syncObjectBlock
+           onCompletion: (void (^)(NSArray* objectUIDs, NSError* syncError)) conpletionBlock {
+
     if (AP_DEBUG_METHODS) { MLog()}
     
     self.syncContext = nil;
@@ -258,16 +260,33 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
         
         void(^failureBlock)(void) = ^{
             [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
-            if (completion) completion(nil,error);
+            if (conpletionBlock) conpletionBlock(nil,error);
         };
         
         void(^successBlock)(void) = ^{
             [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
-            if (completion) completion(syncedFromServerManagedObjectIDs,error);
+            if (conpletionBlock) conpletionBlock(syncedFromServerManagedObjectIDs,error);
         };
         
+        // Count objects to be synced and report it via block
+        if (countingBlock) {
+            NSUInteger localObjects = [self.remoteDBConnector countLocalObjectsToBeSyncedInContext:self.syncContext error:&error];
+            NSUInteger remoteObjects = [self.remoteDBConnector countRemoteObjectsToBeSyncedInContext:self.syncContext fullSync:allObjects error:&error];
+            [[NSOperationQueue mainQueue]addOperationWithBlock:^{
+                if (!error) {
+                    countingBlock(localObjects, remoteObjects);
+                } else {
+                    failureBlock();
+                }
+            }];
+        }
+        
         // Local Updates - all objects marked as "dirty" and add entries from temporary to permanent objectsUID
-        BOOL mergeSuccess = [self.remoteDBConnector mergeManagedContext: self.syncContext error:&error];
+        BOOL mergeSuccess = [self.remoteDBConnector
+                             mergeManagedContext: self.syncContext
+                             onSyncObject:^{
+                                 if (syncObjectBlock) syncObjectBlock(NO);
+                             } error:&error];
         
         if (!mergeSuccess) {
             if (AP_DEBUG_ERRORS) { ELog(@"Error syncing local changes: %@",error)}
@@ -275,9 +294,13 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
             return;
         }
         
-        // Remote Updates - all objects that have updated date greater than our last successful sync
+        // Remote Updates - all objects that have updated date earlier than our last successful sync
         
-        syncedFromServerManagedObjectIDs = [self.remoteDBConnector mergeRemoteObjectsWithContext:self.syncContext fullSync:allObjects error:&error];
+        syncedFromServerManagedObjectIDs = [self.remoteDBConnector
+                                            mergeRemoteObjectsWithContext:self.syncContext
+                                            fullSync:allObjects onSyncObject:^{
+                                                if (syncObjectBlock) syncObjectBlock(YES);
+                                            } error:&error];
         
         if (error) {
             if (AP_DEBUG_ERRORS) { ELog(@"Error syncing remote changes: %@",error)}

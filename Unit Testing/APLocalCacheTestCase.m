@@ -21,15 +21,12 @@
 #import "APParseConnector.h"
 #import <Parse/Parse.h>
 #import "Common.h"
+#import "NSLogEmoji.h"
+#import "UnitTestingCommon.h"
 
 #import "Author.h"
 #import "Book.h"
 
-/* Parse config */
-static NSString* const kParsepApplicationId = @"";
-static NSString* const kParseClientKey =  @"";
-static NSString* const kParseUserName = @"test";
-static NSString* const kParsePassword = @"__test__";
 
 /* Local objects strings */
 static NSString* const kAuthorNameLocal = @"J. R. R. Tolkien";
@@ -308,15 +305,21 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqllite";
     
     __block PFUser* user;
     
-    // All tests will be conducted in background to enable us to supress the *$@%@$ Parse SDK warning
+    // All tests will be conducted in background to enable us to supress the annoying Parse SDK warning
     // complening that we are running long calls in the main thread.
     dispatch_queue_t queue = dispatch_queue_create("parseConnectorTestCase", NULL);
     dispatch_group_t group = dispatch_group_create();
     
     dispatch_group_async(group, queue, ^{
-        [Parse setApplicationId:kParsepApplicationId clientKey:kParseClientKey];
-        user = [PFUser logInWithUsername:kParseUserName password:kParsePassword];
-        NSLog(@"User has been authenticated:%@",user.username);
+        [Parse setApplicationId:APUnitTestingParsepApplicationId clientKey:APUnitTestingParseClientKey];
+        
+        NSError* authError;
+        user = [PFUser logInWithUsername:APUnitTestingParseUserName password:APUnitTestingParsePassword error:&authError];
+        if (user) {
+            DLog(@"User has been authenticated:%@",user.username);
+        } else {
+            ELog(@"Authentication error: %@",authError);
+        }
     });
     
     dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
@@ -341,7 +344,7 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqllite";
         [psc addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:storeURL options:options error:&error];
         
         if (error) {
-            NSLog(@"Error adding store to PSC:%@",error);
+            ELog(@"Error adding store to PSC:%@",error);
         }
         
         _testContext = [[NSManagedObjectContext alloc]initWithConcurrencyType:NSPrivateQueueConcurrencyType];

@@ -20,9 +20,9 @@
 
 #pragma mark - Notifications
 
-/*******************
-/ Sync Notifications
-*******************/
+/***************************
+/ Sync Request Notifications
+****************************/
 
 /// Post this message to request the local cache to start the sync process with remote database
 extern NSString *const APNotificationRequestCacheSync;
@@ -30,13 +30,31 @@ extern NSString *const APNotificationRequestCacheSync;
 /// Post this message to request the local cache to start the FULL sync process with remote database (ignores whether or not a object was previously synced)
 extern NSString *const APNotificationRequestCacheFullSync;
 
+
+/*****************************
+ / Sync Progress Notifications
+ *****************************/
+
+/// APIncrementalStore will post this message before it starts the local cache sync process. Also the NSNotification userinfo will be keyed with APNotificationCacheNumberOfLocalObjectsKey and APNotificationCacheNumberOfRemoteObjectsKey showing the TOTAL number of objects that will be synced.
+extern NSString *const APNotificationCacheWillStartSync;
+
 /// APIncrementalStore will post this message once it started the local cache sync process
 extern NSString *const APNotificationCacheDidStartSync;
+
+/// APIncrementalStore will post this message once it synced a single object. Also the NSNotification userinfo will be keyed with APNotificationCacheNumberOfLocalObjectsKey and APNotificationCacheNumberOfRemoteObjectsKey showing the number of objects that were synced.
+extern NSString *const APNotificationCacheDidSyncObject;
 
 /// APIncrementalStore will post this message once it finished the local cache sync process
 extern NSString *const APNotificationCacheDidFinishSync;
 
-/// APNotificationCacheDidFinishSync will be sent with a userInfo which will contain the objects synced from the server keyed by constant
+
+/// APIncrementalStore will include this key when the APNotificationCacheWillStartSync is sent showing how many local objects will be synced
+extern NSString *const APNotificationCacheNumberOfLocalObjectsKey;
+
+/// APIncrementalStore will include this key when the APNotificationCacheWillStartSync is sent showing how many remote objects will be synced
+extern NSString *const APNotificationCacheNumberOfRemoteObjectsKey;
+
+/// APIncrementalStore will include this key when the APNotificationCacheDidFinishSync is sent containing the objects synced from the server
 extern NSString* const APNotificationObjectsIDsKey;
 
 
@@ -72,7 +90,7 @@ extern NSString* const APOptionAuthenticatedUserObjectKey;
 /// The name of the local cache store file.
 extern NSString* const APOptionCacheFileNameKey;
 
-/// Whether or not
+/// Whether or not an existing sqlite file should be removed a a new one creted before the persistant store start using it
 extern NSString* const APOptionCacheFileResetKey;
 
 /**

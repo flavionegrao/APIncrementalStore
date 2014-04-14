@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		7217EC1B18EC7E9E0032D559 /* Common.m in Sources */ = {isa = PBXBuildFile; fileRef = 7217EC1A18EC7E9E0032D559 /* Common.m */; };
 		7217EC1D18EC82F40032D559 /* Common.m in Sources */ = {isa = PBXBuildFile; fileRef = 7217EC1A18EC7E9E0032D559 /* Common.m */; };
-		72201BC818F733F7007D933C /* Parse.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72201BC718F733F7007D933C /* Parse.framework */; };
 		722A804318D4EF59001E6643 /* APIncrementalStore.m in Sources */ = {isa = PBXBuildFile; fileRef = 722A804218D4EF59001E6643 /* APIncrementalStore.m */; };
 		722A804818D5D6C6001E6643 /* APError.m in Sources */ = {isa = PBXBuildFile; fileRef = 722A804718D5D6C6001E6643 /* APError.m */; };
 		722A804C18D5DEA4001E6643 /* NSArray+Enumerable.m in Sources */ = {isa = PBXBuildFile; fileRef = 722A804B18D5DEA4001E6643 /* NSArray+Enumerable.m */; };
@@ -58,6 +57,9 @@
 		72F02EF918E98D0800DBC2C8 /* APParseConnectorTestCase.m in Sources */ = {isa = PBXBuildFile; fileRef = 72F02EF818E98D0800DBC2C8 /* APParseConnectorTestCase.m */; };
 		72F02EFA18E9A2ED00DBC2C8 /* APParseConnector.m in Sources */ = {isa = PBXBuildFile; fileRef = 726EE18D18D4EEE7005C5675 /* APParseConnector.m */; };
 		72F02F0018EB39C100DBC2C8 /* APLocalCacheTestCase.m in Sources */ = {isa = PBXBuildFile; fileRef = 72F02EFF18EB39C100DBC2C8 /* APLocalCacheTestCase.m */; };
+		72F9A3A318FA0AFB007B0EB6 /* Parse.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72201BC718F733F7007D933C /* Parse.framework */; };
+		72F9A3A418FA0B41007B0EB6 /* Parse.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72201BC718F733F7007D933C /* Parse.framework */; };
+		72F9A3A718FABE8B007B0EB6 /* UnitTestingCommon.m in Sources */ = {isa = PBXBuildFile; fileRef = 72F9A3A618FABE8B007B0EB6 /* UnitTestingCommon.m */; };
 		72FD020A18CA002300CC7E78 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72FD020918CA002300CC7E78 /* Security.framework */; };
 		72FD020D18CA016700CC7E78 /* Model.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 72FD020B18CA016700CC7E78 /* Model.xcdatamodeld */; };
 		72FD020F18CA094400CC7E78 /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72FD020E18CA094400CC7E78 /* SystemConfiguration.framework */; };
@@ -132,6 +134,8 @@
 		72CE78EE18CF69AD00F24F9F /* EditBookTVC.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = EditBookTVC.m; sourceTree = "<group>"; };
 		72F02EF818E98D0800DBC2C8 /* APParseConnectorTestCase.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = APParseConnectorTestCase.m; sourceTree = "<group>"; };
 		72F02EFF18EB39C100DBC2C8 /* APLocalCacheTestCase.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = APLocalCacheTestCase.m; sourceTree = "<group>"; };
+		72F9A3A518FABE8B007B0EB6 /* UnitTestingCommon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = UnitTestingCommon.h; sourceTree = "<group>"; };
+		72F9A3A618FABE8B007B0EB6 /* UnitTestingCommon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = UnitTestingCommon.m; sourceTree = "<group>"; };
 		72FD020918CA002300CC7E78 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		72FD020C18CA016700CC7E78 /* Model.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Model.xcdatamodel; sourceTree = "<group>"; };
 		72FD020E18CA094400CC7E78 /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
@@ -145,7 +149,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				72201BC818F733F7007D933C /* Parse.framework in Frameworks */,
+				72F9A3A318FA0AFB007B0EB6 /* Parse.framework in Frameworks */,
 				72CE78B318CC935300F24F9F /* StoreKit.framework in Frameworks */,
 				72FD020A18CA002300CC7E78 /* Security.framework in Frameworks */,
 				72CE78B118CC934800F24F9F /* QuartzCore.framework in Frameworks */,
@@ -165,6 +169,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				72F9A3A418FA0B41007B0EB6 /* Parse.framework in Frameworks */,
 				72DE79FC18DDBFD400AC972F /* SystemConfiguration.framework in Frameworks */,
 				72DE79FB18DDBFCC00AC972F /* StoreKit.framework in Frameworks */,
 				72DE79FA18DDBFC700AC972F /* Security.framework in Frameworks */,
@@ -252,6 +257,8 @@
 		724ADAED18C9226800DEE706 /* Unit Testing */ = {
 			isa = PBXGroup;
 			children = (
+				72F9A3A518FABE8B007B0EB6 /* UnitTestingCommon.h */,
+				72F9A3A618FABE8B007B0EB6 /* UnitTestingCommon.m */,
 				72F02EFF18EB39C100DBC2C8 /* APLocalCacheTestCase.m */,
 				72F02EF818E98D0800DBC2C8 /* APParseConnectorTestCase.m */,
 				7278C14118E4D906001E749A /* CoreDataControllerTestCase.m */,
@@ -447,6 +454,7 @@
 				7217EC1D18EC82F40032D559 /* Common.m in Sources */,
 				72F02F0018EB39C100DBC2C8 /* APLocalCacheTestCase.m in Sources */,
 				7278C14218E4D906001E749A /* CoreDataControllerTestCase.m in Sources */,
+				72F9A3A718FABE8B007B0EB6 /* UnitTestingCommon.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -612,6 +620,7 @@
 					"$(DEVELOPER_FRAMEWORKS_DIR)",
 					"$(PROJECT_DIR)",
 					"$(PROJECT_DIR)/Frameworks",
+					/Users/flavio/Developer/Frameworks,
 				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = Example/Prefix.pch;
@@ -636,6 +645,7 @@
 					"$(DEVELOPER_FRAMEWORKS_DIR)",
 					"$(PROJECT_DIR)",
 					"$(PROJECT_DIR)/Frameworks",
+					/Users/flavio/Developer/Frameworks,
 				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = Example/Prefix.pch;

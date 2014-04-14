@@ -31,12 +31,7 @@
 #import "Book.h"
 #import "Page.h"
 
-
-/* Parse config */
-static NSString* const kParsepApplicationId = @"";
-static NSString* const kParseClientKey =  @"";
-static NSString* const kParseUserName = @"test";
-static NSString* const kParsePassword = @"__test__";
+#import "UnitTestingCommon.h"
 
 /* Parse objects strings */
 static NSString* const kAuthorNameParse = @"George R. R. Martin";
@@ -87,11 +82,11 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     self.queue = dispatch_queue_create("parseConnectorTestCase", NULL);
     self.group = dispatch_group_create();
     
-    [Parse setApplicationId:kParsepApplicationId clientKey:kParseClientKey];
+    [Parse setApplicationId:APUnitTestingParsepApplicationId clientKey:APUnitTestingParseClientKey];
     
     dispatch_group_async(self.group, self.queue, ^{
         
-        PFUser* authenticatedUser = [PFUser logInWithUsername:kParseUserName password:kParsePassword];
+        PFUser* authenticatedUser = [PFUser logInWithUsername:APUnitTestingParseUserName password:APUnitTestingParsePassword];
         if (!authenticatedUser){
             ELog(@"User is authenticated, check credentials");
         } else {
@@ -180,7 +175,9 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     __block NSError* syncError;
     
     dispatch_group_async(self.group, self.queue, ^{
-        results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES error:&syncError];
+        results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&syncError];
     });
     dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
     
@@ -207,7 +204,10 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     __block NSError* syncError;
     
     dispatch_group_async(self.group, self.queue, ^{
-        results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES error:&syncError];
+        results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&syncError];
+
     });
     dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
     
@@ -224,7 +224,10 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     __block NSError* syncError;
     
     dispatch_group_async(self.group, self.queue, ^{
-        results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES error:&syncError];
+        results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&syncError];
+
     });
     dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
     
@@ -249,7 +252,10 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         
         // Merge server objects
         NSError* error;
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO error:&error];
+        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&error];
+
         XCTAssertNil(error);
         
         // Mark Author as deleted
@@ -260,7 +266,9 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         [parseAuthor save:&error];
         XCTAssertNil(error);
         
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO error:&error];
+        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&error];
         
         // Fetch local object
         NSFetchRequest* authorFr = [NSFetchRequest fetchRequestWithEntityName:@"Author"];
@@ -296,7 +304,9 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         XCTAssertTrue([[book valueForKey:APObjectUIDAttributeName]hasPrefix:APObjectTemporaryUIDPrefix]);
         XCTAssertTrue([[author valueForKey:APObjectUIDAttributeName]hasPrefix:APObjectTemporaryUIDPrefix]);
         
-        [self.parseConnector mergeManagedContext: self.testContext error:&mergeError];
+        [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&mergeError];
         
         // Ensure that both objects has their temp prefix removed from the objectUID property
         XCTAssertFalse([[book valueForKey:APObjectUIDAttributeName]hasPrefix:APObjectTemporaryUIDPrefix]);
@@ -333,7 +343,9 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 
         // Create the relationship locally and merge the context with Parse
         book.author = author;
-        [self.parseConnector mergeManagedContext:self.testContext error:&mergeError];
+        [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&mergeError];
         
         // Fetch the book from Parse and verify the related To-One author
         PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
@@ -387,7 +399,9 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         // Create the relationship locally and merge the context with Parse
         [author addBooksObject:book1];
         [author addBooksObject:book2];
-        [self.parseConnector mergeManagedContext:self.testContext error:&mergeError];
+        [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&mergeError];
         
         // Fetch the book from Parse and verify the related To-One author
         PFQuery* authorQuery = [PFQuery queryWithClassName:@"Author"];
@@ -442,7 +456,9 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         XCTAssertNil(savingError);
         
         NSError* mergeError;
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES error:&mergeError];
+        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&mergeError];
         XCTAssertNil(mergeError);
         
         NSFetchRequest* booksFr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
@@ -469,7 +485,9 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     dispatch_group_async(self.group, self.queue, ^{
         
         NSError* mergeError;
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES error:&mergeError];
+        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&mergeError];
         XCTAssertNil(mergeError);
         
         NSFetchRequest* booksFr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
@@ -490,7 +508,9 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         [self.testContext save:&saveError];
         XCTAssertNil(saveError);
         
-        [self.parseConnector mergeManagedContext:self.testContext error:&mergeError];
+        [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&mergeError];
         XCTAssertNil(mergeError);
         
         PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
@@ -526,7 +546,9 @@ Expected Results:
         
         // Sync server objects
         NSError* mergeError;
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES error:&mergeError];
+        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&mergeError];
         XCTAssertNil(mergeError);
         
         // Fetch local object
@@ -549,7 +571,9 @@ Expected Results:
         // Wait for 5 seconds and save the object
         [NSThread sleepForTimeInterval:5];
         [parseBook save];
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES error:&mergeError];
+        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&mergeError];
         
         // The local object date should have been updated.
         NSDate* updatedDate = [localBook valueForKey:APObjectLastModifiedAttributeName];
@@ -576,7 +600,9 @@ Expected Results:
         
         // Sync server objects
         NSError* mergeError;
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES error:&mergeError];
+        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&mergeError];
         XCTAssertNil(mergeError);
         
         // Fetch local object
@@ -598,7 +624,9 @@ Expected Results:
         XCTAssertNil(mergeError);
         XCTAssertTrue([parseBook.objectId isEqualToString:[localBook valueForKey:APObjectUIDAttributeName]]);
         
-        [self.parseConnector mergeManagedContext:self.testContext error:&mergeError];
+        [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&mergeError];
         XCTAssertNil(mergeError);
         XCTAssertEqualObjects(localBook.name, kBookNameParse3);
         
@@ -628,7 +656,9 @@ Expected Results:
         // Sync server objects
         NSError* mergeError;
         
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES error:&mergeError];
+        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&mergeError];
         
         XCTAssertNil(mergeError);
         
@@ -649,7 +679,9 @@ Expected Results:
         XCTAssertNil(mergeError);
         XCTAssertTrue([parseBook.objectId isEqualToString:[localBook valueForKey:APObjectUIDAttributeName]]);
 
-        [self.parseConnector mergeManagedContext:self.testContext error:&mergeError];
+        [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&mergeError];
         XCTAssertNil(mergeError);
         
         // Fetch local object

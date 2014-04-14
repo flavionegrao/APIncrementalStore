@@ -31,7 +31,11 @@ static NSInteger parseQueryCounter = 0;
 // NSUserDefaults entry to reference the earliest object date synced from Parse.
 static NSString* const APLatestObjectSyncedKey = @"APEarliestObjectSyncedKey";
 
-// It specifies the maximum number of objects that a parse query should return when executed.
+/* 
+ It specifies the maximum number of objects that a sinble parse query should return when executed. 
+ If there are more objects than this limit it will be fetched in batches. 
+ Parse specifies that 100 is the default but can be increased to maximum 1000.
+ */
 static NSUInteger APParseQueryFetchLimit = 100;
 
 static NSUInteger APParseObjectIDLenght = 10;
@@ -65,6 +69,11 @@ static NSUInteger APParseObjectIDLenght = 10;
     
     self = [super init];
     if (self) {
+        
+        if (!user) {
+            [NSException raise:APIncrementalStoreExceptionInconsistency format:@"can't init, user is nil"];
+        }
+        
         if (![user isKindOfClass:[PFUser class]]) {
             [NSException raise:APIncrementalStoreExceptionInconsistency format:@"user should be a PFUser kind of object"];
         }
@@ -100,6 +109,7 @@ static NSUInteger APParseObjectIDLenght = 10;
 
 - (NSArray*) mergeRemoteObjectsWithContext: (NSManagedObjectContext*) context
                                   fullSync: (BOOL) fullSync
+                              onSyncObject: (void (^)(void)) onSyncObject
                                      error: (NSError*__autoreleasing*) error {
     
     if (AP_DEBUG_METHODS) {MLog()}
@@ -128,7 +138,7 @@ static NSUInteger APParseObjectIDLenght = 10;
         
         if (AP_DEBUG_INFO) { DLog(@"Parse Query#%ld for class: %@ - cache policy: %d",(long)parseQueryCounter++, query.parseClassName,query.cachePolicy)}
         
-        // How many objects we need to feetch, 
+        // We count the object before fetching (see APParseQueryFetchLimit exaplanation)
         NSError* countError;
         NSUInteger totalObjectsToBeFetched = [query countObjects:&countError];
         if (countError) {
@@ -184,6 +194,7 @@ static NSUInteger APParseObjectIDLenght = 10;
                 }
                 [mergedObjectsIDs addObject:managedObject.objectID];
             }
+            if (onSyncObject) onSyncObject();
         }
         
         /*
@@ -221,6 +232,7 @@ static NSUInteger APParseObjectIDLenght = 10;
 
 
 - (BOOL) mergeManagedContext:(NSManagedObjectContext *)context
+                onSyncObject:(void (^)(void)) onSyncObject
                        error:(NSError*__autoreleasing*) error {
     
     if (AP_DEBUG_METHODS) {MLog()}
@@ -345,10 +357,50 @@ static NSUInteger APParseObjectIDLenght = 10;
                 }
             }
         }
+        if (onSyncObject) onSyncObject();
     }];
     return success;
 }
 
+
+- (NSUInteger) countLocalObjectsToBeSyncedInContext: (NSManagedObjectContext *)context
+                                              error: (NSError*__autoreleasing*) error {
+    
+    return [[self managedObjectsMarkedAsDirtyInContext:context]count];
+}
+
+
+- (NSUInteger) countRemoteObjectsToBeSyncedInContext: (NSManagedObjectContext *)context
+                                            fullSync: (BOOL) fullSync
+                                               error: (NSError*__autoreleasing*) error {
+    
+    NSUInteger numberOfObjects = 0;
+    NSError* countError;
+    NSManagedObjectModel* model = context.persistentStoreCoordinator.managedObjectModel;
+    
+    for (NSEntityDescription* entityDescription in [model entities]) {
+        PFQuery *query = [PFQuery queryWithClassName:entityDescription.name];
+        
+        if (!fullSync) {
+            NSDate* lastSync = [self latestObjectSyncedDateForEntityName:entityDescription.name];
+            if (lastSync) {
+                [query whereKey:@"updatedAt" greaterThanOrEqualTo:lastSync];
+            }
+        }
+        numberOfObjects += [query countObjects:&countError];
+        
+        if (countError) {
+            if(AP_DEBUG_ERRORS) ELog(@"Error counting: %@",countError);
+            *error = countError;
+            numberOfObjects = 0;
+            continue;
+        }
+    }
+    
+    return numberOfObjects;
+}
+
+#pragma mark - Util Methods
 
 - (NSString*) insertObject:(NSManagedObject*) managedObject
                      error:(NSError *__autoreleasing*)error {
@@ -376,8 +428,6 @@ static NSUInteger APParseObjectIDLenght = 10;
     return objectUID;
 }
 
-
-#pragma mark - Util Methods
 
 - (NSArray*) managedObjectsMarkedAsDirtyInContext: (NSManagedObjectContext *)context {
     
