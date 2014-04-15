@@ -74,7 +74,7 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     dispatch_group_async(self.group, self.queue, ^{
         authenticatedUser = [PFUser currentUser];
         if (!authenticatedUser ) {
-            authenticatedUser = [PFUser logInWithUsername:APUnitTestingParseUserName password:APUnitTestingParseUserName];
+            authenticatedUser = [PFUser logInWithUsername:APUnitTestingParseUserName password:APUnitTestingParsePassword];
         }
         [self removeAllEntriesFromParse];
     });
@@ -382,6 +382,34 @@ Below are how much time each attempt took when using more than one thread.
     NSUInteger numberOfAuthorsFetched = [self.coreDataController.mainContext countForFetchRequest:fr error:&fetchError];
     XCTAssertNil(fetchError);
     XCTAssertTrue(numberOfAuthorsFetched == numberOfAuthorsCreated);
+}
+
+
+- (void) testSaveImage {
+    
+    MLog();
+    Book* book = [self fetchBook];
+    // 495KB JPG Image sample image
+    NSURL *imageURL = [[[NSBundle mainBundle]bundleURL] URLByAppendingPathComponent:@"Sample_495KB.jpg"];
+    NSData* bookCoverData = [NSData dataWithContentsOfURL:imageURL];
+    XCTAssertNotNil(bookCoverData);
+    
+    book.picture = bookCoverData;
+    book.name = kBookName2;
+    NSError* savingError;
+    [self.coreDataController.mainContext save:&savingError];
+    
+    // Recreate Coredata stack
+    self.coreDataController = nil;
+    self.coreDataController = [[CoreDataController alloc]init];
+    [self.coreDataController setRemoteDBAuthenticatedUser:[PFUser currentUser]];
+    
+    // Check is the updated book has been saved to disk properly.
+    NSFetchRequest* bookFetchRequest = [[NSFetchRequest alloc]initWithEntityName:@"Book"];
+    bookFetchRequest.predicate = [NSPredicate predicateWithFormat:@"name = %@",kBookName2];
+    NSArray* bookResults = [self.coreDataController.mainContext executeFetchRequest:bookFetchRequest error:nil];
+    Book* bookReFetched = [bookResults lastObject];
+    XCTAssertNotNil(bookReFetched.picture);
 }
 
 
