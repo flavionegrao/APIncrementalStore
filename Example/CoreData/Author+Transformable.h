@@ -1,5 +1,5 @@
 //
-//  Author.m
+//  Author+Transformable.h
 //  APIncrementalStore
 //
 //  Created by Flavio Negrão Torres on 4/15/14.
@@ -7,13 +7,7 @@
 //
 
 #import "Author.h"
-#import "Book.h"
 
-
-@implementation Author
-
-@dynamic name;
-@dynamic photo;
-@dynamic books;
+@interface Author (Transformable)
 
 @end

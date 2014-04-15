@@ -251,7 +251,7 @@ static NSUInteger APParseObjectIDLenght = 10;
     
     [dirtyManagedObjects enumerateObjectsUsingBlock:^(NSManagedObject* managedObject, NSUInteger idx, BOOL *stop) {
         
-        if (AP_DEBUG_INFO) { ALog(@"Merging: %@", managedObject)}
+        if (AP_DEBUG_INFO) { DLog(@"Merging: %@", managedObject)}
         
         void (^reportErrorStopEnumerating)() = ^{
             if (AP_DEBUG_ERRORS) {ELog(@"Error merging object: %@",managedObject)};
@@ -281,7 +281,7 @@ static NSUInteger APParseObjectIDLenght = 10;
                 if (localError) {
                     reportErrorStopEnumerating();
                 } else {
-                    if (AP_DEBUG_INFO) { ALog(@"Including entry on map of temp IDS for %@ to %@ ", objectUID,permanentObjectUID)}
+                    if (AP_DEBUG_INFO) { DLog(@"Including entry on map of temp IDs for %@ to %@ ", objectUID,permanentObjectUID)}
                     self.mapOfTemporaryToPermanentUID[objectUID] = permanentObjectUID;
                     [managedObject setValue:@NO forKey:APObjectIsDirtyAttributeName];
                 }
@@ -298,7 +298,7 @@ static NSUInteger APParseObjectIDLenght = 10;
                 
             } else {
                 NSDate* localObjectUpdatedAt = [managedObject valueForKey:APObjectLastModifiedAttributeName];
-                if (AP_DEBUG_INFO) { ALog(@"Parse equivalent object: %@ ", parseObject)}
+                if (AP_DEBUG_INFO) { DLog(@"Parse equivalent object: %@ ", parseObject)}
                 
                 // If the object has not been updated since last time we read it from server
                 // we are safe to updated it. If the object is marked with apIsDeleted = YES
@@ -309,7 +309,7 @@ static NSUInteger APParseObjectIDLenght = 10;
                     
                     [self populateParseObject:parseObject withManagedObject:managedObject error:&localError];
                     
-                     if (AP_DEBUG_INFO) { ALog(@"Object remains the same, we are good to merge it")}
+                     if (AP_DEBUG_INFO) { DLog(@"Object remains the same, we are good to merge it")}
                     
                     if (localError) {
                         reportErrorStopEnumerating();
@@ -332,7 +332,7 @@ static NSUInteger APParseObjectIDLenght = 10;
                     
                     if (self.mergePolicy == APMergePolicyClientWins) {
                         
-                        if (AP_DEBUG_INFO) { ALog(@"APMergePolicyClientWins")}
+                        if (AP_DEBUG_INFO) { DLog(@"APMergePolicyClientWins")}
                         [self populateParseObject:parseObject withManagedObject:managedObject error:&localError];
                         
                         if (![parseObject save:&localError]) {
@@ -347,7 +347,7 @@ static NSUInteger APParseObjectIDLenght = 10;
                         
                     } else if (self.mergePolicy == APMergePolicyServerWins) {
                         
-                        if (AP_DEBUG_INFO) { ALog(@"APMergePolicyServerWins")}
+                        if (AP_DEBUG_INFO) { DLog(@"APMergePolicyServerWins")}
                         [self populateManagedObject:managedObject withSerializedParseObject:[self serializeParseObject:parseObject]];
                         [managedObject setValue:@NO forKey:APObjectIsDirtyAttributeName];
                         
@@ -416,7 +416,7 @@ static NSUInteger APParseObjectIDLenght = 10;
     if (!localError) {
         
         if ([parseObject save:&localError]) {
-            if (AP_DEBUG_INFO) { ALog(@"Parse object saved: %@",parseObject)}
+            if (AP_DEBUG_INFO) { DLog(@"Parse object saved: %@",parseObject)}
             
             /* Parse sets the objectId for a new object only after we save it. */
             [managedObject setValue:parseObject.objectId forKey:APObjectUIDAttributeName];
@@ -588,7 +588,8 @@ static NSUInteger APParseObjectIDLenght = 10;
                 if (attrDescription.attributeType == NSBooleanAttributeType) {
                     [parseObject setValue:@([propertyValue boolValue]) forKey:propertyName];
                 
-                } else if (attrDescription.attributeType == NSBinaryDataAttributeType) {
+                } else if (attrDescription.attributeType == NSBinaryDataAttributeType ||
+                           attrDescription.attributeType == NSTransformableAttributeType) {
                     PFFile* file = [PFFile fileWithData:propertyValue];
                     
                     NSError* fileSavingError;
@@ -690,7 +691,7 @@ static NSUInteger APParseObjectIDLenght = 10;
             
             if (createIfNecessary) {
                 managedObject = [NSEntityDescription insertNewObjectForEntityForName:entity.name inManagedObjectContext:context];
-                 if (AP_DEBUG_INFO) { ALog(@"New object created: %@",managedObject.objectID)}
+                 if (AP_DEBUG_INFO) { DLog(@"New object created: %@",managedObject.objectID)}
                 [managedObject setValue:objectUID forKey:APObjectUIDAttributeName];
                 
                 NSError* permanentIdError;

@@ -497,7 +497,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         NSManagedObject* managedObject = [context objectWithID:managedObjectID];
         
         if (![managedObject isFault]) {
-            [self populateManagedObject:managedObject WithRepresentation:cacheManagedObjectRep callingContext:context entity:fetchRequest.entity];
+            [self populateManagedObject:managedObject withRepresentation:cacheManagedObjectRep callingContext:context entity:fetchRequest.entity];
         }
         [results addObject:managedObject];
     }];
@@ -849,12 +849,12 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     NSDictionary* properties = [managedObject.entity propertiesByName];
     
     [properties enumerateKeysAndObjectsUsingBlock:^(NSString* propertyName, NSPropertyDescription* propertyDescription, BOOL *stop) {
-        
+        [managedObject willAccessValueForKey:propertyName];
         [representation setValue:[self referenceObjectForObjectID:managedObject.objectID] forKey:APObjectUIDAttributeName];
         if ([propertyDescription isKindOfClass:[NSAttributeDescription class]]) {
             
             // Attribute
-            representation[propertyName] = [managedObject valueForKey:propertyName] ?: [NSNull null];
+            representation[propertyName] = [managedObject primitiveValueForKey:propertyName] ?: [NSNull null];
 
             
         } else if ([propertyDescription isKindOfClass:[NSRelationshipDescription class]]) {
@@ -864,7 +864,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
                 
                 // To-One
                 
-                NSManagedObject* relatedObject = [managedObject valueForKey:propertyName];
+                NSManagedObject* relatedObject = [managedObject primitiveValueForKey:propertyName];
                 
                 if (relatedObject) {
                     NSString* objectUID = [self referenceObjectForObjectID:relatedObject.objectID];
@@ -877,7 +877,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
                 
                 // To-Many
                 
-                NSSet* relatedObjects = [managedObject valueForKey:propertyName];
+                NSSet* relatedObjects = [managedObject primitiveValueForKey:propertyName];
                 __block NSMutableArray* relatedObjectsRepresentation = [[NSMutableArray alloc] initWithCapacity:[relatedObjects count]];
                 [relatedObjects enumerateObjectsUsingBlock:^(NSManagedObject* relatedObject, BOOL *stop) {
                     NSString* objectUID = [self referenceObjectForObjectID:relatedObject.objectID];
@@ -886,6 +886,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
                 representation[propertyName] = relatedObjectsRepresentation;
             }
         }
+        [managedObject didAccessValueForKey:propertyName];
     }];
     return representation;
 }
@@ -894,7 +895,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
 #pragma mark - Translate Representations to Managed Objects
 
 - (void) populateManagedObject:(NSManagedObject*) managedObject
-            WithRepresentation:(NSDictionary *)dictionary
+            withRepresentation:(NSDictionary *)dictionary
                 callingContext:(NSManagedObjectContext*)context
                         entity:(NSEntityDescription *)entity {
     
@@ -902,6 +903,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     
     // Enumerate through properties and set internal storage
     [dictionary enumerateKeysAndObjectsUsingBlock:^(id propertyName, id propertyValue, BOOL *stop) {
+        [managedObject willChangeValueForKey:propertyName];
         NSPropertyDescription *propertyDescription = [entity propertiesByName][propertyName];
         
         // Ignore keys that don't belong to our model
@@ -945,6 +947,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
                 }
             }
         }
+         [managedObject didChangeValueForKey:propertyName];
     }];
 }
 

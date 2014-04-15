@@ -12,6 +12,9 @@
 		722A804318D4EF59001E6643 /* APIncrementalStore.m in Sources */ = {isa = PBXBuildFile; fileRef = 722A804218D4EF59001E6643 /* APIncrementalStore.m */; };
 		722A804818D5D6C6001E6643 /* APError.m in Sources */ = {isa = PBXBuildFile; fileRef = 722A804718D5D6C6001E6643 /* APError.m */; };
 		722A804C18D5DEA4001E6643 /* NSArray+Enumerable.m in Sources */ = {isa = PBXBuildFile; fileRef = 722A804B18D5DEA4001E6643 /* NSArray+Enumerable.m */; };
+		722DA62918FDC8A4000693B6 /* Author+Transformable.m in Sources */ = {isa = PBXBuildFile; fileRef = 722DA62818FDC8A4000693B6 /* Author+Transformable.m */; };
+		722DA62B18FDCA62000693B6 /* JRR_Tolkien.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 722DA62A18FDCA62000693B6 /* JRR_Tolkien.jpg */; };
+		722DA62E18FDCD57000693B6 /* Author.m in Sources */ = {isa = PBXBuildFile; fileRef = 722DA62D18FDCD57000693B6 /* Author.m */; };
 		72369EAA18CBA5D90095BC69 /* ListBooksTVC.m in Sources */ = {isa = PBXBuildFile; fileRef = 72369EA918CBA5D90095BC69 /* ListBooksTVC.m */; };
 		724ADAC618C9226800DEE706 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 724ADAC518C9226800DEE706 /* Foundation.framework */; };
 		724ADACA18C9226800DEE706 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 724ADAC918C9226800DEE706 /* UIKit.framework */; };
@@ -30,7 +33,6 @@
 		726EE18B18D4ED7A005C5675 /* APLocalCache.m in Sources */ = {isa = PBXBuildFile; fileRef = 726EE18A18D4ED7A005C5675 /* APLocalCache.m */; };
 		726EE18E18D4EEE7005C5675 /* APParseConnector.m in Sources */ = {isa = PBXBuildFile; fileRef = 726EE18D18D4EEE7005C5675 /* APParseConnector.m */; };
 		7278C13018E0A87F001E749A /* ListAuthorsTVC.m in Sources */ = {isa = PBXBuildFile; fileRef = 724ADADE18C9226800DEE706 /* ListAuthorsTVC.m */; };
-		7278C13718E4C424001E749A /* Author.m in Sources */ = {isa = PBXBuildFile; fileRef = 7278C13618E4C424001E749A /* Author.m */; };
 		7278C14218E4D906001E749A /* CoreDataControllerTestCase.m in Sources */ = {isa = PBXBuildFile; fileRef = 7278C14118E4D906001E749A /* CoreDataControllerTestCase.m */; };
 		72A1BCC518F72CAB00980A10 /* APIncrementalStore.podspec in Resources */ = {isa = PBXBuildFile; fileRef = 72A1BCC418F72CAB00980A10 /* APIncrementalStore.podspec */; };
 		72AB4F0118C9F41A005D1FB6 /* CoreDataController.m in Sources */ = {isa = PBXBuildFile; fileRef = 72AB4F0018C9F41A005D1FB6 /* CoreDataController.m */; };
@@ -87,6 +89,11 @@
 		722A804918D5D72F001E6643 /* Common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Common.h; sourceTree = "<group>"; };
 		722A804A18D5DEA4001E6643 /* NSArray+Enumerable.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSArray+Enumerable.h"; sourceTree = "<group>"; };
 		722A804B18D5DEA4001E6643 /* NSArray+Enumerable.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSArray+Enumerable.m"; sourceTree = "<group>"; };
+		722DA62718FDC8A4000693B6 /* Author+Transformable.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "Author+Transformable.h"; sourceTree = "<group>"; };
+		722DA62818FDC8A4000693B6 /* Author+Transformable.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "Author+Transformable.m"; sourceTree = "<group>"; };
+		722DA62A18FDCA62000693B6 /* JRR_Tolkien.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = JRR_Tolkien.jpg; sourceTree = "<group>"; };
+		722DA62C18FDCD57000693B6 /* Author.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Author.h; sourceTree = "<group>"; };
+		722DA62D18FDCD57000693B6 /* Author.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Author.m; sourceTree = "<group>"; };
 		72369EA818CBA5D90095BC69 /* ListBooksTVC.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ListBooksTVC.h; sourceTree = "<group>"; };
 		72369EA918CBA5D90095BC69 /* ListBooksTVC.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ListBooksTVC.m; sourceTree = "<group>"; };
 		724ADAC518C9226800DEE706 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
@@ -111,8 +118,6 @@
 		726EE18A18D4ED7A005C5675 /* APLocalCache.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = APLocalCache.m; sourceTree = "<group>"; };
 		726EE18C18D4EEE7005C5675 /* APParseConnector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = APParseConnector.h; sourceTree = "<group>"; };
 		726EE18D18D4EEE7005C5675 /* APParseConnector.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = APParseConnector.m; sourceTree = "<group>"; };
-		7278C13518E4C424001E749A /* Author.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Author.h; sourceTree = "<group>"; };
-		7278C13618E4C424001E749A /* Author.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Author.m; sourceTree = "<group>"; };
 		7278C14118E4D906001E749A /* CoreDataControllerTestCase.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CoreDataControllerTestCase.m; sourceTree = "<group>"; };
 		72A1BCC418F72CAB00980A10 /* APIncrementalStore.podspec */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = APIncrementalStore.podspec; sourceTree = "<group>"; };
 		72AB4EFF18C9F41A005D1FB6 /* CoreDataController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CoreDataController.h; sourceTree = "<group>"; };
@@ -270,6 +275,7 @@
 		724ADAEE18C9226800DEE706 /* Supporting Files */ = {
 			isa = PBXGroup;
 			children = (
+				722DA62A18FDCA62000693B6 /* JRR_Tolkien.jpg */,
 				726B971C18F6BAC000149290 /* Sample_495KB.jpg */,
 				724ADAEF18C9226800DEE706 /* Tests-Info.plist */,
 				724ADAF018C9226800DEE706 /* InfoPlist.strings */,
@@ -300,6 +306,8 @@
 		72AB4F0218C9F421005D1FB6 /* Core Data */ = {
 			isa = PBXGroup;
 			children = (
+				722DA62718FDC8A4000693B6 /* Author+Transformable.h */,
+				722DA62818FDC8A4000693B6 /* Author+Transformable.m */,
 				72FD020B18CA016700CC7E78 /* Model.xcdatamodeld */,
 				72FD022618CA5B9500CC7E78 /* CoreDataTVC.m */,
 				72FD022718CA5B9500CC7E78 /* CoreDataTVC.h */,
@@ -314,12 +322,12 @@
 		72FD021218CA099200CC7E78 /* Core Data Auto Classes */ = {
 			isa = PBXGroup;
 			children = (
+				722DA62C18FDCD57000693B6 /* Author.h */,
+				722DA62D18FDCD57000693B6 /* Author.m */,
 				72B1D10A18F4B47100703BDD /* Book.h */,
 				72B1D10B18F4B47100703BDD /* Book.m */,
 				72B1D10718F4667400703BDD /* Page.h */,
 				72B1D10818F4667400703BDD /* Page.m */,
-				7278C13518E4C424001E749A /* Author.h */,
-				7278C13618E4C424001E749A /* Author.m */,
 			);
 			path = "Core Data Auto Classes";
 			sourceTree = "<group>";
@@ -401,6 +409,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				724ADAE118C9226800DEE706 /* Images.xcassets in Resources */,
+				722DA62B18FDCA62000693B6 /* JRR_Tolkien.jpg in Resources */,
 				724ADAD918C9226800DEE706 /* Main.storyboard in Resources */,
 				726B971E18F6BDAA00149290 /* Sample_495KB.jpg in Resources */,
 				724ADAD018C9226800DEE706 /* InfoPlist.strings in Resources */,
@@ -425,13 +434,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				72FD022818CA5B9500CC7E78 /* CoreDataTVC.m in Sources */,
-				7278C13718E4C424001E749A /* Author.m in Sources */,
 				722A804318D4EF59001E6643 /* APIncrementalStore.m in Sources */,
+				722DA62E18FDCD57000693B6 /* Author.m in Sources */,
 				724ADADF18C9226800DEE706 /* ListAuthorsTVC.m in Sources */,
 				724ADAD618C9226800DEE706 /* AppDelegate.m in Sources */,
 				726EE18E18D4EEE7005C5675 /* APParseConnector.m in Sources */,
 				7217EC1B18EC7E9E0032D559 /* Common.m in Sources */,
 				72B1D10918F4667400703BDD /* Page.m in Sources */,
+				722DA62918FDC8A4000693B6 /* Author+Transformable.m in Sources */,
 				722A804818D5D6C6001E6643 /* APError.m in Sources */,
 				72B1D10C18F4B47100703BDD /* Book.m in Sources */,
 				724ADAD218C9226800DEE706 /* main.m in Sources */,

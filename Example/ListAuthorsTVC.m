@@ -20,7 +20,7 @@
 
 #import "CoreDataController.h"
 
-#import "Author.h"
+#import "Author+Transformable.h"
 #import "Book.h"
 #import <Parse/Parse.h>
 #import "Common.h"

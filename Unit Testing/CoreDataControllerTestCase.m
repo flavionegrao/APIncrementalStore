@@ -24,7 +24,7 @@
 #import "NSLogEmoji.h"
 #import "Common.h"
 
-#import "Author.h"
+#import "Author+Transformable.h"
 #import "Book.h"
 #import "Page.h"
 
@@ -385,7 +385,7 @@ Below are how much time each attempt took when using more than one thread.
 }
 
 
-- (void) testSaveImage {
+- (void) testSaveBinary {
     
     MLog();
     Book* book = [self fetchBook];
@@ -410,6 +410,32 @@ Below are how much time each attempt took when using more than one thread.
     NSArray* bookResults = [self.coreDataController.mainContext executeFetchRequest:bookFetchRequest error:nil];
     Book* bookReFetched = [bookResults lastObject];
     XCTAssertNotNil(bookReFetched.picture);
+}
+
+
+/*
+ Author has a attribute named photo which is a transformable property.
+ The accessors are located in Author+Transformable.h and will transform it to NSData before send it to Core Data
+ */
+- (void) testSaveImageUsingTransformableAttribute {
+    
+    Author* author = [self fetchAuthor];
+    NSURL *imageURL = [[[NSBundle mainBundle]bundleURL] URLByAppendingPathComponent:@"JRR_Tolkien.jpg"];
+    NSData* authorPhotoData = [NSData dataWithContentsOfURL:imageURL];
+    XCTAssertNotNil(authorPhotoData);
+    
+    author.photo = [UIImage imageWithData:authorPhotoData];
+    NSError* savingError;
+    [self.coreDataController.mainContext save:&savingError];
+    
+    // Recreate Coredata stack
+    self.coreDataController = nil;
+    self.coreDataController = [[CoreDataController alloc]init];
+    [self.coreDataController setRemoteDBAuthenticatedUser:[PFUser currentUser]];
+    
+    // Check is the updated book has been saved to disk properly.
+    Author* authorReFetched = [self fetchAuthor];
+    XCTAssertTrue([authorReFetched.photo isKindOfClass:[UIImage class]]);
 }
 
 
