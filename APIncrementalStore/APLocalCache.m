@@ -108,10 +108,10 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
             continue;
         }
         
-        NSAttributeDescription *uuidProperty = [[NSAttributeDescription alloc] init];
-        [uuidProperty setName:APObjectUIDAttributeName];
-        [uuidProperty setAttributeType:NSStringAttributeType];
-        [uuidProperty setIndexed:YES];
+        NSAttributeDescription *uidProperty = [[NSAttributeDescription alloc] init];
+        [uidProperty setName:APObjectUIDAttributeName];
+        [uidProperty setAttributeType:NSStringAttributeType];
+        [uidProperty setIndexed:YES];
         
         NSAttributeDescription *lastModifiedProperty = [[NSAttributeDescription alloc] init];
         [lastModifiedProperty setName:APObjectLastModifiedAttributeName];
@@ -135,7 +135,7 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
         [isDirtyProperty setDefaultValue:@NO];
         [isDirtyProperty setUserInfo:@{kAPIncrementalStoreLocalPrivateAttribute:@YES}];
         
-        [entity setProperties:[entity.properties arrayByAddingObjectsFromArray:@[uuidProperty,
+        [entity setProperties:[entity.properties arrayByAddingObjectsFromArray:@[uidProperty,
                                                                                  lastModifiedProperty,
                                                                                  deletedProperty,
                                                                                  isDirtyProperty]]];
@@ -720,9 +720,9 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
         // Attributes
         if ([propertyDescription isKindOfClass:[NSAttributeDescription class]]) {
             if (representation[propertyName] == [NSNull null]) {
-                [managedObject setPrimitiveValue:nil forKey:propertyName];
+                [managedObject setValue:nil forKey:propertyName];
             } else {
-                [managedObject setPrimitiveValue:representation[propertyName] forKey:propertyName];
+                [managedObject setValue:representation[propertyName] forKey:propertyName];
             }
             
             // Relationships faulted in
@@ -731,7 +731,7 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
             
             //To-many
             if ([relationshipDescription isToMany]) {
-                NSMutableSet *relatedObjects = [[managedObject primitiveValueForKey:propertyName] mutableCopy];
+                NSMutableSet *relatedObjects = [[managedObject valueForKey:propertyName] mutableCopy];
                 if (relatedObjects != nil) {
                     [relatedObjects removeAllObjects];
                     NSArray *relatedRepresentations = representation[propertyName];
@@ -739,17 +739,17 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
                         NSManagedObjectID* relatedManagedObjectID = [self fetchManagedObjectIDForObjectUID:objectUUID entityName:relationshipDescription.destinationEntity.name createIfNeeded:YES];
                         [relatedObjects addObject:[self.mainContext objectWithID:relatedManagedObjectID]];
                     }];
-                    [managedObject setPrimitiveValue:relatedObjects forKey:propertyName];
+                    [managedObject setValue:relatedObjects forKey:propertyName];
                 }
                 
                 //To-one
             } else {
                 if (representation[propertyName] == [NSNull null]) {
-                    [managedObject setPrimitiveValue:nil forKey:propertyName];
+                    [managedObject setValue:nil forKey:propertyName];
                 } else {
                     NSManagedObjectID* relatedManagedObjectID = [self fetchManagedObjectIDForObjectUID:representation[propertyName] entityName:relationshipDescription.destinationEntity.name createIfNeeded:YES];
                     NSManagedObject *relatedObject = [[managedObject managedObjectContext] objectWithID:relatedManagedObjectID];
-                    [managedObject setPrimitiveValue:relatedObject forKey:propertyName];
+                    [managedObject setValue:relatedObject forKey:propertyName];
                 }
             }
         }
