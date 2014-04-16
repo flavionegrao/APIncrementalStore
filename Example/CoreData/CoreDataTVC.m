@@ -118,6 +118,40 @@
 }
 
 
+- (void) setFrc:(NSFetchedResultsController *)newfrc {
+    
+    if (newfrc != _frc) {
+        _frc = newfrc;
+        newfrc.delegate = self;
+        
+        if (newfrc) {
+            self.frcDidFinishPerformingFetch = NO;
+            [self performFetch:_frc];
+        } else {
+            [self.tableView reloadData];
+        }
+        
+        [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(reFetch:) name:APNotificationCacheDidFinishSync object:nil];
+    }
+}
+
+
+- (void) setSearchFRC:(NSFetchedResultsController *)newFilteredFRC {
+    
+    if (_searchFRC != newFilteredFRC) {
+        _searchFRC = newFilteredFRC;
+        _searchFRC.delegate = self;
+        
+        if (_searchFRC) {
+            self.frcDidFinishPerformingFetch = NO;
+            [self performFetch:_searchFRC];
+        } else {
+            [self.searchDisplayController.searchResultsTableView reloadData];
+        }
+    }
+}
+
+
 #pragma mark - Notification Handling
 
 - (void) reFetch: (NSNotification*) note {
@@ -126,8 +160,8 @@
     if (self.searchFRC) [self performFetch:self.searchFRC];
 }
 
-#pragma mark - Fetching
 
+#pragma mark - Fetching
 
 - (void) performFetch: (NSFetchedResultsController*) frc {
     
@@ -157,39 +191,6 @@
 }
 
 
-- (void) setFrc:(NSFetchedResultsController *)newfrc {
-    
-    if (newfrc != _frc) {
-        _frc = newfrc;
-        newfrc.delegate = self;
-        
-        if (newfrc) {
-            self.frcDidFinishPerformingFetch = NO;
-            [self performFetch:_frc];
-        } else {
-            [self.tableView reloadData];
-        }
-        
-        [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveIncrementalStoreMergeObjectsNotification:) name:APNotificationCacheDidFinishSync object:nil];
-    }
-}
-
-
-- (void) setSearchFRC:(NSFetchedResultsController *)newFilteredFRC {
-    
-    if (_searchFRC != newFilteredFRC) {
-        _searchFRC = newFilteredFRC;
-        _searchFRC.delegate = self;
-        
-        if (_searchFRC) {
-            self.frcDidFinishPerformingFetch = NO;
-                [self performFetch:_searchFRC];
-        } else
-            [self.searchDisplayController.searchResultsTableView reloadData];
-    }
-}
-
-
 - (NSFetchedResultsController *)frcForTableView:(UITableView *)tableView {
     
     return tableView == self.tableView ? self.frc : self.searchFRC;
@@ -212,9 +213,6 @@
 //    }
 }
 
-- (void) didReceiveIncrementalStoreMergeObjectsNotification: (NSNotification*) note {
-    [self reFetch:note];
-}
 
 #pragma mark - UITableViewDataSource
 
@@ -225,6 +223,7 @@
                                            NSStringFromSelector(_cmd)]
                                  userInfo:nil];
 }
+
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
     

@@ -18,8 +18,8 @@
 #import "AppDelegate.h"
 #import <Parse/Parse.h>
 
-static NSString* const APParsepApplicationId = @"aUN8G0fduG0nEddaA64bdSbOaeQYQegIschGnf5Y";
-static NSString* const APParseClientKey =  @"dMQ5YRMELCEZdMSk6SmFU1U6s8a23A0pu2hGkZS8";
+static NSString* const APParsepApplicationId = @"";
+static NSString* const APParseClientKey =  @"";
 
 @implementation AppDelegate
 

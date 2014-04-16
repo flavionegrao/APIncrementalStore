@@ -27,8 +27,8 @@
 #import "NSLogEmoji.h"
 
 /* Parse config */
-static NSString* const kParseUserName = @"test";
-static NSString* const kParsePassword = @"__test__";
+static NSString* const kParseUserName = @"test_user";
+static NSString* const kParsePassword = @"1234";
 
 
 @interface ListAuthorsTVC () <UITableViewDataSource,UITableViewDelegate>
