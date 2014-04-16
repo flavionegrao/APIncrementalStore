@@ -133,9 +133,7 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     });
     dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
     
-    DLog(@"Will call reset cache");
     [self.coreDataController requestResetCache];
-    DLog(@"Did call reset cache");
     while (self.coreDataController.isResetingTheCache &&
            [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
     DLog(@"Cache is reset");
@@ -145,7 +143,6 @@ static NSString* const kBookName2 = @"A Clash of Kings";
    DLog(@"Tear-Down finished");
     
     [super tearDown];
-    
 }
 
 
