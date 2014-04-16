@@ -134,28 +134,22 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     
     if (self) {
         
-        _model = psc.managedObjectModel;
-        
-        [self registerForNotifications];
-        
-        NSString* localCacheFileName = [options valueForKey:APOptionCacheFileNameKey];
-        _localCacheFileName = localCacheFileName ?: APDefaultLocalCacheFileName;
-        
-        if ([[options valueForKey:APOptionCacheFileResetKey] isEqualToNumber:@YES]){
-            _shouldResetCacheFile = YES;
-        }
-        
         id authenticatedUser = [options valueForKey:APOptionAuthenticatedUserObjectKey];
         if (!authenticatedUser) {
             if (AP_DEBUG_ERRORS) {ELog(@"Authenticated user is not set")}
             return nil;
         }
-        
         _remoteDBConnector = [[APParseConnector alloc]initWithAuthenticatedUser:authenticatedUser mergePolicy:APMergePolicyClientWins];
-        
         if (![_remoteDBConnector conformsToProtocol:@protocol(APRemoteDBConnector)]) {
             [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Object not complatible with APIncrementalStoreConnector protocol"];
         }
+        
+        
+        _model = psc.managedObjectModel;
+        _localCacheFileName = [options valueForKey:APOptionCacheFileNameKey] ?: APDefaultLocalCacheFileName;
+        _shouldResetCacheFile = [options[APOptionCacheFileResetKey] boolValue];
+        
+        [self registerForNotifications];
     }
     return self;
 }
