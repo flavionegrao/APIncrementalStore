@@ -26,8 +26,8 @@ I have not managed to find a way to staticly include the Parse library or even b
 
 ###Few tips:
 - Set Parse keys at appDelegate.m
-- Login a user and pass it as paramenter to APIncrementalStore.
-- The parse connector will sync all entities found on you model, and will use the exactly same naming to find the classes at Parse.
+- Login with an user (PFUser) and pass it as paramenter to APIncrementalStore.
+- The parse connector will sync all entities found on your model and use the exactly same entity naming to find the classes from Parse.
 - I have done nothing in regards to Parse ACL yet, so that it will sync everything that the logged user has access to.
 - I'm still planning to do something about the situation when the user changes, for example invalidate the cache or some other smarter aproach.
 
