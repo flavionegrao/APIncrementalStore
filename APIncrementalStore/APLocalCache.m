@@ -72,10 +72,10 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
     
     if (self) {
         if (model && translateBlock && localStoreFileName && remoteDBConnector) {
-            self.localStoreFileName = localStoreFileName;
-            self.translateManagedObjectIDToObjectUIDBlock = translateBlock;
-            self.shouldResetCacheFile = shouldResetCache;
-            self.remoteDBConnector = remoteDBConnector;
+            _localStoreFileName = localStoreFileName;
+            _translateManagedObjectIDToObjectUIDBlock = translateBlock;
+            _shouldResetCacheFile = shouldResetCache;
+            _remoteDBConnector = remoteDBConnector;
             self.model = model;
             
         } else {

@@ -123,23 +123,26 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
 
 #pragma mark - Setup and Takedown
 
-- (id)initWithPersistentStoreCoordinator:(NSPersistentStoreCoordinator *)root
+- (id)initWithPersistentStoreCoordinator:(NSPersistentStoreCoordinator *)psc
                        configurationName:(NSString *)name
                                      URL:(NSURL *)url
                                  options:(NSDictionary *)options {
     
     if (AP_DEBUG_METHODS) { MLog() }
     
-    self = [super initWithPersistentStoreCoordinator:root configurationName:name URL:url options:options];
+    self = [super initWithPersistentStoreCoordinator:psc configurationName:name URL:url options:options];
     
     if (self) {
+        
+        _model = psc.managedObjectModel;
+        
         [self registerForNotifications];
         
         NSString* localCacheFileName = [options valueForKey:APOptionCacheFileNameKey];
-        self.localCacheFileName = localCacheFileName ?: APDefaultLocalCacheFileName;
+        _localCacheFileName = localCacheFileName ?: APDefaultLocalCacheFileName;
         
         if ([[options valueForKey:APOptionCacheFileResetKey] isEqualToNumber:@YES]){
-            self.shouldResetCacheFile = YES;
+            _shouldResetCacheFile = YES;
         }
         
         id authenticatedUser = [options valueForKey:APOptionAuthenticatedUserObjectKey];
@@ -148,10 +151,9 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
             return nil;
         }
         
-        self.remoteDBConnector = [[APParseConnector alloc]initWithAuthenticatedUser:authenticatedUser mergePolicy:APMergePolicyClientWins];
+        _remoteDBConnector = [[APParseConnector alloc]initWithAuthenticatedUser:authenticatedUser mergePolicy:APMergePolicyClientWins];
         
-        if ([self.remoteDBConnector conformsToProtocol:@protocol(APRemoteDBConnector)]) {
-        } else {
+        if (![_remoteDBConnector conformsToProtocol:@protocol(APRemoteDBConnector)]) {
             [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Object not complatible with APIncrementalStoreConnector protocol"];
         }
     }
@@ -208,15 +210,6 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
                                               remoteDBConnector:self.remoteDBConnector];
     }
     return _localCache;
-}
-
-
-- (NSManagedObjectModel*) model {
-    
-    if (!_model) {
-        _model = [NSManagedObjectModel mergedModelFromBundles:nil];
-    }
-    return _model;
 }
 
 
