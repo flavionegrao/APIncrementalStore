@@ -39,7 +39,7 @@ I have not managed to find a way to staticly include the Parse library or even b
 - I'm still planning to do something about the situation when the user changes, for example invalidate the cache or some other smarter aproach.
 
 ###Unit Testing
-On `UnitTestingCommon.m` config Parse keys and a valid Parse User.
+On `UnitTestingCommon.m` config a valid Parse User/Password.
 Use a test Parse App as it will include few Classes for testing. 
 
 
