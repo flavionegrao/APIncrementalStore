@@ -139,11 +139,11 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
             if (AP_DEBUG_ERRORS) {ELog(@"Authenticated user is not set")}
             return nil;
         }
-        _remoteDBConnector = [[APParseConnector alloc]initWithAuthenticatedUser:authenticatedUser mergePolicy:APMergePolicyClientWins];
+        APMergePolicy mergePolicy = [[options valueForKey:APOptionMergePolicyKey] integerValue];
+        _remoteDBConnector = [[APParseConnector alloc]initWithAuthenticatedUser:authenticatedUser mergePolicy:mergePolicy];
         if (![_remoteDBConnector conformsToProtocol:@protocol(APRemoteDBConnector)]) {
             [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Object not complatible with APIncrementalStoreConnector protocol"];
         }
-        
         
         _model = psc.managedObjectModel;
         _localCacheFileName = [options valueForKey:APOptionCacheFileNameKey] ?: APDefaultLocalCacheFileName;
