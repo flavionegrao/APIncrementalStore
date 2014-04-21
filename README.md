@@ -12,9 +12,9 @@ There are basically three main classes:
 
 1) `APIncrementalStore` - this is the `NSIncrementalStore` subclass that implements what is required to handle the Core Data context.
 
-2) `APLocalCache` - the APIncrementalStore uses this class as a local core data cache to respond to all core data requests. This class exchanges NSDictionaries representations of the managed objects and uses a objectID to uniquely identify them across the managed contexts (`NSIncrementalStore` and Local Cache)
+2) `APDiskCache` - the APIncrementalStore uses this class as a local cache to respond to all the requests. This class exchanges NSDictionaries representations of the managed objects and uses a objectID to uniquely identify them across the managed contexts (`NSIncrementalStore` and Disk Cache)
 
-3) `APParseConnector` - Responsible to merge the local cache context in background as requested by the cache.
+3) `APParseConnector` - Responsible to merge the local cache context in background as requested by the cache. Please be mindful taht relationships are being represented as Parse Pointers for Core Data To-One and Parse Relationships for Core Data To-Many relationships. All relationships have its inverse reflected at Parse as well for concistency sake. At the moment this class does not support Parse Array Relationships. 
 
 I will include descent documentation in the next weeks, for the time being take a look at the folder Example in the repository, you are going to find a very basic usade of this library.
 
