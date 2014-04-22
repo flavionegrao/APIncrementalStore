@@ -22,8 +22,8 @@
 #import "Common.h"
 #import "APError.h"
 
-static NSString* const kAPIncrementalStorePrivateAttribute = @"kAPIncrementalStorePrivateAttribute";
-static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrementalStoreLocalPrivateAttribute";
+static NSString* const APIncrementalStorePrivateAttribute = @"kAPIncrementalStorePrivateAttribute";
+static NSString* const APIncrementalStoreLocalPrivateAttribute = @"kAPIncrementalStoreLocalPrivateAttribute";
 
 
 @interface APDiskCache()
@@ -108,16 +108,21 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
             continue;
         }
         
+        NSMutableArray* additionalProperties = [NSMutableArray array];
+        
         NSAttributeDescription *uidProperty = [[NSAttributeDescription alloc] init];
         [uidProperty setName:APObjectUIDAttributeName];
         [uidProperty setAttributeType:NSStringAttributeType];
         [uidProperty setIndexed:YES];
+        [uidProperty setOptional:NO];
+        [additionalProperties addObject:uidProperty];
         
         NSAttributeDescription *lastModifiedProperty = [[NSAttributeDescription alloc] init];
         [lastModifiedProperty setName:APObjectLastModifiedAttributeName];
         [lastModifiedProperty setAttributeType:NSDateAttributeType];
         [lastModifiedProperty setIndexed:NO];
-        [lastModifiedProperty setUserInfo:@{kAPIncrementalStoreLocalPrivateAttribute:@YES}];
+        [lastModifiedProperty setUserInfo:@{APIncrementalStoreLocalPrivateAttribute:@YES}];
+        [additionalProperties addObject:lastModifiedProperty];
         
         NSAttributeDescription *deletedProperty = [[NSAttributeDescription alloc] init];
         [deletedProperty setName:APObjectIsDeletedAttributeName];
@@ -125,7 +130,7 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
         [deletedProperty setIndexed:NO];
         [deletedProperty setOptional:NO];
         [deletedProperty setDefaultValue:@NO];
-        [deletedProperty setUserInfo:@{kAPIncrementalStorePrivateAttribute:@YES}];
+        [additionalProperties addObject:deletedProperty];
         
         NSAttributeDescription *isDirtyProperty = [[NSAttributeDescription alloc] init];
         [isDirtyProperty setName:APObjectIsDirtyAttributeName];
@@ -133,12 +138,18 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
         [isDirtyProperty setIndexed:NO];
         [isDirtyProperty setOptional:NO];
         [isDirtyProperty setDefaultValue:@NO];
-        [isDirtyProperty setUserInfo:@{kAPIncrementalStoreLocalPrivateAttribute:@YES}];
+        [isDirtyProperty setUserInfo:@{APIncrementalStoreLocalPrivateAttribute:@YES}];
+        [additionalProperties addObject:isDirtyProperty];
         
-        [entity setProperties:[entity.properties arrayByAddingObjectsFromArray:@[uidProperty,
-                                                                                 lastModifiedProperty,
-                                                                                 deletedProperty,
-                                                                                 isDirtyProperty]]];
+        NSAttributeDescription *createdRemotelyProperty = [[NSAttributeDescription alloc] init];
+        [createdRemotelyProperty setName:APObjectIsCreatedRemotelyAttributeName];
+        [createdRemotelyProperty setAttributeType:NSBooleanAttributeType];
+        [createdRemotelyProperty setIndexed:NO];
+        [createdRemotelyProperty setOptional:NO];
+        [createdRemotelyProperty setDefaultValue:@NO];
+        [additionalProperties addObject:createdRemotelyProperty];
+        
+        [entity setProperties:[entity.properties arrayByAddingObjectsFromArray:additionalProperties]];
     }
     _model = cacheModel;
     
@@ -148,8 +159,6 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
 
 
 - (NSManagedObjectContext*) syncContext {
-    
-//    if (AP_DEBUG_METHODS) { MLog()}
     
     if (!_syncContext) {
         _syncContext = [[NSManagedObjectContext alloc]initWithConcurrencyType:NSPrivateQueueConcurrencyType];
@@ -203,60 +212,6 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
     
     self.mainContext = [[NSManagedObjectContext alloc]initWithConcurrencyType:NSMainQueueConcurrencyType];
     self.mainContext.parentContext = self.privateContext;
-}
-
-
-#pragma mark - Utils
-
-- (NSString *)documentsDirectory {
-    
-    NSString *documentsDirectory = nil;
-    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    documentsDirectory = paths[0];
-    return documentsDirectory;
-}
-
-
-- (NSString *)pathToLocalStore {
-    
-    return [[self documentsDirectory] stringByAppendingPathComponent:self.localStoreFileName];
-}
-
-
-- (NSString*) newTemporaryObjectUID {
-    
-    if (AP_DEBUG_METHODS) { MLog()}
-    
-    NSString* objectUID = nil;
-    CFUUIDRef uuid = CFUUIDCreate(CFAllocatorGetDefault());
-    objectUID = (__bridge_transfer NSString *)CFUUIDCreateString(CFAllocatorGetDefault(), uuid);
-    CFRelease(uuid);
-    
-    NSString* tempObjectUUID = [NSString stringWithFormat:@"%@%@",APObjectTemporaryUIDPrefix,objectUID];
-    
-    if (AP_DEBUG_INFO) { DLog(@"New temporary objectUUID generated: %@",tempObjectUUID)}
-    
-    return tempObjectUUID;
-}
-
-
-/* 
- Check if there's a translation for the temporary objectID
- If yes return the permanent otherwise returns the same objectID passed.
- */
-- (NSString*) currentObjectUID:(NSString*) objectUID {
-    
-    NSString* currentObjectUID;
-    if ([objectUID hasPrefix:APObjectTemporaryUIDPrefix]) {
-        NSDictionary* mapOfTempToPemanent = [self.remoteDBConnector mapOfTemporaryToPermanentUID];
-        currentObjectUID = mapOfTempToPemanent[objectUID];
-        if (!currentObjectUID) {
-            currentObjectUID = objectUID;
-        }
-    } else {
-        currentObjectUID = objectUID;
-    }
-    return currentObjectUID;
 }
 
 
@@ -426,8 +381,7 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
         if ([propertyDescription isKindOfClass:[NSAttributeDescription class]]) {
             
             // Attribute
-            if ([[propertyDescription.userInfo valueForKey:kAPIncrementalStorePrivateAttribute] boolValue] != YES ) {
-                
+            if ([[propertyDescription.userInfo valueForKey:APIncrementalStorePrivateAttribute] boolValue] != YES ) {
                 representation[propertyName] = [cacheObject primitiveValueForKey:propertyName] ?: [NSNull null];
             }
             
@@ -512,12 +466,12 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
             
         } else if ([comparisonPredicate.rightExpression.constantValue isKindOfClass:[NSString class]]) {
             
-            if ([comparisonPredicate.rightExpression.constantValue hasPrefix:APObjectTemporaryUIDPrefix]) {
-                NSString* tempObjectID = comparisonPredicate.rightExpression.constantValue;
-                NSString *referenceObject = [[self.remoteDBConnector mapOfTemporaryToPermanentUID]valueForKey:tempObjectID];
-                NSExpression *rightExpression = [NSExpression expressionForConstantValue:referenceObject];
-                predicateToReturn = [NSComparisonPredicate predicateWithLeftExpression:comparisonPredicate.leftExpression rightExpression:rightExpression modifier:comparisonPredicate.comparisonPredicateModifier type:comparisonPredicate.predicateOperatorType options:comparisonPredicate.options];
-            }
+//            if ([comparisonPredicate.rightExpression.constantValue hasPrefix:APObjectNewUIDPrefix]) {
+//                NSString* tempObjectID = comparisonPredicate.rightExpression.constantValue;
+//                NSString *referenceObject = [[self.remoteDBConnector mapOfTemporaryToPermanentUID]valueForKey:tempObjectID];
+//                NSExpression *rightExpression = [NSExpression expressionForConstantValue:referenceObject];
+//                predicateToReturn = [NSComparisonPredicate predicateWithLeftExpression:comparisonPredicate.leftExpression rightExpression:rightExpression modifier:comparisonPredicate.comparisonPredicateModifier type:comparisonPredicate.predicateOperatorType options:comparisonPredicate.options];
+//            }
         }
     }
     
@@ -536,7 +490,7 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
     NSFetchRequest *fetchRequest = [[NSFetchRequest alloc] initWithEntityName:entityName];
     
     // Object matching the objectUID and is not deleted
-    NSPredicate* objectUIDPredicate = [NSPredicate predicateWithFormat:@"%K == %@", APObjectUIDAttributeName, [self currentObjectUID:objectUID]];
+    NSPredicate* objectUIDPredicate = [NSPredicate predicateWithFormat:@"%K == %@", APObjectUIDAttributeName, objectUID];
     NSPredicate* notDeletedUIDPredicate = [NSPredicate predicateWithFormat:@"%K == NO", APObjectIsDeletedAttributeName];
     fetchRequest.predicate = [NSCompoundPredicate andPredicateWithSubpredicates:@[objectUIDPredicate,notDeletedUIDPredicate]];
     
@@ -564,7 +518,7 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
     NSFetchRequest *fetchRequest = [[NSFetchRequest alloc] initWithEntityName:entityName];
     //NSEntityDescription *desc = [NSEntityDescription entityForName:entityName inManagedObjectContext:self.localContext];
     
-    fetchRequest.predicate = [NSPredicate predicateWithFormat:@"%K == %@", APObjectUIDAttributeName, [self currentObjectUID:objectUID]];
+    fetchRequest.predicate = [NSPredicate predicateWithFormat:@"%K == %@", APObjectUIDAttributeName, objectUID];
     
     __block NSError *fetchError = nil;
     __block NSArray *results;
@@ -695,7 +649,7 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
     // Update local context with received representations
     [deleteObjects enumerateObjectsUsingBlock:^(NSDictionary* representation, NSUInteger idx, BOOL *stop) {
         NSString* objectUID = [representation valueForKey:APObjectUIDAttributeName];
-        NSManagedObjectID* managedObjectID = [self fetchManagedObjectIDForObjectUID:[self currentObjectUID:objectUID] entityName:entityName createIfNeeded:NO];
+        NSManagedObjectID* managedObjectID = [self fetchManagedObjectIDForObjectUID:objectUID entityName:entityName createIfNeeded:NO];
         NSManagedObject* managedObject = [self.mainContext objectWithID:managedObjectID];
         [managedObject setValue:@YES forKey:APObjectIsDeletedAttributeName];
         [managedObject setValue:@YES forKey:APObjectIsDirtyAttributeName];
@@ -728,7 +682,7 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
                 [managedObject setPrimitiveValue:nil forKey:propertyName];
             } else {
                 if ([propertyName isEqualToString:APObjectUIDAttributeName]) {
-                    [managedObject setPrimitiveValue:[self currentObjectUID: representation[propertyName]] forKey:propertyName];
+                    [managedObject setPrimitiveValue:representation[propertyName] forKey:propertyName];
                 } else {
                     [managedObject setPrimitiveValue:representation[propertyName] forKey:propertyName];
                 }
@@ -826,6 +780,36 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
             if (AP_DEBUG_INFO) { DLog(@"Cache store removed succesfuly") };
         }
     }
+}
+
+
+#pragma mark - Utils
+
+- (NSString *)documentsDirectory {
+    
+    NSString *documentsDirectory = nil;
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    documentsDirectory = paths[0];
+    return documentsDirectory;
+}
+
+
+- (NSString *)pathToLocalStore {
+    
+    return [[self documentsDirectory] stringByAppendingPathComponent:self.localStoreFileName];
+}
+
+
+- (NSString*) createObjectUID {
+    
+    if (AP_DEBUG_METHODS) { MLog()}
+    
+    NSString* objectUID = nil;
+    CFUUIDRef uuid = CFUUIDCreate(CFAllocatorGetDefault());
+    objectUID = (__bridge_transfer NSString *)CFUUIDCreateString(CFAllocatorGetDefault(), uuid);
+    CFRelease(uuid);
+    
+    return objectUID;
 }
 
 @end

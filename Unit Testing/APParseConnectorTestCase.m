@@ -112,18 +112,21 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         PFObject* book1 = [PFObject objectWithClassName:@"Book"];
         [book1 setValue:kBookNameParse1 forKey:@"name"];
         [book1 setValue:@NO forKey:APObjectIsDeletedAttributeName];
+        [book1 setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
         [book1 save:&saveError];
         DLog(@"Book %@ has been created",kBookNameParse1);
         
         PFObject* book2 = [PFObject objectWithClassName:@"Book"];
         [book2 setValue:kBookNameParse2 forKey:@"name"];
         [book2 setValue:@NO forKey:APObjectIsDeletedAttributeName];
+        [book2 setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
         [book2 save:&saveError];
         DLog(@"Book %@ has been created",kBookNameParse2);
         
         PFObject* author = [PFObject objectWithClassName:@"Author"];
         [author setValue:kAuthorNameParse forKey:@"name"];
         [author setValue:@NO forKey:APObjectIsDeletedAttributeName];
+        [author setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
         [author save:&saveError];
         DLog(@"Author %@ has been created",kAuthorNameParse);
         
@@ -250,7 +253,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         
         PFObject* book3 = [PFObject objectWithClassName:@"Book"];
         [book3 setValue:kBookNameParse3 forKey:@"name"];
-        [book3 setValue:@NO forKey:APObjectIsDeletedAttributeName];
+        [book3 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
         [book3 save:&error];
         
         PFObject* author = [[PFQuery queryWithClassName:@"Author"]getFirstObject];
@@ -264,12 +267,10 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         XCTAssertNil(error);
         
         NSArray* updatedAuthors = results[@"Author"][NSUpdatedObjectsKey];
-        XCTAssertTrue([[updatedAuthors lastObject]isEqualToString:author.objectId]);
+        XCTAssertTrue([[updatedAuthors lastObject]isEqualToString:[author valueForKey:APObjectUIDAttributeName] ]);
         
         NSArray* insertedAuthor = results[@"Book"][NSInsertedObjectsKey];
-        XCTAssertTrue([[insertedAuthor lastObject]isEqualToString:book3.objectId]);
-        
-        
+        XCTAssertTrue([[insertedAuthor lastObject]isEqualToString:[book3 valueForKey:APObjectUIDAttributeName]]);
         
     });
     dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
@@ -360,26 +361,19 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         // Create a local Book and insert it on Parse
         Book* book = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.testContext];
         [book setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [book setValue:APObjectTemporaryUIDPrefix forKey:APObjectUIDAttributeName];
+        [book setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
         book.name = kBookNameLocal1;
         
         // Create a local Author and insert it on Parse
         Author* author = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.testContext];
         [author setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [author setValue:APObjectTemporaryUIDPrefix forKey:APObjectUIDAttributeName];
+        [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
         author.name =kAuthorNameLocal;
-        
-        // Ensure that both objects have the temp prefix set on their objectUID property
-        XCTAssertTrue([[book valueForKey:APObjectUIDAttributeName]hasPrefix:APObjectTemporaryUIDPrefix]);
-        XCTAssertTrue([[author valueForKey:APObjectUIDAttributeName]hasPrefix:APObjectTemporaryUIDPrefix]);
         
         [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
             DLog(@"Object has been synced");
         } error:&mergeError];
-        
-        // Ensure that both objects has their temp prefix removed from the objectUID property
-        XCTAssertFalse([[book valueForKey:APObjectUIDAttributeName]hasPrefix:APObjectTemporaryUIDPrefix]);
-        XCTAssertFalse([[author valueForKey:APObjectUIDAttributeName]hasPrefix:APObjectTemporaryUIDPrefix]);
+        XCTAssertNil(mergeError);
         
         PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
         [bookQuery whereKey:@"name" containsString:kBookNameLocal1];
@@ -401,13 +395,13 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         // Create a local Book, mark is as "dirty" and set the objectUID with the predefined prefix
         Book* book = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.testContext];
         [book setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [book setValue:APObjectTemporaryUIDPrefix forKey:APObjectUIDAttributeName];
+        [book setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
         book.name = kBookNameLocal1;
         
         // Create a local Author, mark is as "dirty" and set the objectUID with the predefined prefix
         Author* author = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.testContext];
         [author setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [author setValue:APObjectTemporaryUIDPrefix forKey:APObjectUIDAttributeName];
+        [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
         author.name =kAuthorNameLocal;
 
         // Create the relationship locally and merge the context with Parse
@@ -451,19 +445,19 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         // Create a local Book, mark is as "dirty" and set the objectUID with the predefined prefix
         Book* book1 = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.testContext];
         [book1 setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [book1 setValue:APObjectTemporaryUIDPrefix forKey:APObjectUIDAttributeName];
+        [book1 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
         book1.name = kBookNameLocal1;
         
         // Create a local Book, mark is as "dirty" and set the objectUID with the predefined prefix
         Book* book2 = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.testContext];
         [book2 setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [book2 setValue:APObjectTemporaryUIDPrefix forKey:APObjectUIDAttributeName];
+        [book2 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
         book2.name = kBookNameLocal2;
         
         // Create a local Author, mark is as "dirty" and set the objectUID with the predefined prefix
         Author* author = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.testContext];
         [author setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [author setValue:APObjectTemporaryUIDPrefix forKey:APObjectUIDAttributeName];
+        [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
         author.name =kAuthorNameLocal;
         
         // Create the relationship locally and merge the context with Parse
@@ -490,8 +484,6 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         XCTAssertNotNil([book2 valueForKey:APObjectLastModifiedAttributeName]);
         XCTAssertNotNil([book2 valueForKey:APObjectUIDAttributeName]);
         XCTAssertTrue([[book2 valueForKey:APObjectIsDirtyAttributeName] isEqualToNumber:@NO]);
-        
-
         
         
         // Fetch the book from Parse and verify the related To-One author
@@ -538,6 +530,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         Book* newBook = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.testContext];
         newBook.name = [NSString stringWithFormat:@"book#%lu",(unsigned long) i];
         [newBook setValue:@YES forKey:APObjectIsDirtyAttributeName];
+        [newBook setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
     }
     XCTAssertTrue([[self.testContext registeredObjects]count] == numberOfBooksToBeCreated);
     
@@ -744,8 +737,6 @@ Expected Results:
         localBook.name = kBookNameParse3;
         [localBook setValue:@YES forKey:APObjectIsDirtyAttributeName];
         
-        //[NSThread sleepForTimeInterval:2];
-        
         // Fetch, change the book name and save it back to Parse
         PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
         [bookQuery whereKey:@"name" containsString:kBookNameParse1];
@@ -753,7 +744,7 @@ Expected Results:
         [parseBook setValue:kBookNameParse4 forKey:@"name" ];
         [parseBook save:&mergeError];
         XCTAssertNil(mergeError);
-        XCTAssertTrue([parseBook.objectId isEqualToString:[localBook valueForKey:APObjectUIDAttributeName]]);
+        XCTAssertTrue([[parseBook valueForKey:APObjectUIDAttributeName] isEqualToString:[localBook valueForKey:APObjectUIDAttributeName]]);
         
         [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
             DLog(@"Object has been synced");
@@ -808,7 +799,7 @@ Expected Results:
         [parseBook setValue:kBookNameParse4 forKey:@"name" ];
         [parseBook save:&mergeError];
         XCTAssertNil(mergeError);
-        XCTAssertTrue([parseBook.objectId isEqualToString:[localBook valueForKey:APObjectUIDAttributeName]]);
+        XCTAssertTrue([[parseBook valueForKey:APObjectUIDAttributeName] isEqualToString:[localBook valueForKey:APObjectUIDAttributeName]]);
 
         [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
             DLog(@"Object has been synced");
@@ -890,6 +881,17 @@ Expected Results:
 
 #pragma mark - Support Methods
 
+- (NSString*) createObjectUID {
+    
+    NSString* objectUID = nil;
+    CFUUIDRef uuid = CFUUIDCreate(CFAllocatorGetDefault());
+    objectUID = (__bridge_transfer NSString *)CFUUIDCreateString(CFAllocatorGetDefault(), uuid);
+    CFRelease(uuid);
+    
+    return objectUID;
+}
+
+
 - (void) removeAllEntriesFromParse {
     
     MLog();
@@ -952,15 +954,21 @@ Expected Results:
                 continue;
             }
             
+            
+            NSMutableArray* additionalProperties = [NSMutableArray array];
+            
             NSAttributeDescription *uidProperty = [[NSAttributeDescription alloc] init];
             [uidProperty setName:APObjectUIDAttributeName];
             [uidProperty setAttributeType:NSStringAttributeType];
             [uidProperty setIndexed:YES];
+            [uidProperty setOptional:NO];
+            [additionalProperties addObject:uidProperty];
             
             NSAttributeDescription *lastModifiedProperty = [[NSAttributeDescription alloc] init];
             [lastModifiedProperty setName:APObjectLastModifiedAttributeName];
             [lastModifiedProperty setAttributeType:NSDateAttributeType];
             [lastModifiedProperty setIndexed:NO];
+            [additionalProperties addObject:lastModifiedProperty];
             
             NSAttributeDescription *deletedProperty = [[NSAttributeDescription alloc] init];
             [deletedProperty setName:APObjectIsDeletedAttributeName];
@@ -968,6 +976,15 @@ Expected Results:
             [deletedProperty setIndexed:NO];
             [deletedProperty setOptional:NO];
             [deletedProperty setDefaultValue:@NO];
+            [additionalProperties addObject:deletedProperty];
+            
+            NSAttributeDescription *createdRemotelyProperty = [[NSAttributeDescription alloc] init];
+            [createdRemotelyProperty setName:APObjectIsCreatedRemotelyAttributeName];
+            [createdRemotelyProperty setAttributeType:NSBooleanAttributeType];
+            [createdRemotelyProperty setIndexed:NO];
+            [createdRemotelyProperty setOptional:NO];
+            [createdRemotelyProperty setDefaultValue:@NO];
+            [additionalProperties addObject:createdRemotelyProperty];
             
             NSAttributeDescription *isDirtyProperty = [[NSAttributeDescription alloc] init];
             [isDirtyProperty setName:APObjectIsDirtyAttributeName];
@@ -975,11 +992,9 @@ Expected Results:
             [isDirtyProperty setIndexed:NO];
             [isDirtyProperty setOptional:NO];
             [isDirtyProperty setDefaultValue:@NO];
+            [additionalProperties addObject:isDirtyProperty];
             
-            [entity setProperties:[entity.properties arrayByAddingObjectsFromArray:@[uidProperty,
-                                                                                     lastModifiedProperty,
-                                                                                     deletedProperty,
-                                                                                     isDirtyProperty]]];
+            [entity setProperties:[entity.properties arrayByAddingObjectsFromArray:additionalProperties]];
         }
         
          _testModel = model;

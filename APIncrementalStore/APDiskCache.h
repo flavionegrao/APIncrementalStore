@@ -101,7 +101,7 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
  context and the disk cache context.
  @returns a new temporary object identifier
  */
-- (NSString*) newTemporaryObjectUID;
+- (NSString*) createObjectUID;
 
 /**
  Requests the localCache to start the sync process using its remoteDBConnector
@@ -132,7 +132,6 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
 
 - (void) setMergePolicy:(APMergePolicy) policy;
 
-- (NSDictionary*) mapOfTemporaryToPermanentUID;
 
 /**
  Get all remote objets that the user has access to and merge into the given context.

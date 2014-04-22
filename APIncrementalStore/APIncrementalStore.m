@@ -384,7 +384,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     }
     
     return [array map:^id(NSManagedObject* managedObject) {
-        NSString *tempObjectUID = [self.diskCache newTemporaryObjectUID];
+        NSString *tempObjectUID = [self.diskCache createObjectUID];
         if (!tempObjectUID) {
             // Redundant Exception
             [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Error obtaining permanent objectID for object:%@", managedObject];

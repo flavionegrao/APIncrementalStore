@@ -91,11 +91,13 @@ static NSString* const kBookName2 = @"A Clash of Kings";
         PFObject* book = [PFObject objectWithClassName:@"Book"];
         [book setValue:kBookName1 forKey:@"name"];
         [book setValue:@NO forKey:APObjectIsDeletedAttributeName];
+        [book setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
         [book save:&saveError];
         
         PFObject* author = [PFObject objectWithClassName:@"Author"];
         [author setValue:kAuthorName forKey:@"name"];
         [author setValue:@NO forKey:APObjectIsDeletedAttributeName];
+        [author setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
         [author save:&saveError];
         
         // Relation (To-Many)
@@ -237,6 +239,7 @@ static NSString* const kBookName2 = @"A Clash of Kings";
         PFObject* book2 = [PFObject objectWithClassName:@"Book"];
         [book2 setValue:kBookName2 forKey:@"name"];
         [book2 setValue:@NO forKey:APObjectIsDeletedAttributeName];
+        [book2 setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
         [book2 save:&error];
         
         PFObject* author = [[PFQuery queryWithClassName:@"Author"]getFirstObject];
@@ -297,6 +300,7 @@ static NSString* const kBookName2 = @"A Clash of Kings";
         PFObject* book1 = [PFObject objectWithClassName:@"Book"];
         [book1 setValue:@"Book#1" forKey:@"name"];
         [book1 setValue:@NO forKey:APObjectIsDeletedAttributeName];
+        [book1 setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
         [book1 save:&error];
         
         PFQuery* authorQuery = [PFQuery queryWithClassName:@"Author"];
@@ -602,6 +606,16 @@ Below are how much time each attempt took when using more than one thread.
         [[query findObjects]enumerateObjectsUsingBlock:deleteAllObjects];
         deleted += step;
     }
+}
+
+- (NSString*) createObjectUID {
+    
+    NSString* objectUID = nil;
+    CFUUIDRef uuid = CFUUIDCreate(CFAllocatorGetDefault());
+    objectUID = (__bridge_transfer NSString *)CFUUIDCreateString(CFAllocatorGetDefault(), uuid);
+    CFRelease(uuid);
+    
+    return objectUID;
 }
 
 @end

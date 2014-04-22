@@ -28,34 +28,20 @@ BOOL AP_DEBUG_ERRORS = NO;
 BOOL AP_DEBUG_INFO = NO;
 
 // NSUserDefaults entry to reference the earliest object date synced from Parse.
-static NSString* const APLatestObjectSyncedKey = @"APEarliestObjectSyncedKey";
+static NSString* const APLatestObjectSyncedKey = @"com.apetis.apincrementalstore.parseconnector.request.latestobjectsynced.key";
 
 /* 
  It specifies the maximum number of objects that a sinble parse query should return when executed. 
  If there are more objects than this limit it will be fetched in batches. 
  Parse specifies that 100 is the default but can be increased to maximum 1000.
  */
-static NSUInteger APParseQueryFetchLimit = 100;
-
-static NSUInteger APParseObjectIDLenght = 10;
+static NSUInteger const APParseQueryFetchLimit = 100;
 
 
 @interface APParseConnector()
 
 @property (strong,nonatomic) PFUser* authenticatedUser;
 @property (assign,nonatomic) APMergePolicy mergePolicy;
-
-/*
- Correlation between local temporary generated UIDs and remote obtained permanent UID
- 
- When we first insert a new object it won't have a ObjectID until we sync with Parse.
- The incremental store will keep the old reference ObjectID and will query based on that.
- On the other hand the cache already has the permanent Object ID, then we translate it as long as the
- Incremental Store remains allocated.
- Next time the application is launched it will populate the main context will the persistant values from cache,
- which will be correct
- */
-@property (nonatomic, strong) NSMutableDictionary* mapOfTemporaryToPermanentUID;
 
 @end
 
@@ -89,20 +75,10 @@ static NSUInteger APParseObjectIDLenght = 10;
 }
 
 
-#pragma mark - Getters and Setters
-
-- (NSMutableDictionary*) mapOfTemporaryToPermanentUID {
-    
-    if (!_mapOfTemporaryToPermanentUID) {
-        _mapOfTemporaryToPermanentUID = [NSMutableDictionary dictionary];
-    }
-    return _mapOfTemporaryToPermanentUID;
-}
-
-
 #pragma mark - APIncrementalStoreConnector Protocol
 
 - (void) setMergePolicy:(APMergePolicy)mergePolicy {
+    
     _mergePolicy = mergePolicy;
 }
 
@@ -136,15 +112,15 @@ static NSUInteger APParseObjectIDLenght = 10;
         }
         
         // We count the object before fetching (see APParseQueryFetchLimit explanation)
-        NSUInteger totalObjectsToBeFetched = [query countObjects:&localError];
+        NSUInteger numberOfObjectsToBeFetched = [query countObjects:&localError];
         if (localError) {
             *error = localError;
             return nil;
         }
-        NSMutableArray* parseObjects = [[NSMutableArray alloc]initWithCapacity:totalObjectsToBeFetched];
+        NSMutableArray* parseObjects = [[NSMutableArray alloc]initWithCapacity:numberOfObjectsToBeFetched];
         
         NSUInteger skip = 0;
-        while (skip < totalObjectsToBeFetched) {
+        while (skip < numberOfObjectsToBeFetched) {
             [query setSkip:skip];
             NSArray* batchOfObjects = [query findObjects:&localError];
             
@@ -157,7 +133,7 @@ static NSUInteger APParseObjectIDLenght = 10;
         }
         
         for (PFObject* parseObject in parseObjects) {
-            NSManagedObject* managedObject = [self managedObjectForObjectUID:parseObject.objectId entity:entityDescription inContext:context createIfNecessary:NO];
+            NSManagedObject* managedObject = [self managedObjectForObjectUID:[parseObject valueForKey:APObjectUIDAttributeName] entity:entityDescription inContext:context createIfNecessary:NO];
             [self setLatestObjectSyncedDate:parseObject.updatedAt forEntityName:entityDescription.name];
             
             if ([[managedObject valueForKey:APObjectLastModifiedAttributeName] isEqualToDate:parseObject.updatedAt]){
@@ -178,16 +154,16 @@ static NSUInteger APParseObjectIDLenght = 10;
                     
                 } else {
                     managedObject = [NSEntityDescription insertNewObjectForEntityForName:entityDescription.name inManagedObjectContext:context];
+                    [managedObject setValue:@YES forKeyPath:APObjectIsCreatedRemotelyAttributeName];
                     
-                    NSError* permanentIdError;
-                    [context obtainPermanentIDsForObjects:@[managedObject] error:&permanentIdError];
-                    if (permanentIdError) {
-                        [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Could not obtain permanent IDs for objects %@ with error %@", managedObject, permanentIdError];
+                    if (![context obtainPermanentIDsForObjects:@[managedObject] error:&localError]) {
+                        [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Could not obtain permanent IDs for objects %@ with error %@", managedObject, localError];
                     }
                     
                     [self populateManagedObject:managedObject withSerializedParseObject:[self serializeParseObject:parseObject] onInsertedRelatedObject:^(NSManagedObject *insertedObject) {
                         
-                        // Include an entry for the inserterd into the return NSDictionary if any related objects isn't relflected locally yet
+                        // Include an entry for the inserted object into the returning NSDictionary
+                        // if any related objects isn't relflected locally yet
                         
                         NSMutableDictionary* relatedEntityEntry = mergedObjectsUIDsNestedByEntityName[insertedObject.entity.name] ?: [NSMutableDictionary dictionary];
                         NSArray* mergedObjectUIDs = relatedEntityEntry[NSInsertedObjectsKey] ?: [[NSArray alloc]init];
@@ -223,21 +199,21 @@ static NSUInteger APParseObjectIDLenght = 10;
             
             // Include an entry into the return NSDictionary for the corresponding object status
             
-            if (![entityEntry[NSInsertedObjectsKey] containsObject:parseObject.objectId]) {
+            if (![entityEntry[NSInsertedObjectsKey] containsObject:[parseObject valueForKey:APObjectUIDAttributeName]]) {
                 NSArray* mergedObjectUIDs = entityEntry[objectStatus] ?: [[NSArray alloc]init];
-                entityEntry[objectStatus] = [mergedObjectUIDs arrayByAddingObject:parseObject.objectId];
+                entityEntry[objectStatus] = [mergedObjectUIDs arrayByAddingObject:[parseObject valueForKey:APObjectUIDAttributeName]];
                 
                 /* We need to include any existent reference to temporary IDs as well, 
                  otherwise context still holding reference to temporary managed object ID 
                  will not update those objects
                  */
-                if ([objectStatus isEqualToString:NSDeletedObjectsKey] || [objectStatus isEqualToString:NSUpdatedObjectsKey]) {
-                    if ([[self.mapOfTemporaryToPermanentUID allValues]containsObject:parseObject.objectId]) {
-                        NSString* key = [[self.mapOfTemporaryToPermanentUID allKeysForObject:parseObject.objectId]lastObject];
-                        NSArray* mergedObjectUIDs = entityEntry[objectStatus];
-                        entityEntry[objectStatus] = [mergedObjectUIDs arrayByAddingObject:key];
-                    }
-                }
+//                if ([objectStatus isEqualToString:NSDeletedObjectsKey] || [objectStatus isEqualToString:NSUpdatedObjectsKey]) {
+//                    if ([[self.mapOfTemporaryToPermanentUID allValues]containsObject:parseObject.objectId]) {
+//                        NSString* key = [[self.mapOfTemporaryToPermanentUID allKeysForObject:parseObject.objectId]lastObject];
+//                        NSArray* mergedObjectUIDs = entityEntry[objectStatus];
+//                        entityEntry[objectStatus] = [mergedObjectUIDs arrayByAddingObject:key];
+//                    }
+//                }
                 mergedObjectsUIDsNestedByEntityName[entityDescription.name] = entityEntry;
             }
             if (onSyncObject) onSyncObject();
@@ -292,7 +268,6 @@ static NSUInteger APParseObjectIDLenght = 10;
     }
     
     NSArray* dirtyManagedObjects = [self managedObjectsMarkedAsDirtyInContext:context];
-     if (AP_DEBUG_INFO) { DLog(@"Dirty managed objects found %@",dirtyManagedObjects)}
     
     [dirtyManagedObjects enumerateObjectsUsingBlock:^(NSManagedObject* managedObject, NSUInteger idx, BOOL *stop) {
         if (AP_DEBUG_INFO) { DLog(@"Merging: %@", managedObject)}
@@ -308,10 +283,10 @@ static NSUInteger APParseObjectIDLenght = 10;
         
         // Sanity check
         if (!objectUID) {
-            [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Managed object without objectUID associated"];
+            [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Managed object without objectUID associated??"];
         }
         
-        if ([objectUID hasPrefix:APObjectTemporaryUIDPrefix]) {
+        if ([[managedObject valueForKey:APObjectIsCreatedRemotelyAttributeName] isEqualToNumber:@NO]) {
             
             // New object created localy
             
@@ -321,12 +296,10 @@ static NSUInteger APParseObjectIDLenght = 10;
                 [context deleteObject:managedObject];
                 
             } else {
-                NSString* permanentObjectUID = [self insertOnParseManagedObject:managedObject error:&localError];
+                [self insertOnParseManagedObject:managedObject error:&localError];
                 if (localError) {
                     reportErrorStopEnumerating();
                 } else {
-                    if (AP_DEBUG_INFO) { DLog(@"Including entry on map of temp IDs for %@ to %@ ", objectUID,permanentObjectUID)}
-                    self.mapOfTemporaryToPermanentUID[objectUID] = permanentObjectUID;
                     [managedObject setValue:@NO forKey:APObjectIsDirtyAttributeName];
                 }
             }
@@ -336,7 +309,8 @@ static NSUInteger APParseObjectIDLenght = 10;
             
             if (!parseObject) {
                 
-                // Object doesn't exist on the server anymore
+                // Object doesn't exist at Parse anymore
+                
                 [context deleteObject:managedObject];
                 if (AP_DEBUG_INFO) { DLog(@"Object no longer exists at Parse , deleting from context: %@ ", managedObject)}
                 
@@ -447,14 +421,14 @@ static NSUInteger APParseObjectIDLenght = 10;
     return numberOfObjects;
 }
 
+
 #pragma mark - Util Methods
 
-- (NSString*) insertOnParseManagedObject:(NSManagedObject*) managedObject
-                                   error:(NSError *__autoreleasing*)error {
+- (void) insertOnParseManagedObject:(NSManagedObject*) managedObject
+                              error:(NSError *__autoreleasing*)error {
     
     if (AP_DEBUG_METHODS) { MLog(@"Managed Object:%@",managedObject)}
     
-    NSString* objectUID;
     NSError* localError;
     
     PFObject* parseObject = [[PFObject alloc]initWithClassName:managedObject.entity.name];
@@ -466,14 +440,13 @@ static NSUInteger APParseObjectIDLenght = 10;
             if (AP_DEBUG_INFO) { DLog(@"Parse object saved: %@",parseObject)}
             
             /* Parse sets the objectId and updatedAt for a new object only after we save it. */
-            [managedObject setValue:parseObject.objectId forKey:APObjectUIDAttributeName];
             [managedObject setValue:parseObject.updatedAt forKey:APObjectLastModifiedAttributeName];
-            objectUID = parseObject.objectId;
+            [managedObject setValue:@YES forKey:APObjectIsCreatedRemotelyAttributeName];
+            
+        } else {
+             *error = localError;
         }
     }
-    
-    *error = localError;
-    return objectUID;
 }
 
 
@@ -499,6 +472,7 @@ static NSUInteger APParseObjectIDLenght = 10;
         return nil;
     }
 }
+
 
 - (BOOL) isUserAuthenticated:(NSError**) error {
     
@@ -541,7 +515,7 @@ static NSUInteger APParseObjectIDLenght = 10;
     PFObject* parseObject;
     
     PFQuery* query = [PFQuery queryWithClassName:className];
-    [query whereKey:@"objectId" equalTo:objectUID];
+    [query whereKey:APObjectUIDAttributeName equalTo:objectUID];
     
     NSError* error;
     NSArray* results = [query findObjects:&error];
@@ -559,7 +533,7 @@ static NSUInteger APParseObjectIDLenght = 10;
         parseObject = [results lastObject];
     }
     
-     if (AP_DEBUG_INFO) {DLog(@"Parse object %@ retrieved: %@",parseObject.parseClassName, parseObject.objectId)}
+     if (AP_DEBUG_INFO) {DLog(@"Parse object %@ retrieved: %@",parseObject.parseClassName, [parseObject valueForKey:APObjectUIDAttributeName])}
     return parseObject;
 }
 
@@ -594,6 +568,7 @@ static NSUInteger APParseObjectIDLenght = 10;
                         relatedManagedObject = [self managedObjectForObjectUID:objectUID entity:relationshipDescription.destinationEntity inContext:managedObject.managedObjectContext createIfNecessary:NO];
                         if (!relatedManagedObject) {
                             relatedManagedObject = [self managedObjectForObjectUID:objectUID entity:relationshipDescription.destinationEntity inContext:managedObject.managedObjectContext createIfNecessary:YES];
+                            [relatedManagedObject setValue:@YES forKeyPath:APObjectIsCreatedRemotelyAttributeName];
                             if (block) block(relatedManagedObject);
                         }
                         [relatedManagedObjects addObject:relatedManagedObject];
@@ -603,13 +578,14 @@ static NSUInteger APParseObjectIDLenght = 10;
                     
                 } else {
                     NSString* objectUID = [parseObjectValue valueForKey:APObjectUIDAttributeName];
-                    if ([objectUID isKindOfClass:[NSString class]] == NO || [objectUID length] != APParseObjectIDLenght) {
+                    if ([objectUID isKindOfClass:[NSString class]] == NO) {
                         [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Check your model, received an invalid Parse ObjectID for a To-One relationship. Only Parse pointer relationships are valid for To-One CoreData relationships"];
                     }
                     NSManagedObject* relatedManagedObject;
                     relatedManagedObject = [self managedObjectForObjectUID:objectUID entity:relationshipDescription.destinationEntity inContext:managedObject.managedObjectContext createIfNecessary:NO];
                     if (!relatedManagedObject) {
                         relatedManagedObject = [self managedObjectForObjectUID:objectUID entity:relationshipDescription.destinationEntity inContext:managedObject.managedObjectContext createIfNecessary:YES];
+                        [relatedManagedObject setValue:@YES forKeyPath:APObjectIsCreatedRemotelyAttributeName];
                         if (block) block(relatedManagedObject);
                     }
                     [managedObject setValue:relatedManagedObject forKey:propertyName];
@@ -625,13 +601,15 @@ static NSUInteger APParseObjectIDLenght = 10;
     
     if (AP_DEBUG_METHODS) {MLog()}
     
+    __block NSError* localError;
+    
     NSMutableDictionary* mutableProperties = [[managedObject.entity propertiesByName]mutableCopy];
-    [mutableProperties removeObjectForKey:APObjectUIDAttributeName];
+    //[mutableProperties removeObjectForKey:APObjectUIDAttributeName];
     [mutableProperties removeObjectForKey:APObjectLastModifiedAttributeName];
     [mutableProperties removeObjectForKey:APObjectIsDirtyAttributeName];
+    [mutableProperties removeObjectForKey:APObjectIsCreatedRemotelyAttributeName];
     
     [mutableProperties enumerateKeysAndObjectsUsingBlock:^(NSString* propertyName, NSPropertyDescription* propertyDesctiption, BOOL *stop) {
-        
         id propertyValue = [managedObject valueForKey:propertyName];
         
         if ([propertyDesctiption isKindOfClass:[NSAttributeDescription class]]) {
@@ -678,15 +656,20 @@ static NSUInteger APParseObjectIDLenght = 10;
                         PFObject* relatedParseObject;
                         NSString* relatedObjectUID = [relatedManagedObject valueForKey:APObjectUIDAttributeName];
                         
-                        if ([relatedObjectUID hasPrefix:APObjectTemporaryUIDPrefix]) {
+                        if ([[relatedManagedObject valueForKey:APObjectIsCreatedRemotelyAttributeName]isEqualToNumber:@NO]) {
                             relatedParseObject = [PFObject objectWithClassName:relatedManagedObject.entity.name];
-                            [relatedParseObject save];
-                            [relatedManagedObject setValue:relatedParseObject.objectId forKey:APObjectUIDAttributeName];
+                            [relatedParseObject setValue:relatedObjectUID forKey:APObjectUIDAttributeName];
+
+                            [relatedParseObject save:&localError];
+                            if (localError) {
+                                *error = localError;
+                                *stop = YES;
+                            }
                             [relatedManagedObject setValue:relatedParseObject.updatedAt forKey:APObjectLastModifiedAttributeName];
-                            self.mapOfTemporaryToPermanentUID[relatedObjectUID] = relatedParseObject.objectId;
+                            [relatedManagedObject setValue:@YES forKey:APObjectIsCreatedRemotelyAttributeName];
                         
                         } else {
-                           relatedParseObject = [self parseObjectFromClassName:relationshipDescription.destinationEntity.name objectUID:relatedObjectUID];
+                            relatedParseObject = [self parseObjectFromClassName:relationshipDescription.destinationEntity.name objectUID:relatedObjectUID];
                         }
                         [relation addObject:relatedParseObject];
                     }
@@ -699,12 +682,16 @@ static NSUInteger APParseObjectIDLenght = 10;
                     PFObject* relatedParseObject;
                     NSString* relatedObjectUID = [relatedManagedObject valueForKey:APObjectUIDAttributeName];
                     
-                    if ([relatedObjectUID hasPrefix:APObjectTemporaryUIDPrefix]) {
+                    if ([[relatedManagedObject valueForKey:APObjectIsCreatedRemotelyAttributeName]isEqualToNumber:@NO]) {
                         relatedParseObject = [PFObject objectWithClassName:relatedManagedObject.entity.name];
-                        [relatedParseObject save];
-                        [relatedManagedObject setValue:relatedParseObject.objectId forKey:APObjectUIDAttributeName];
+                        [relatedParseObject setValue:relatedObjectUID forKey:APObjectUIDAttributeName];
+                        [relatedParseObject save:&localError];
+                        if (localError) {
+                            *error = localError;
+                            return;
+                        }
                         [relatedManagedObject setValue:relatedParseObject.updatedAt forKey:APObjectLastModifiedAttributeName];
-                        self.mapOfTemporaryToPermanentUID[relatedObjectUID] = relatedParseObject.objectId;
+                        [relatedManagedObject setValue:@YES forKey:APObjectIsCreatedRemotelyAttributeName];
                         
                     } else {
                          relatedParseObject = [self parseObjectFromClassName:relationshipDescription.destinationEntity.name objectUID:relatedObjectUID];
@@ -724,10 +711,10 @@ static NSUInteger APParseObjectIDLenght = 10;
 }
 
 
-- (NSManagedObject*) managedObjectForObjectUID: (NSString*) objectUID
-                                        entity: (NSEntityDescription*) entity
-                                     inContext: (NSManagedObjectContext*) context
-                             createIfNecessary: (BOOL) createIfNecessary {
+- (NSManagedObject*) managedObjectForObjectUID:(NSString*) objectUID
+                                        entity:(NSEntityDescription*) entity
+                                     inContext:(NSManagedObjectContext*) context
+                             createIfNecessary:(BOOL) createIfNecessary {
     
     if (AP_DEBUG_METHODS) {MLog()}
     
@@ -770,19 +757,6 @@ static NSUInteger APParseObjectIDLenght = 10;
 }
 
 
-- (NSManagedObjectID*) managedObjectIDForObjectUID: (NSString*) objectUID
-                                            entity: (NSEntityDescription*) entity
-                                         inContext: (NSManagedObjectContext*) context
-                                 createIfNecessary: (BOOL) createIfNecessary {
-    
-    if (AP_DEBUG_METHODS) {MLog()}
-    
-    NSManagedObject* managedObject = [self managedObjectForObjectUID:objectUID entity:entity inContext:context createIfNecessary:YES];
-    return managedObject.objectID;
-    
-}
-
-
 - (NSDictionary*) serializeParseObject:(PFObject*) parseObject {
     
     if (AP_DEBUG_METHODS) { MLog()}
@@ -798,13 +772,12 @@ static NSUInteger APParseObjectIDLenght = 10;
             PFRelation* relation = (PFRelation*) value;
             PFQuery* queryForRelatedObjects = [relation query];
             
-            // we only need the objectId here.
-            [queryForRelatedObjects selectKeys:@[]];
+            [queryForRelatedObjects selectKeys:@[APObjectUIDAttributeName]];
             NSArray* results = [queryForRelatedObjects findObjects];
             
             NSMutableArray* relatedObjects = [[NSMutableArray alloc]initWithCapacity:[results count]];
             for (PFObject* relatedParseObject in results) {
-                [relatedObjects addObject:@{APObjectUIDAttributeName:relatedParseObject.objectId}];
+                [relatedObjects addObject:@{APObjectUIDAttributeName:[relatedParseObject valueForKey:APObjectUIDAttributeName]}];
             }
             
             dictionaryRepresentation[key] = relatedObjects;
@@ -824,7 +797,8 @@ static NSUInteger APParseObjectIDLenght = 10;
             // To-One relationship
             
             PFObject* relatedParseObject = (PFObject*) value;
-            dictionaryRepresentation[key] = @{APObjectUIDAttributeName:relatedParseObject.objectId};
+            [relatedParseObject fetchIfNeeded];
+            dictionaryRepresentation[key] = @{APObjectUIDAttributeName:[relatedParseObject valueForKey:APObjectUIDAttributeName]};
             
         } else if ([value isKindOfClass:[PFACL class]]) {
             
@@ -840,7 +814,7 @@ static NSUInteger APParseObjectIDLenght = 10;
     }];
     
     dictionaryRepresentation[APObjectLastModifiedAttributeName] = parseObject.updatedAt;
-    dictionaryRepresentation[APObjectUIDAttributeName] = parseObject.objectId;
+    dictionaryRepresentation[APObjectUIDAttributeName] = [parseObject valueForKey:APObjectUIDAttributeName];
     
     return dictionaryRepresentation;
 }

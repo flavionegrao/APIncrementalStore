@@ -30,9 +30,8 @@ extern NSString* const APObjectIsDirtyAttributeName;
 /// When the user context requests that an object has to be deleted, when the user context is saved the equivalent cache object is marked as deleted via this attribute. We have this approach to allow for the other devices merging the same object be able to indentify that this object was deleted.
 extern NSString* const APObjectIsDeletedAttributeName;
 
-/// When we first insert a new object it won't have a ObjectUID until we sync with the BaaS provider, we use this prefix to identity those objetcts
-extern NSString* const APObjectTemporaryUIDPrefix;
-
+/// 
+extern NSString* const APObjectIsCreatedRemotelyAttributeName;
 
 
 #pragma mark - Logs
