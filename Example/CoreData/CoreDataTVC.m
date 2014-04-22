@@ -131,7 +131,7 @@
             [self.tableView reloadData];
         }
         
-        [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(reFetch:) name:APNotificationCacheDidFinishSync object:nil];
+//        [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(reFetch:) name:APNotificationCacheDidFinishSync object:nil];
     }
 }
 
@@ -165,7 +165,6 @@
 
 - (void) performFetch: (NSFetchedResultsController*) frc {
     
-   NSDate* start = [NSDate date];
     if (frc) {
         NSError *error;
         [frc performFetch:&error];
@@ -173,7 +172,6 @@
             ELog(@"Fetching problem - %@",error);
             //[HUDViewController postTemporaryMessage:@"Fetching problem"];
         } else {
-            DLog(@"[CoreDataTVC] - %@",[NSString stringWithFormat:@"Fetched: %lu %@ objects in %f seconds",(unsigned long)[frc.fetchedObjects count],self.frc.fetchRequest.entityName,[[NSDate date] timeIntervalSinceDate:start]]);
             DLog(@"[CoreDataTVC] - Fetched objects: %@",self.frc.fetchedObjects);
             //[HUDViewController postTemporaryMessage:msg];
         }

@@ -17,7 +17,7 @@
 
 @import XCTest;
 
-#import "APLocalCache.h"
+#import "APDiskCache.h"
 #import "APParseConnector.h"
 #import <Parse/Parse.h>
 #import "Common.h"
@@ -49,9 +49,9 @@ static NSString* const APCacheSqliteFile = @"APCacheStore.sqlite";
 static NSString* const APTestSqliteFile = @"APTestStore.sqllite";
 
 
-@interface APLocalCacheTestCase : XCTestCase
+@interface APDiskCacheTestCase : XCTestCase
 
-@property (nonatomic, strong) APLocalCache* localCache;
+@property (nonatomic, strong) APDiskCache* localCache;
 @property (nonatomic, strong) APParseConnector* parseConnector;
 @property (nonatomic, strong) NSManagedObjectContext* testContext;
 @property (nonatomic, strong) NSMutableDictionary* mapManagedObjectIDToObjectUID;
@@ -59,7 +59,7 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqllite";
 @end
 
 
-@implementation APLocalCacheTestCase
+@implementation APDiskCacheTestCase
 
 - (void)setUp {
     
@@ -73,7 +73,7 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqllite";
     
     self.parseConnector = [[APParseConnector alloc]initWithAuthenticatedUser:[self authenticatedUser] mergePolicy:APMergePolicyClientWins];
     
-    self.localCache = [[APLocalCache alloc]initWithManagedModel:[NSManagedObjectModel mergedModelFromBundles:nil]
+    self.localCache = [[APDiskCache alloc]initWithManagedModel:[NSManagedObjectModel mergedModelFromBundles:nil]
                                       translateToObjectUIDBlock:translateBlock
                                              localStoreFileName:APCacheSqliteFile
                                            shouldResetCacheFile:YES
@@ -107,10 +107,10 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqllite";
     [self.localCache inserteObjectRepresentations:representations entityName:@"Book" error:&insertError];
     XCTAssertNil(insertError);
     
-    NSDictionary* book1Representation = [self.localCache fetchObjectRepresentationForObjectUUID:kBookObjectUIDLocal1 entityName:@"Book"];
+    NSDictionary* book1Representation = [self.localCache fetchObjectRepresentationForObjectUID:kBookObjectUIDLocal1 entityName:@"Book"];
     XCTAssertTrue([book1Representation[APObjectUIDAttributeName] isEqualToString:kBookObjectUIDLocal1]);
     
-    NSDictionary* book2Representation = [self.localCache fetchObjectRepresentationForObjectUUID:kBookObjectUIDLocal2 entityName:@"Book"];
+    NSDictionary* book2Representation = [self.localCache fetchObjectRepresentationForObjectUID:kBookObjectUIDLocal2 entityName:@"Book"];
     XCTAssertTrue([book2Representation[APObjectUIDAttributeName] isEqualToString:kBookObjectUIDLocal2]);
 }
 
@@ -122,6 +122,12 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqllite";
     Author* author = [self managedObjectAuthor];
     [author addBooksObject:book1];
     
+    NSArray* books = [self.testContext executeFetchRequest:[NSFetchRequest fetchRequestWithEntityName:@"Book"] error:nil];
+    XCTAssertTrue([books count] == 1);
+    
+    NSArray* authors = [self.testContext executeFetchRequest:[NSFetchRequest fetchRequestWithEntityName:@"Author"] error:nil];
+    XCTAssertTrue([authors count] == 1);
+    
     NSDictionary* representationOfBook1 = [self representationFromManagedObject:book1];
     NSDictionary* representationOfAuthor = [self representationFromManagedObject:author];
     
@@ -131,10 +137,10 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqllite";
     [self.localCache inserteObjectRepresentations:@[representationOfAuthor] entityName:@"Author" error:&insertError];
     XCTAssertNil(insertError);
     
-    NSDictionary* fetchedBook1Representation = [self.localCache fetchObjectRepresentationForObjectUUID:kBookObjectUIDLocal1 entityName:@"Book"];
+    NSDictionary* fetchedBook1Representation = [self.localCache fetchObjectRepresentationForObjectUID:kBookObjectUIDLocal1 entityName:@"Book"];
     XCTAssertTrue([fetchedBook1Representation[APObjectUIDAttributeName] isEqualToString:kBookObjectUIDLocal1]);
     
-    NSDictionary* fetchedAuthorRepresentation = [self.localCache fetchObjectRepresentationForObjectUUID:kAuthorObjectUIDLocal entityName:@"Author"];
+    NSDictionary* fetchedAuthorRepresentation = [self.localCache fetchObjectRepresentationForObjectUID:kAuthorObjectUIDLocal entityName:@"Author"];
     XCTAssertTrue([fetchedAuthorRepresentation[APObjectUIDAttributeName] isEqualToString:kAuthorObjectUIDLocal]);
     
     NSArray* booksRelatedToAuthor = fetchedAuthorRepresentation[@"books"];
@@ -165,13 +171,13 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqllite";
     [self.localCache inserteObjectRepresentations:@[representationOfAuthor] entityName:@"Author" error:&insertError];
     XCTAssertNil(insertError);
     
-    NSDictionary* fetchedBook1Representation = [self.localCache fetchObjectRepresentationForObjectUUID:kBookObjectUIDLocal1 entityName:@"Book"];
+    NSDictionary* fetchedBook1Representation = [self.localCache fetchObjectRepresentationForObjectUID:kBookObjectUIDLocal1 entityName:@"Book"];
     XCTAssertTrue([fetchedBook1Representation[APObjectUIDAttributeName] isEqualToString:kBookObjectUIDLocal1]);
     
-    NSDictionary* fetchedBook2Representation = [self.localCache fetchObjectRepresentationForObjectUUID:kBookObjectUIDLocal2 entityName:@"Book"];
+    NSDictionary* fetchedBook2Representation = [self.localCache fetchObjectRepresentationForObjectUID:kBookObjectUIDLocal2 entityName:@"Book"];
     XCTAssertTrue([fetchedBook2Representation[APObjectUIDAttributeName] isEqualToString:kBookObjectUIDLocal2]);
     
-    NSDictionary* fetchedAuthorRepresentation = [self.localCache fetchObjectRepresentationForObjectUUID:kAuthorObjectUIDLocal entityName:@"Author"];
+    NSDictionary* fetchedAuthorRepresentation = [self.localCache fetchObjectRepresentationForObjectUID:kAuthorObjectUIDLocal entityName:@"Author"];
     XCTAssertTrue([fetchedAuthorRepresentation[APObjectUIDAttributeName] isEqualToString:kAuthorObjectUIDLocal]);
     
     // To-Many
@@ -193,7 +199,7 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqllite";
     XCTAssertNil(error);
     
     // Fetch it again
-    NSMutableDictionary* fetchedBook1Representation = [[self.localCache fetchObjectRepresentationForObjectUUID:kBookObjectUIDLocal1 entityName:@"Book"]mutableCopy];
+    NSMutableDictionary* fetchedBook1Representation = [[self.localCache fetchObjectRepresentationForObjectUID:kBookObjectUIDLocal1 entityName:@"Book"]mutableCopy];
     XCTAssertTrue([fetchedBook1Representation[APObjectUIDAttributeName] isEqualToString:kBookObjectUIDLocal1]);
     
     // Change an attribute
@@ -202,7 +208,7 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqllite";
     XCTAssertNil(error);
     
     // Fetch the updated representation
-    NSDictionary* updatedBook1Representation = [self.localCache fetchObjectRepresentationForObjectUUID:kBookObjectUIDLocal1 entityName:@"Book"];
+    NSDictionary* updatedBook1Representation = [self.localCache fetchObjectRepresentationForObjectUID:kBookObjectUIDLocal1 entityName:@"Book"];
     XCTAssertTrue([updatedBook1Representation[@"name"] isEqualToString:kBookNameLocal2]);
 }
 
@@ -216,7 +222,7 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqllite";
     XCTAssertNil(error);
     
     // Fetch it again
-    NSMutableDictionary* fetchedBook1Representation = [[self.localCache fetchObjectRepresentationForObjectUUID:kBookObjectUIDLocal1 entityName:@"Book"]mutableCopy];
+    NSMutableDictionary* fetchedBook1Representation = [[self.localCache fetchObjectRepresentationForObjectUID:kBookObjectUIDLocal1 entityName:@"Book"]mutableCopy];
     XCTAssertTrue([fetchedBook1Representation[APObjectUIDAttributeName] isEqualToString:kBookObjectUIDLocal1]);
     
     // Change an attribute
@@ -224,7 +230,7 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqllite";
     XCTAssertNil(error);
     
     // Fetch the updated representation
-    NSDictionary* deletedBook1Representation = [self.localCache fetchObjectRepresentationForObjectUUID:kBookObjectUIDLocal1 entityName:@"Book"];
+    NSDictionary* deletedBook1Representation = [self.localCache fetchObjectRepresentationForObjectUID:kBookObjectUIDLocal1 entityName:@"Book"];
     XCTAssertNil(deletedBook1Representation);
 }
 
@@ -311,7 +317,6 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqllite";
     dispatch_group_t group = dispatch_group_create();
     
     dispatch_group_async(group, queue, ^{
-        [Parse setApplicationId:APUnitTestingParsepApplicationId clientKey:APUnitTestingParseClientKey];
         
         NSError* authError;
         user = [PFUser logInWithUsername:APUnitTestingParseUserName password:APUnitTestingParsePassword error:&authError];

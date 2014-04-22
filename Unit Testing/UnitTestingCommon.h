@@ -18,7 +18,6 @@
 #import <Foundation/Foundation.h>
 
 /* Parse config */
-extern NSString* const APUnitTestingParsepApplicationId;
-extern NSString* const APUnitTestingParseClientKey;
+
 extern NSString* const APUnitTestingParseUserName;
 extern NSString* const APUnitTestingParsePassword;

@@ -55,20 +55,10 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     
     self.coreDataController = [[CoreDataController alloc]init];
     
-    // All tests will be conducted in background to enable us to supress the *$@%@$ Parse SDK warning
+    // All tests will be conducted in background to supress the annoying Parse SDK warnings
     // complening that we are running long calls in the main thread.
     self.queue = dispatch_queue_create("CoreDataControllerTestCase", DISPATCH_QUEUE_CONCURRENT);
     self.group = dispatch_group_create();
-    
-    /* Create the objects and its relationships
-     
-     ----------       --------
-     | Author |<---->>| Book |
-     ----------       --------
-     
-     */
-    
-    [Parse setApplicationId:APUnitTestingParsepApplicationId clientKey:APUnitTestingParseClientKey];
     
     __block PFUser* authenticatedUser;
     dispatch_group_async(self.group, self.queue, ^{
@@ -88,6 +78,13 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     while (self.coreDataController.isResetingTheCache &&
            [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
     
+    /* Create the objects and its relationships
+     
+     ----------       --------
+     | Author |<---->>| Book |
+     ----------       --------
+     
+     */
     dispatch_group_async(self.group, self.queue, ^{
         // Populating Parse with test objects
         NSError* saveError = nil;
@@ -184,9 +181,30 @@ static NSString* const kBookName2 = @"A Clash of Kings";
 }
 
 
-- (void) testAddAnotherBookToTheAuthor {
+- (void) testCreateAuthorLocalyThenAddBook {
     
-    MLog();
+    Author* author1 = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.coreDataController.mainContext];
+    author1.name = @"Author#1";
+    
+    Book* book = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.coreDataController.mainContext];
+    book.name = @"Book#1";
+    book.author = author1;
+    
+    NSError* error;
+    [self.coreDataController.mainContext save:&error];
+    XCTAssertNil(error);
+    
+    NSFetchRequest* fr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
+    //fr.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"name" ascending:YES]];
+    fr.predicate = [NSPredicate predicateWithFormat:@"author == %@",author1];
+    NSArray* results = [self.coreDataController.mainContext executeFetchRequest:fr error:&error];
+    XCTAssertNil(error);
+    
+    XCTAssertTrue([results count] == 1);
+}
+
+
+- (void) testAddAnotherBookToTheAuthor {
     
     Book* book2 = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.coreDataController.mainContext];
     book2.name = kBookName2;
@@ -211,6 +229,101 @@ static NSString* const kBookName2 = @"A Clash of Kings";
 }
 
 
+- (void) testAddAnotherBookToTheAuthorRemotely {
+    
+    dispatch_group_async(self.group, self.queue, ^{
+        
+        NSError* error;
+        PFObject* book2 = [PFObject objectWithClassName:@"Book"];
+        [book2 setValue:kBookName2 forKey:@"name"];
+        [book2 setValue:@NO forKey:APObjectIsDeletedAttributeName];
+        [book2 save:&error];
+        
+        PFObject* author = [[PFQuery queryWithClassName:@"Author"]getFirstObject];
+        [[author relationForKey:@"books"] addObject:book2];
+        [author save:&error];
+        
+        book2[@"author"] = author;
+        [book2 save:&error];
+        
+        XCTAssertNil(error);
+    });
+    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    
+    // Sync and wait
+    [self.coreDataController requestSyncCache];
+    while (self.coreDataController.isSyncingTheCache &&
+           [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
+    
+    NSFetchRequest* bookFetchRequest = [[NSFetchRequest alloc]initWithEntityName:@"Book"];
+    bookFetchRequest.predicate = [NSPredicate predicateWithFormat:@"name = %@",kBookName2];
+    NSArray* bookResults = [self.coreDataController.mainContext executeFetchRequest:bookFetchRequest error:nil];
+    XCTAssertTrue([bookResults count] == 1);
+    
+    Author* author = [self fetchAuthor];
+    XCTAssertTrue([author.books count] == 2);
+}
+
+
+/*
+ During tests an issue happend when executing the following steps:
+ 1) Create an author#1 on device#1
+ 2) Sync device#1
+ 3) Sync device#2 (the author#1 is synced on device#2)
+ 4) On device#2 add book#1 to author#1
+ 5) Sync device#2
+ 6) Sync device#1
+ 
+ Issue: author#1 on device#1 doesn't get updated with book#1
+ */
+
+- (void) testAddBookToAnAuthorCreatedOnAnotherDevice {
+   
+    Author* author1 = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.coreDataController.mainContext];
+    author1.name = @"Author#1";
+    
+    NSError* error;
+    [self.coreDataController.mainContext save:&error];
+    XCTAssertNil(error);
+    
+    // Sync and wait untill it's finished
+    [self.coreDataController requestSyncCache];
+    while (self.coreDataController.isSyncingTheCache &&
+           [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
+    
+    dispatch_group_async(self.group, self.queue, ^{
+        
+        NSError* error;
+        PFObject* book1 = [PFObject objectWithClassName:@"Book"];
+        [book1 setValue:@"Book#1" forKey:@"name"];
+        [book1 setValue:@NO forKey:APObjectIsDeletedAttributeName];
+        [book1 save:&error];
+        
+        PFQuery* authorQuery = [PFQuery queryWithClassName:@"Author"];
+        [authorQuery whereKey:@"name" containsString:@"Author#1"];
+        PFObject* author = [authorQuery getFirstObject];
+        
+        [[author relationForKey:@"books"] addObject:book1];
+        [author save:&error];
+        
+        book1[@"author"] = author;
+        [book1 save:&error];
+        
+        XCTAssertNil(error);
+    });
+    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    
+    // Sync and wait untill it's finished
+    [self.coreDataController requestSyncCache];
+    while (self.coreDataController.isSyncingTheCache &&
+           [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
+    
+    XCTAssertTrue([author1.books count] == 1);
+    
+    Book* relatedBook = [author1.books anyObject];
+    XCTAssertTrue([relatedBook.name isEqualToString:@"Book#1"]);
+}
+
 /*
  Author has its relationship to books set with "Delete rule == Cascade", then
  once we delete it, the related books should be deleted as well.
@@ -223,7 +336,10 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     MLog();
     
     [self.coreDataController.mainContext deleteObject: [self fetchAuthor]];
-    [self.coreDataController.mainContext save:nil];
+    
+    NSError* error;
+    [self.coreDataController.mainContext save:&error];
+    XCTAssertNil(error);
     
     // Sync and wait untill it's finished
     [self.coreDataController requestSyncCache];
@@ -245,14 +361,14 @@ static NSString* const kBookName2 = @"A Clash of Kings";
 
 /*
  Scenario:
- - A new book is included to the existing author, thus the author has 2x books.
+ - A new book is included to the existing author, thus the author has now 2 books.
  - Book has its relationship to Author set with "Delete rule == Nullify"
- - We delete it the new included book.
+ - We delete the new included book.
  
 Expected Results:
  - The existing author should remain with only one book.
- - Be mindful that we don't actually delete the objects, instead we mark it as deleted (apDeleted)
-   in order to allow other users to sync this change corretly.
+ - Be mindful that we don't actually delete the objects, instead we mark it as deleted (APObjectIsDeleted)
+   in order to allow other users to sync this change corretly afterwards
  */
 - (void) testRemoveObjectFromToManyRelationship {
     
@@ -265,28 +381,21 @@ Expected Results:
     book2.author = [self fetchAuthor];
     DLog(@"New book created: %@",book2);
     
-    DLog(@"Saving context");
     NSError* error = nil;
     [self.coreDataController.mainContext save:&error];
     XCTAssertNil(error);
     
-    DLog(@"Request sync and wait");
     [self.coreDataController requestSyncCache];
-    while (self.coreDataController.isSyncingTheCache && [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
-    DLog(@"Sync is complete");
+    while (self.coreDataController.isSyncingTheCache &&
+           [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]])
     
-    // Delete the new book and Sync again
-     DLog(@"Delete book: %@", book2);
     [self.coreDataController.mainContext deleteObject: book2];
     
-    DLog(@"Saving context");
     [self.coreDataController.mainContext save:&error];
     XCTAssertNil(error);
     
-    DLog(@"Request sync and wait");
     [self.coreDataController requestSyncCache];
     while (self.coreDataController.isSyncingTheCache && [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
-    DLog(@"Sync is complete");
     
     // Verify that only one books is marked as delete at Parse
     dispatch_group_async(self.group, self.queue, ^{

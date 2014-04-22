@@ -20,7 +20,6 @@
 /* 
  Parse config - Include yours to enable unit testing
  */
-NSString* const APUnitTestingParsepApplicationId = @"";
-NSString* const APUnitTestingParseClientKey =  @"";
+
 NSString* const APUnitTestingParseUserName = @"test_user";
 NSString* const APUnitTestingParsePassword = @"1234";

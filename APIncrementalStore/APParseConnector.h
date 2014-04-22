@@ -16,7 +16,7 @@
  */
 
 #import <Foundation/Foundation.h>
-#import "APLocalCache.h"
+#import "APDiskCache.h"
 
 @interface APParseConnector : NSObject <APRemoteDBConnector>
 

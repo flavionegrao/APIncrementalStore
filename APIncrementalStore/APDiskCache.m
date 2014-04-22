@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#import "APLocalCache.h"
+#import "APDiskCache.h"
 
 #import "NSArray+Enumerable.h"
 #import "NSLogEmoji.h"
@@ -26,7 +26,7 @@ static NSString* const kAPIncrementalStorePrivateAttribute = @"kAPIncrementalSto
 static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrementalStoreLocalPrivateAttribute";
 
 
-@interface APLocalCache()
+@interface APDiskCache()
 
 @property (nonatomic, strong) NSPersistentStoreCoordinator* psc;
 @property (nonatomic, strong) NSManagedObjectModel* model;
@@ -49,7 +49,7 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
 @end
 
 
-@implementation APLocalCache
+@implementation APDiskCache
 
 - (id)init {
     
@@ -97,7 +97,7 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
     
     /*
      Adding support properties
-     kAPIncrementalStoreUUIDAttributeName, APObjectLastModifiedAttributeName and APObjectIsDeletedAttributeName
+     kAPIncrementalStoreUIDAttributeName, APObjectLastModifiedAttributeName and APObjectIsDeletedAttributeName
      for each entity present on model, then we don't need to mess up with the user coredata model
      */
     
@@ -227,16 +227,36 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
     
     if (AP_DEBUG_METHODS) { MLog()}
     
-    NSString* objectUUID = nil;
+    NSString* objectUID = nil;
     CFUUIDRef uuid = CFUUIDCreate(CFAllocatorGetDefault());
-    objectUUID = (__bridge_transfer NSString *)CFUUIDCreateString(CFAllocatorGetDefault(), uuid);
+    objectUID = (__bridge_transfer NSString *)CFUUIDCreateString(CFAllocatorGetDefault(), uuid);
     CFRelease(uuid);
     
-    NSString* tempObjectUUID = [NSString stringWithFormat:@"%@%@",APObjectTemporaryUIDPrefix,objectUUID];
+    NSString* tempObjectUUID = [NSString stringWithFormat:@"%@%@",APObjectTemporaryUIDPrefix,objectUID];
     
     if (AP_DEBUG_INFO) { DLog(@"New temporary objectUUID generated: %@",tempObjectUUID)}
     
     return tempObjectUUID;
+}
+
+
+/* 
+ Check if there's a translation for the temporary objectID
+ If yes return the permanent otherwise returns the same objectID passed.
+ */
+- (NSString*) currentObjectUID:(NSString*) objectUID {
+    
+    NSString* currentObjectUID;
+    if ([objectUID hasPrefix:APObjectTemporaryUIDPrefix]) {
+        NSDictionary* mapOfTempToPemanent = [self.remoteDBConnector mapOfTemporaryToPermanentUID];
+        currentObjectUID = mapOfTempToPemanent[objectUID];
+        if (!currentObjectUID) {
+            currentObjectUID = objectUID;
+        }
+    } else {
+        currentObjectUID = objectUID;
+    }
+    return currentObjectUID;
 }
 
 
@@ -245,9 +265,9 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
 - (void) syncAllObjects: (BOOL) allObjects
       onCountingObjects: (void (^)(NSUInteger localObjects, NSUInteger remoteObjects)) countingBlock
            onSyncObject: (void (^)(BOOL isRemoteObject)) syncObjectBlock
-           onCompletion: (void (^)(NSArray* objectUIDs, NSError* syncError)) conpletionBlock {
+           onCompletion: (void (^)(NSDictionary* objectUIDsNestedByEntityName, NSError* syncError)) conpletionBlock {
 
-    if (AP_DEBUG_METHODS) { MLog()}
+    if (AP_DEBUG_METHODS) {MLog()}
     
     self.syncContext = nil;
     
@@ -256,7 +276,7 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
     [self.syncContext performBlock:^ {
         
         __block NSError* error;
-        __block NSArray* syncedFromServerManagedObjectIDs;
+        __block NSMutableDictionary* mutableObjectUIDsNestedByEntityName = [NSMutableDictionary dictionary];
         
         void(^failureBlock)(void) = ^{
             [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
@@ -265,7 +285,7 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
         
         void(^successBlock)(void) = ^{
             [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
-            if (conpletionBlock) conpletionBlock(syncedFromServerManagedObjectIDs,error);
+            if (conpletionBlock) conpletionBlock(mutableObjectUIDsNestedByEntityName,error);
         };
         
         // Count objects to be synced and report it via block
@@ -282,9 +302,7 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
         }
         
         // Local Updates - all objects marked as "dirty" and add entries from temporary to permanent objectsUID
-        BOOL mergeSuccess = [self.remoteDBConnector
-                             mergeManagedContext: self.syncContext
-                             onSyncObject:^{
+        BOOL mergeSuccess = [self.remoteDBConnector mergeManagedContext:self.syncContext onSyncObject:^{
                                  [[NSOperationQueue mainQueue]addOperationWithBlock:^{
                                      if (syncObjectBlock) syncObjectBlock(YES);
                                  }];
@@ -297,14 +315,14 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
         }
         
         // Remote Updates - all objects that have updated date earlier than our last successful sync
+        NSDictionary* mergedFromServer;
+        mergedFromServer = [self.remoteDBConnector mergeRemoteObjectsWithContext:self.syncContext fullSync:allObjects onSyncObject:^{
+            [[NSOperationQueue mainQueue]addOperationWithBlock:^{
+                if (syncObjectBlock) syncObjectBlock(YES);
+            }];
+        } error:&error];
         
-        syncedFromServerManagedObjectIDs = [self.remoteDBConnector
-                                            mergeRemoteObjectsWithContext:self.syncContext
-                                            fullSync:allObjects onSyncObject:^{
-                                                [[NSOperationQueue mainQueue]addOperationWithBlock:^{
-                                                    if (syncObjectBlock) syncObjectBlock(YES);
-                                                }];
-                                            } error:&error];
+        [mutableObjectUIDsNestedByEntityName addEntriesFromDictionary:mergedFromServer];
         
         if (error) {
             if (AP_DEBUG_ERRORS) { ELog(@"Error syncing remote changes: %@",error)}
@@ -314,46 +332,49 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
         
         // Save all contexts
         
-        if (![self.syncContext hasChanges]) {
-            
-            [[NSOperationQueue mainQueue]addOperationWithBlock:successBlock];
-            
+        NSError* savingError;
+        if (![self saveSyncContext:&savingError]) {
+             [[NSOperationQueue mainQueue]addOperationWithBlock:failureBlock];
         } else {
-            
-            if (![self.syncContext save:&error]) {
-                if (AP_DEBUG_ERRORS) { ELog(@"Error saving changes: %@",error)}
-                [[NSOperationQueue mainQueue]addOperationWithBlock:failureBlock];
-                
-            } else {
-                
-                [self.mainContext performBlockAndWait:^{
-                    
-                    if (![self.mainContext save:&error]) {
-                        
-                        if (AP_DEBUG_ERRORS) { ELog(@"Error saving changes: %@",error)}
-                            failureBlock();
-                        
-                    } else {
-                        
-                        [self.privateContext performBlock:^{
-                            
-                            // Save to disk (in BG not wowrking yet)
-                            
-                            if (![self.privateContext save:&error]) {
-                                
-                                if (AP_DEBUG_ERRORS) { ELog(@"Error saving changes: %@",error)}
-                                [[NSOperationQueue mainQueue]addOperationWithBlock:failureBlock];
-                                
-                            } else {
-                                
-                                [[NSOperationQueue mainQueue]addOperationWithBlock:successBlock];
-                            }
-                        }];
-                    }
-                }];
-            }
+            [[NSOperationQueue mainQueue]addOperationWithBlock:successBlock];
         }
     }];
+}
+
+
+- (BOOL) saveSyncContext: (NSError *__autoreleasing*)error {
+    
+    __block BOOL success = YES;
+    
+    if ([self.syncContext hasChanges]) {
+        
+        if (![self.syncContext save:error]) {
+            if (AP_DEBUG_ERRORS) {ELog(@"Error saving sync context changes: %@",*error)}
+            success = NO;
+       
+        } else {
+            
+            [self.mainContext performBlockAndWait:^{
+                
+                if (![self.mainContext save:error]) {
+                    if (AP_DEBUG_ERRORS) {ELog(@"Error saving main context changes: %@",*error)}
+                    success = NO;
+                
+                } else {
+                    
+                    [self.privateContext performBlock:^{
+                        
+                        // Save to disk
+                        if (![self.privateContext save:error]) {
+                            if (AP_DEBUG_ERRORS) {ELog(@"Error saving private context changes: %@",*error)}
+                            success = NO;
+                        }
+                    }];
+                }
+            }];
+        }
+    }
+    return success;
 }
 
 
@@ -364,12 +385,10 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
     
     if (AP_DEBUG_METHODS) { MLog()}
     
-    //NSFetchRequest *cacheFetchRequest = [fetchRequest copy];
     NSFetchRequest *cacheFetchRequest = [[NSFetchRequest alloc]initWithEntityName:fetchRequest.entityName];
-    //[cacheFetchRequest setResultType:NSDictionaryResultType];
     [cacheFetchRequest setEntity:[NSEntityDescription entityForName:fetchRequest.entityName inManagedObjectContext:self.mainContext]];
     [cacheFetchRequest setReturnsDistinctResults:YES];
-    [cacheFetchRequest setPredicate:[self cachePredicateFromPredicate:fetchRequest.predicate]];
+    [cacheFetchRequest setPredicate:[self cachePredicateFromPredicate:fetchRequest.predicate forEntityName:fetchRequest.entityName]];
     
     NSArray *cachedManagedObjects = [self.mainContext executeFetchRequest:cacheFetchRequest error:error];
     __block NSMutableArray* representations = [[NSMutableArray alloc]initWithCapacity:[cachedManagedObjects count]];
@@ -388,7 +407,7 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
     
     NSFetchRequest *cacheFetchRequest = [[NSFetchRequest alloc]initWithEntityName:fetchRequest.entityName];
     [cacheFetchRequest setEntity:[NSEntityDescription entityForName:fetchRequest.entityName inManagedObjectContext:self.mainContext]];
-    [cacheFetchRequest setPredicate:[self cachePredicateFromPredicate:fetchRequest.predicate]];
+    [cacheFetchRequest setPredicate:[self cachePredicateFromPredicate:fetchRequest.predicate forEntityName:fetchRequest.entityName]];
     
     return  [self.mainContext countForFetchRequest:cacheFetchRequest error:error];
 }
@@ -447,7 +466,8 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
  Translates a user submited predicate to a one suitable for local cache queries.
  
  */
-- (NSPredicate*) cachePredicateFromPredicate:(NSPredicate *)predicate {
+- (NSPredicate*) cachePredicateFromPredicate:(NSPredicate *)predicate
+                               forEntityName:(NSString*) entityName {
     
     if (AP_DEBUG_METHODS) { MLog()}
     
@@ -455,7 +475,7 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
         return nil;
     }
     
-    NSPredicate *predicateToReturn = predicate;
+    NSPredicate *predicateToReturn = [predicate copy];
     
     if ([predicate isKindOfClass:[NSCompoundPredicate class]]) {
         
@@ -466,18 +486,15 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
         NSMutableArray *newSubpredicates = [NSMutableArray arrayWithCapacity:[subpredicates count]];
         
         for (NSPredicate *subpredicate in subpredicates) {
-            [newSubpredicates addObject:[self cachePredicateFromPredicate:subpredicate]];
+            [newSubpredicates addObject:[self cachePredicateFromPredicate:subpredicate forEntityName:entityName]];
         }
-        
         predicateToReturn = [[NSCompoundPredicate alloc] initWithType:compoundPredicate.compoundPredicateType subpredicates:newSubpredicates];
         
     } else {
-        
         NSComparisonPredicate *comparisonPredicate = (NSComparisonPredicate *)predicate;
         NSManagedObjectID *objectID = nil;
         
         if ([comparisonPredicate.rightExpression.constantValue isKindOfClass:[NSManagedObject class]]) {
-            
             objectID = [(NSManagedObject *)comparisonPredicate.rightExpression.constantValue objectID];
             NSString *referenceObject = self.translateManagedObjectIDToObjectUIDBlock(objectID);
             NSManagedObjectID *cacheObjectID = [self fetchManagedObjectIDForObjectUID:referenceObject entityName:[[objectID entity] name] createIfNeeded:NO];
@@ -485,15 +502,22 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
             NSExpression *rightExpression = [NSExpression expressionForConstantValue:cacheObjectID];
             predicateToReturn = [NSComparisonPredicate predicateWithLeftExpression:comparisonPredicate.leftExpression rightExpression:rightExpression modifier:comparisonPredicate.comparisonPredicateModifier type:comparisonPredicate.predicateOperatorType options:comparisonPredicate.options];
             
-            
         } else if ([comparisonPredicate.rightExpression.constantValue isKindOfClass:[NSManagedObjectID class]]) {
-            
             objectID = (NSManagedObjectID *)comparisonPredicate.rightExpression.constantValue;
             NSString *referenceObject = self.translateManagedObjectIDToObjectUIDBlock(objectID);
             NSManagedObjectID *cacheObjectID = [self fetchManagedObjectIDForObjectUID:referenceObject entityName:[[objectID entity] name] createIfNeeded:NO];
             
             NSExpression *rightExpression = [NSExpression expressionForConstantValue:cacheObjectID];
             predicateToReturn = [NSComparisonPredicate predicateWithLeftExpression:comparisonPredicate.leftExpression rightExpression:rightExpression modifier:comparisonPredicate.comparisonPredicateModifier type:comparisonPredicate.predicateOperatorType options:comparisonPredicate.options];
+            
+        } else if ([comparisonPredicate.rightExpression.constantValue isKindOfClass:[NSString class]]) {
+            
+            if ([comparisonPredicate.rightExpression.constantValue hasPrefix:APObjectTemporaryUIDPrefix]) {
+                NSString* tempObjectID = comparisonPredicate.rightExpression.constantValue;
+                NSString *referenceObject = [[self.remoteDBConnector mapOfTemporaryToPermanentUID]valueForKey:tempObjectID];
+                NSExpression *rightExpression = [NSExpression expressionForConstantValue:referenceObject];
+                predicateToReturn = [NSComparisonPredicate predicateWithLeftExpression:comparisonPredicate.leftExpression rightExpression:rightExpression modifier:comparisonPredicate.comparisonPredicateModifier type:comparisonPredicate.predicateOperatorType options:comparisonPredicate.options];
+            }
         }
     }
     
@@ -502,7 +526,7 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
 }
 
 
-- (NSDictionary*) fetchObjectRepresentationForObjectUUID:(NSString*) objectUID
+- (NSDictionary*) fetchObjectRepresentationForObjectUID:(NSString*) objectUID
                                               entityName:(NSString*) entityName {
     
     if (AP_DEBUG_METHODS) { MLog()}
@@ -511,19 +535,8 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
     
     NSFetchRequest *fetchRequest = [[NSFetchRequest alloc] initWithEntityName:entityName];
     
-    NSString* permanentObjectUUID;
-    if ([objectUID hasPrefix:APObjectTemporaryUIDPrefix]) {
-        NSDictionary* mapOfTempToPermanentUID = [self.remoteDBConnector mapOfTemporaryToPermanentUID];
-        permanentObjectUUID = mapOfTempToPermanentUID[objectUID];
-        if (!permanentObjectUUID) {
-            permanentObjectUUID = objectUID;
-        }
-    } else {
-        permanentObjectUUID = objectUID;
-    }
-    
     // Object matching the objectUID and is not deleted
-    NSPredicate* objectUIDPredicate = [NSPredicate predicateWithFormat:@"%K == %@", APObjectUIDAttributeName, permanentObjectUUID];
+    NSPredicate* objectUIDPredicate = [NSPredicate predicateWithFormat:@"%K == %@", APObjectUIDAttributeName, [self currentObjectUID:objectUID]];
     NSPredicate* notDeletedUIDPredicate = [NSPredicate predicateWithFormat:@"%K == NO", APObjectIsDeletedAttributeName];
     fetchRequest.predicate = [NSCompoundPredicate andPredicateWithSubpredicates:@[objectUIDPredicate,notDeletedUIDPredicate]];
     
@@ -551,7 +564,7 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
     NSFetchRequest *fetchRequest = [[NSFetchRequest alloc] initWithEntityName:entityName];
     //NSEntityDescription *desc = [NSEntityDescription entityForName:entityName inManagedObjectContext:self.localContext];
     
-    fetchRequest.predicate = [NSPredicate predicateWithFormat:@"%K == %@", APObjectUIDAttributeName, objectUID];
+    fetchRequest.predicate = [NSPredicate predicateWithFormat:@"%K == %@", APObjectUIDAttributeName, [self currentObjectUID:objectUID]];
     
     __block NSError *fetchError = nil;
     __block NSArray *results;
@@ -681,20 +694,8 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
     
     // Update local context with received representations
     [deleteObjects enumerateObjectsUsingBlock:^(NSDictionary* representation, NSUInteger idx, BOOL *stop) {
-        NSString* objectUUID = [representation valueForKey:APObjectUIDAttributeName];
-        
-        NSString* permanentObjectUID;
-        if ([objectUUID hasPrefix:APObjectTemporaryUIDPrefix]) {
-            NSDictionary* mapOfTempToPemanent = [self.remoteDBConnector mapOfTemporaryToPermanentUID];
-            permanentObjectUID = mapOfTempToPemanent[objectUUID];
-            if (!permanentObjectUID) {
-                permanentObjectUID = objectUUID;
-            }
-        } else {
-            permanentObjectUID = objectUUID;
-        }
-        
-        NSManagedObjectID* managedObjectID = [self fetchManagedObjectIDForObjectUID:permanentObjectUID entityName:entityName createIfNeeded:NO];
+        NSString* objectUID = [representation valueForKey:APObjectUIDAttributeName];
+        NSManagedObjectID* managedObjectID = [self fetchManagedObjectIDForObjectUID:[self currentObjectUID:objectUID] entityName:entityName createIfNeeded:NO];
         NSManagedObject* managedObject = [self.mainContext objectWithID:managedObjectID];
         [managedObject setValue:@YES forKey:APObjectIsDeletedAttributeName];
         [managedObject setValue:@YES forKey:APObjectIsDirtyAttributeName];
@@ -726,7 +727,11 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
             if (representation[propertyName] == [NSNull null]) {
                 [managedObject setPrimitiveValue:nil forKey:propertyName];
             } else {
-                [managedObject setPrimitiveValue:representation[propertyName] forKey:propertyName];
+                if ([propertyName isEqualToString:APObjectUIDAttributeName]) {
+                    [managedObject setPrimitiveValue:[self currentObjectUID: representation[propertyName]] forKey:propertyName];
+                } else {
+                    [managedObject setPrimitiveValue:representation[propertyName] forKey:propertyName];
+                }
             }
             
             // Relationships faulted in
@@ -739,8 +744,8 @@ static NSString* const kAPIncrementalStoreLocalPrivateAttribute = @"kAPIncrement
                 if (relatedObjects != nil) {
                     [relatedObjects removeAllObjects];
                     NSArray *relatedRepresentations = representation[propertyName];
-                    [relatedRepresentations enumerateObjectsUsingBlock:^(NSString* objectUUID, NSUInteger idx, BOOL *stop) {
-                        NSManagedObjectID* relatedManagedObjectID = [self fetchManagedObjectIDForObjectUID:objectUUID entityName:relationshipDescription.destinationEntity.name createIfNeeded:YES];
+                    [relatedRepresentations enumerateObjectsUsingBlock:^(NSString* objectUID, NSUInteger idx, BOOL *stop) {
+                        NSManagedObjectID* relatedManagedObjectID = [self fetchManagedObjectIDForObjectUID:objectUID entityName:relationshipDescription.destinationEntity.name createIfNeeded:YES];
                         [relatedObjects addObject:[self.mainContext objectWithID:relatedManagedObjectID]];
                     }];
                     [managedObject setPrimitiveValue:relatedObjects forKey:propertyName];

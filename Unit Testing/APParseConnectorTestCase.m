@@ -75,6 +75,9 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     // Remove SQLite file
     [self removeCacheStore];
     
+    // Remove last sync date for entities timestamps
+    [[NSUserDefaults standardUserDefaults]removeObjectForKey:@"APEarliestObjectSyncedKey"];
+    
     /* 
      All tests will be conducted in background to enable us to supress the *$@%@$ Parse SDK warning
      complening that we are running long calls in the main thread.
@@ -82,7 +85,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     self.queue = dispatch_queue_create("parseConnectorTestCase", NULL);
     self.group = dispatch_group_create();
     
-    [Parse setApplicationId:APUnitTestingParsepApplicationId clientKey:APUnitTestingParseClientKey];
+   // [Parse setApplicationId:APUnitTestingParsepApplicationId clientKey:APUnitTestingParseClientKey];
     
     dispatch_group_async(self.group, self.queue, ^{
         
@@ -161,9 +164,49 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 
 #pragma mark - Tests - Basic Stuff
 
-- (void) testTestContextIsSet {
+- (void) testContextIsSet {
     
     XCTAssertNotNil(self.testContext);
+}
+
+
+#pragma mark - Tests - Merge
+
+- (void) testMergeRemoteObjectsReturn {
+    
+    __block NSDictionary* results;
+    __block NSError* syncError;
+    
+    dispatch_group_async(self.group, self.queue, ^{
+        results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&syncError];
+    });
+    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    
+    XCTAssertNil(syncError, @"Sync error:%@",syncError);
+    XCTAssertTrue([results count] == 2);
+    
+    NSDictionary* authorEntry = results[@"Author"];
+    XCTAssertTrue([[[authorEntry allKeys]lastObject] isEqualToString:@"inserted"]);
+    XCTAssertTrue([authorEntry[@"inserted"] count] == 1);
+    
+    NSDictionary* bookEntry = results[@"Book"];
+    XCTAssertTrue([[[bookEntry allKeys]lastObject] isEqualToString:@"inserted"]);
+    XCTAssertTrue([bookEntry[@"inserted"] count] == 2);
+    
+    // Sync again - should not bring an empty result.
+    
+    dispatch_group_async(self.group, self.queue, ^{
+        results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:^{
+            XCTFail();
+        } error:&syncError];
+    });
+    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    
+    XCTAssertNil(syncError, @"Sync error:%@",syncError);
+    XCTAssertTrue([results count] == 0);
+
 }
 
 
@@ -171,18 +214,18 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 
 - (void) testMergeRemoteObjects {
     
-    __block NSArray* results;
+    __block NSDictionary* results;
     __block NSError* syncError;
     
     dispatch_group_async(self.group, self.queue, ^{
-        results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
+        results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:^{
             DLog(@"Object has been synced");
         } error:&syncError];
     });
     dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
     
     XCTAssertNil(syncError, @"Sync error:%@",syncError);
-    XCTAssertTrue([results count] == 3);
+    XCTAssertTrue([results count] == 2);
     
     NSFetchRequest* booksFr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
     booksFr.predicate = [NSPredicate predicateWithFormat:@"name == %@",kBookNameParse1];
@@ -198,33 +241,59 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 }
 
 
-- (void) testMergeRemoteCreatedRelationshipToOne {
+- (void) testMergeRemoteCreatedRelationship {
     
-    __block NSArray* results;
-    __block NSError* syncError;
+    __block NSError* error;
     
     dispatch_group_async(self.group, self.queue, ^{
-        results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&syncError];
+        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:nil error:&error];
+        
+        PFObject* book3 = [PFObject objectWithClassName:@"Book"];
+        [book3 setValue:kBookNameParse3 forKey:@"name"];
+        [book3 setValue:@NO forKey:APObjectIsDeletedAttributeName];
+        [book3 save:&error];
+        
+        PFObject* author = [[PFQuery queryWithClassName:@"Author"]getFirstObject];
+        [[author relationForKey:@"books"] addObject:book3];
+        [author save:&error];
+        
+        book3[@"author"] = author;
+        [book3 save:&error];
 
+        NSDictionary* results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:nil error:&error];
+        XCTAssertNil(error);
+        
+        NSArray* updatedAuthors = results[@"Author"][NSUpdatedObjectsKey];
+        XCTAssertTrue([[updatedAuthors lastObject]isEqualToString:author.objectId]);
+        
+        NSArray* insertedAuthor = results[@"Book"][NSInsertedObjectsKey];
+        XCTAssertTrue([[insertedAuthor lastObject]isEqualToString:book3.objectId]);
+        
+        
+        
     });
     dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
-    
+
     NSFetchRequest* booksFr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
-    NSArray* books = [self.testContext executeFetchRequest:booksFr error:nil];
+    [booksFr setPredicate:[NSPredicate predicateWithFormat:@"name = %@",kBookNameParse3]];
+    NSArray* books = [self.testContext executeFetchRequest:booksFr error:&error];
     Book* book = [books lastObject];
     XCTAssertEqualObjects(book.author.name, kAuthorNameParse);
+    
+    NSFetchRequest* authorFr = [NSFetchRequest fetchRequestWithEntityName:@"Author"];
+    NSArray* authors = [self.testContext executeFetchRequest:authorFr error:&error];
+    Author* author = [authors lastObject];
+    XCTAssertTrue([author.books count] == 3);
 }
 
 
 - (void) testMergeRemoteCreatedRelationshipToMany {
     
-    __block NSArray* results;
+    __block NSDictionary* results;
     __block NSError* syncError;
     
     dispatch_group_async(self.group, self.queue, ^{
-        results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
+        results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:^{
             DLog(@"Object has been synced");
         } error:&syncError];
 
@@ -371,7 +440,8 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
  
  Expected Results:
  - We fetch from Parse the created author and its relationship to books
- - Both books should be related to the author.
+ - Both books should be related to the author
+ - All support attibutes set properly
  */
 - (void) testMergeLocalCreatedRelationshipToMany {
     
@@ -402,6 +472,27 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
             DLog(@"Object has been synced");
         } error:&mergeError];
+        
+        /* 
+         After the objects get merged with Parse, they should have the following attributes set:
+         - APObjectLastModifiedAttributeName
+         - APObjectUIDAttributeName
+         - APObjectIsDirtyAttributeName
+         */
+        XCTAssertNotNil([author valueForKey:APObjectLastModifiedAttributeName]);
+        XCTAssertNotNil([author valueForKey:APObjectUIDAttributeName]);
+        XCTAssertTrue([[author valueForKey:APObjectIsDirtyAttributeName] isEqualToNumber:@NO]);
+        
+        XCTAssertNotNil([book1 valueForKey:APObjectLastModifiedAttributeName]);
+        XCTAssertNotNil([book1 valueForKey:APObjectUIDAttributeName]);
+        XCTAssertTrue([[book1 valueForKey:APObjectIsDirtyAttributeName] isEqualToNumber:@NO]);
+        
+        XCTAssertNotNil([book2 valueForKey:APObjectLastModifiedAttributeName]);
+        XCTAssertNotNil([book2 valueForKey:APObjectUIDAttributeName]);
+        XCTAssertTrue([[book2 valueForKey:APObjectIsDirtyAttributeName] isEqualToNumber:@NO]);
+        
+
+        
         
         // Fetch the book from Parse and verify the related To-One author
         PFQuery* authorQuery = [PFQuery queryWithClassName:@"Author"];
@@ -496,7 +587,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         XCTAssertNil(savingError);
         
         NSError* mergeError;
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
+        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:^{
             DLog(@"Object has been synced");
         } error:&mergeError];
         XCTAssertNil(mergeError);
@@ -525,7 +616,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     dispatch_group_async(self.group, self.queue, ^{
         
         NSError* mergeError;
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
+        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:^{
             DLog(@"Object has been synced");
         } error:&mergeError];
         XCTAssertNil(mergeError);
@@ -586,7 +677,7 @@ Expected Results:
         
         // Sync server objects
         NSError* mergeError;
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
+        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:^{
             DLog(@"Object has been synced");
         } error:&mergeError];
         XCTAssertNil(mergeError);
@@ -611,7 +702,7 @@ Expected Results:
         // Wait for 5 seconds and save the object
         [NSThread sleepForTimeInterval:5];
         [parseBook save];
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
+        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:^{
             DLog(@"Object has been synced");
         } error:&mergeError];
         
@@ -640,7 +731,7 @@ Expected Results:
         
         // Sync server objects
         NSError* mergeError;
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
+        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:^{
             DLog(@"Object has been synced");
         } error:&mergeError];
         XCTAssertNil(mergeError);
@@ -696,7 +787,7 @@ Expected Results:
         // Sync server objects
         NSError* mergeError;
         
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
+        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:^{
             DLog(@"Object has been synced");
         } error:&mergeError];
         
@@ -850,7 +941,7 @@ Expected Results:
         
         /*
          Adding support properties
-         kAPIncrementalStoreUUIDAttributeName, kAPIncrementalStoreLastModifiedAttributeName and kAPIncrementalStoreObjectDeletedAttributeName
+         kAPIncrementalStoreUIDAttributeName, kAPIncrementalStoreLastModifiedAttributeName and kAPIncrementalStoreObjectDeletedAttributeName
          for each entity present on model, then we don't need to mess up with the user coredata model
          */
         
@@ -861,10 +952,10 @@ Expected Results:
                 continue;
             }
             
-            NSAttributeDescription *uuidProperty = [[NSAttributeDescription alloc] init];
-            [uuidProperty setName:APObjectUIDAttributeName];
-            [uuidProperty setAttributeType:NSStringAttributeType];
-            [uuidProperty setIndexed:YES];
+            NSAttributeDescription *uidProperty = [[NSAttributeDescription alloc] init];
+            [uidProperty setName:APObjectUIDAttributeName];
+            [uidProperty setAttributeType:NSStringAttributeType];
+            [uidProperty setIndexed:YES];
             
             NSAttributeDescription *lastModifiedProperty = [[NSAttributeDescription alloc] init];
             [lastModifiedProperty setName:APObjectLastModifiedAttributeName];
@@ -885,7 +976,7 @@ Expected Results:
             [isDirtyProperty setOptional:NO];
             [isDirtyProperty setDefaultValue:@NO];
             
-            [entity setProperties:[entity.properties arrayByAddingObjectsFromArray:@[uuidProperty,
+            [entity setProperties:[entity.properties arrayByAddingObjectsFromArray:@[uidProperty,
                                                                                      lastModifiedProperty,
                                                                                      deletedProperty,
                                                                                      isDirtyProperty]]];

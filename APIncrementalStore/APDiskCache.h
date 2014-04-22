@@ -13,9 +13,17 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
+ * This class implements what is described on Apple's NSIncrementalStore Programing
+ * Guide as "The Disk Cache".
+ * https://developer.apple.com/library/mac/documentation/DataManagement/Conceptual/IncrementalStorePG/Introduction/Introduction.html#//apple_ref/doc/uid/TP40010706
+ * 
+ * The cache is only populated assyncronously through the method -[APDiskCache syncAllObjects:onCountingObjects:onSyncObject:onCompletion:],
+ * so that fetching the cache will not triger any network operation.
  */
 
-#import <CoreData/CoreData.h>
+@import CoreData;
 
 typedef NS_ENUM(NSInteger, APMergePolicy) {
     APMergePolicyServerWins = 0,
@@ -25,7 +33,7 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
 @protocol APRemoteDBConnector;
 
 
-@interface APLocalCache : NSObject
+@interface APDiskCache : NSObject
 
 /**
  Designated Initializar
@@ -43,20 +51,20 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
 
 /**
  Retrieve cached objects representations using the following format:
- [  
-    {
-        "kAPLocalCacheObjectUIDAttributeName": objectUID,
-        "AttributeName1": provertyValue1,
-        "AttributeName2": provertyValue2,
-        "AttributeData1": NSData,
-        "RelationshipToOneName": obectUIDValue,
-        "RelationshipToMany": [
-            obectUID,
-            obectUID,
-            obectUID,
-        ]
-    },
-    ...
+ [
+ {
+ "kAPLocalCacheObjectUIDAttributeName": objectUID,
+ "AttributeName1": provertyValue1,
+ "AttributeName2": provertyValue2,
+ "AttributeData1": NSData,
+ "RelationshipToOneName": obectUIDValue,
+ "RelationshipToMany": [
+ obectUID,
+ obectUID,
+ obectUID,
+ ]
+ },
+ ...
  ]
  
  If         PropertyName is a to-one relationhip then propertyValue has the related object objectUID
@@ -73,9 +81,8 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
 - (NSUInteger) countObjectRepresentations:(NSFetchRequest *)fetchRequest
                                     error:(NSError *__autoreleasing*)error;
 
-- (NSDictionary*) fetchObjectRepresentationForObjectUUID:(NSString*) objectUUID
-                                              entityName:(NSString*) entityName;
-
+- (NSDictionary*) fetchObjectRepresentationForObjectUID:(NSString*) objectUID
+                                             entityName:(NSString*) entityName;
 
 - (BOOL)inserteObjectRepresentations:(NSArray*) insertedObjects
                           entityName:(NSString*) entityName
@@ -89,37 +96,41 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
                          entityName:(NSString*) entityName
                               error:(NSError *__autoreleasing *)error;
 /**
- Permanent objectIDs are only allocated when the objects are syncronized with the remoteDB. Before that
- we must allocated a temporary objectID to allow for uniquely identify objects between the APIncrementalStore
- context and the cache context.
+ Permanent objectIDs are only allocated when the objects are syncronized with the remote webservice. Before that
+ we must allocate a temporary objectID to allow for unique identification of objects between the APIncrementalStore
+ context and the disk cache context.
  @returns a new temporary object identifier
  */
 - (NSString*) newTemporaryObjectUID;
 
 /**
- Requests the localCache to start the sync process with its remoteDBConnector
+ Requests the localCache to start the sync process using its remoteDBConnector
  @param allObjects if YES it will ignore whether an object had been already syncronized previously
- @param numberOfObjectsBlock before starting merging the objects this block will be called passing the total number of objects to be synced
- @param didSyncedObjectBlock whenever a object is synced this block gets called. The block parameter isRemoteObject is set to YES if the synced objects merged from the server otherwise it is a local object merged.
- @param completionBlock the block to be called when the sync is done passing the objects that were synced from the server as argument
+ @param countingBlock before starting merging the objects this block will be called passing the total number of objects to be synced
+ @param syncObjectBlock whenever a object is synced this block gets called. The block parameter isRemoteObject is set to YES if the synced objects merged from the server otherwise it is a local object merged.
+ @param conpletionBlock the block to be called when the sync is done passing a disctionary containing the objects that were successfuly synced keyed by the corresponding entity name.
  */
-- (void) syncAllObjects: (BOOL) allObjects
-                onCountingObjects: (void (^)(NSUInteger localObjects, NSUInteger remoteObjects)) countingBlock
-           onSyncObject: (void (^)(BOOL isRemoteObject)) syncObjectBlock
-           onCompletion: (void (^)(NSArray* objectUIDs, NSError* syncError)) conpletionBlock;
+- (void) syncAllObjects:(BOOL) allObjects
+      onCountingObjects:(void(^)(NSUInteger localObjects, NSUInteger remoteObjects)) countingBlock
+           onSyncObject:(void(^)(BOOL isRemoteObject)) syncObjectBlock
+           onCompletion:(void(^)(NSDictionary* objectUIDsNestedByEntityName, NSError* syncError)) conpletionBlock;
 
 - (void) resetCache;
 
 @end
 
 
+/**
+ Buid a class that this protocol's methods and pass it when init an instance of APDiskCache.
+ The APDiskCache will use it to interact with the remote web service provider to persist
+ your data remotely. This API implements connectivity to Parse through the class APParseConnector
+ */
 @protocol APRemoteDBConnector <NSObject>
 
 - (instancetype)initWithAuthenticatedUser:(id) user
                               mergePolicy:(APMergePolicy) policy;
 
 - (void) setMergePolicy:(APMergePolicy) policy;
-//- (BOOL) saveLastSyncDate;
 
 - (NSDictionary*) mapOfTemporaryToPermanentUID;
 
@@ -127,12 +138,12 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
  Get all remote objets that the user has access to and merge into the given context.
  @param context the context to be syncronised
  @param fullSync if YES ignores the last sync and syncs the whole DB.
- @returns ManagedObjectIDs of the merged objects
+ @returns A NSDictionary containing the merged objectUIDs keyed by entity name.
  */
-- (NSArray*) mergeRemoteObjectsWithContext: (NSManagedObjectContext*) context
-                                  fullSync: (BOOL) fullSync
-                               onSyncObject: (void (^)(void)) onSyncObject
-                                     error: (NSError*__autoreleasing*) error;
+- (NSDictionary*) mergeRemoteObjectsWithContext:(NSManagedObjectContext*) context
+                                       fullSync:(BOOL) fullSync
+                                   onSyncObject:(void (^)(void)) onSyncObject
+                                          error:(NSError*__autoreleasing*) error;
 
 /**
  Merge all managedObjects marked as "dirty".
@@ -140,15 +151,15 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
  @returns YES if the merge was successful otherwise NO.
  */
 - (BOOL) mergeManagedContext:(NSManagedObjectContext *)context
-                 onSyncObject: (void (^)(void)) onSyncObject
+                onSyncObject:(void (^)(void)) onSyncObject
                        error:(NSError*__autoreleasing*) error;
 
 
-- (NSUInteger) countLocalObjectsToBeSyncedInContext: (NSManagedObjectContext *)context
-                                              error: (NSError*__autoreleasing*) error;
+- (NSUInteger) countLocalObjectsToBeSyncedInContext:(NSManagedObjectContext *)context
+                                              error:(NSError*__autoreleasing*) error;
 
-- (NSUInteger) countRemoteObjectsToBeSyncedInContext: (NSManagedObjectContext *)context
-                                            fullSync: (BOOL) fullSync
-                                               error: (NSError*__autoreleasing*) error;
+- (NSUInteger) countRemoteObjectsToBeSyncedInContext:(NSManagedObjectContext *)context
+                                            fullSync:(BOOL) fullSync
+                                               error:(NSError*__autoreleasing*) error;
 
 @end

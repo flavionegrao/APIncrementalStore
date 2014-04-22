@@ -1,5 +1,4 @@
 /*
- *
  * Copyright 2014 Flavio Negrão Torres
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +14,7 @@
  * limitations under the License.
  */
 
-#import <CoreData/CoreData.h>
+@import CoreData;
 
 
 #pragma mark - Notifications
@@ -24,10 +23,10 @@
 / Sync Request Notifications
 ****************************/
 
-/// Post this message to request the local cache to start the sync process with remote database
+/// Post this message to request the disk cache to start the sync process with remote webservice
 extern NSString *const APNotificationRequestCacheSync;
 
-/// Post this message to request the local cache to start the FULL sync process with remote database (ignores whether or not a object was previously synced)
+/// Post this message to request the disk cache to start the FULL sync process with remote webservice (ignores whether or not an object was previously synced)
 extern NSString *const APNotificationRequestCacheFullSync;
 
 
@@ -35,37 +34,34 @@ extern NSString *const APNotificationRequestCacheFullSync;
  / Sync Progress Notifications
  *****************************/
 
-/// APIncrementalStore will post this message before it starts the local cache sync process. Also the NSNotification userinfo will be keyed with APNotificationCacheNumberOfLocalObjectsKey and APNotificationCacheNumberOfRemoteObjectsKey showing the TOTAL number of objects that will be synced.
+/// APIncrementalStore will post this message before it starts the disk cache sync process. Also the NSNotification userinfo will be keyed with APNotificationCacheNumberOfLocalObjectsKey and APNotificationCacheNumberOfRemoteObjectsKey showing the TOTAL number of objects that will be synced.
 extern NSString *const APNotificationCacheWillStartSync;
 
-/// APIncrementalStore will post this message once it started the local cache sync process
+/// APIncrementalStore will post this message once it started the disk cache sync process
 extern NSString *const APNotificationCacheDidStartSync;
 
 /// APIncrementalStore will post this message once it synced a single object. Also the NSNotification userinfo will be keyed with APNotificationCacheNumberOfLocalObjectsKey and APNotificationCacheNumberOfRemoteObjectsKey showing the number of objects that were synced.
 extern NSString *const APNotificationCacheDidSyncObject;
 
-/// APIncrementalStore will post this message once it finished the local cache sync process
+/// APIncrementalStore will post this message once it finished the disk cache sync process
 extern NSString *const APNotificationCacheDidFinishSync;
 
 
-/// APIncrementalStore will include this key when the APNotificationCacheWillStartSync is sent showing how many local objects will be synced
+/// APIncrementalStore will include this key when the APNotificationCacheWillStartSync is sent showing how many cached objects will be synced
 extern NSString *const APNotificationCacheNumberOfLocalObjectsKey;
 
 /// APIncrementalStore will include this key when the APNotificationCacheWillStartSync is sent showing how many remote objects will be synced
 extern NSString *const APNotificationCacheNumberOfRemoteObjectsKey;
-
-/// APIncrementalStore will include this key when the APNotificationCacheDidFinishSync is sent containing the objects synced from the server
-extern NSString* const APNotificationObjectsIDsKey;
 
 
 /**************************
 / Cache Reset Notifications
 ***************************/
 
-/// Post this message to request the local cache to recreate the local sqlite db as well as its psc and mocs
+/// Post this message to request the disk cache to recreate the local sqlite db as well as its psc and mocs
 extern NSString* const APNotificationCacheRequestReset;
 
-/// APIncrementalStore will post this message once it finished the local cache reset process
+/// APIncrementalStore will post this message once it finished the disk cache reset process
 extern NSString* const APNotificationCacheDidFinishReset;
 
 
@@ -87,7 +83,7 @@ extern NSString* const APNotificationCacheDidFinishReset;
 /// The user object authenticated that will be used to sync with the BaaS provider.
 extern NSString* const APOptionAuthenticatedUserObjectKey;
 
-/// The name of the local cache store file.
+/// The name of the disk cache store file.
 extern NSString* const APOptionCacheFileNameKey;
 
 /// Whether or not an existing sqlite file should be removed a a new one creted before the persistant store start using it
@@ -96,20 +92,20 @@ extern NSString* const APOptionCacheFileResetKey;
 /**
  When adding the this class to a persistant store coordinator use this option
  to control which object will get persistant when a conflict is detected between
- local and server objects:
- APIncrementalStoreMergePolicyServerWins - server object overwrite local object (DEFAULT)
- APIncrementalStoreMergePolicyClientWins - local object overwrite server object
+ cached and webservice objects:
+ APIncrementalStoreMergePolicyServerWins - webservice object overwrite cached object (DEFAULT)
+ APIncrementalStoreMergePolicyClientWins - cached object overwrite webservice object
  */
 extern NSString* const APOptionMergePolicyKey;
 
 /**
- Server object overwrite local object (DEFAULT)
+ Server object overwrite cached object (DEFAULT)
  @see APOptionMergePolicy
  */
 extern NSString* const APOptionMergePolicyServerWins;
 
 /**
- Local object overwrite server object
+ Cached object overwrite webservice object
  @see APOptionMergePolicy
  */
 extern NSString* const APOptionMergePolicyClientWins;

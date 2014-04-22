@@ -30,7 +30,7 @@
 		724ADAF218C9226800DEE706 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 724ADAF018C9226800DEE706 /* InfoPlist.strings */; };
 		726B971D18F6BAC000149290 /* Sample_495KB.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 726B971C18F6BAC000149290 /* Sample_495KB.jpg */; };
 		726B971E18F6BDAA00149290 /* Sample_495KB.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 726B971C18F6BAC000149290 /* Sample_495KB.jpg */; };
-		726EE18B18D4ED7A005C5675 /* APLocalCache.m in Sources */ = {isa = PBXBuildFile; fileRef = 726EE18A18D4ED7A005C5675 /* APLocalCache.m */; };
+		726EE18B18D4ED7A005C5675 /* APDiskCache.m in Sources */ = {isa = PBXBuildFile; fileRef = 726EE18A18D4ED7A005C5675 /* APDiskCache.m */; };
 		726EE18E18D4EEE7005C5675 /* APParseConnector.m in Sources */ = {isa = PBXBuildFile; fileRef = 726EE18D18D4EEE7005C5675 /* APParseConnector.m */; };
 		7278C13018E0A87F001E749A /* ListAuthorsTVC.m in Sources */ = {isa = PBXBuildFile; fileRef = 724ADADE18C9226800DEE706 /* ListAuthorsTVC.m */; };
 		7278C14218E4D906001E749A /* CoreDataControllerTestCase.m in Sources */ = {isa = PBXBuildFile; fileRef = 7278C14118E4D906001E749A /* CoreDataControllerTestCase.m */; };
@@ -58,7 +58,7 @@
 		72DE79FC18DDBFD400AC972F /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72FD020E18CA094400CC7E78 /* SystemConfiguration.framework */; };
 		72F02EF918E98D0800DBC2C8 /* APParseConnectorTestCase.m in Sources */ = {isa = PBXBuildFile; fileRef = 72F02EF818E98D0800DBC2C8 /* APParseConnectorTestCase.m */; };
 		72F02EFA18E9A2ED00DBC2C8 /* APParseConnector.m in Sources */ = {isa = PBXBuildFile; fileRef = 726EE18D18D4EEE7005C5675 /* APParseConnector.m */; };
-		72F02F0018EB39C100DBC2C8 /* APLocalCacheTestCase.m in Sources */ = {isa = PBXBuildFile; fileRef = 72F02EFF18EB39C100DBC2C8 /* APLocalCacheTestCase.m */; };
+		72F02F0018EB39C100DBC2C8 /* APDiskCacheTestCase.m in Sources */ = {isa = PBXBuildFile; fileRef = 72F02EFF18EB39C100DBC2C8 /* APDiskCacheTestCase.m */; };
 		72F9A3A318FA0AFB007B0EB6 /* Parse.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72201BC718F733F7007D933C /* Parse.framework */; };
 		72F9A3A418FA0B41007B0EB6 /* Parse.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72201BC718F733F7007D933C /* Parse.framework */; };
 		72F9A3A718FABE8B007B0EB6 /* UnitTestingCommon.m in Sources */ = {isa = PBXBuildFile; fileRef = 72F9A3A618FABE8B007B0EB6 /* UnitTestingCommon.m */; };
@@ -114,8 +114,8 @@
 		724ADB0218C9247600DEE706 /* APResponseBlocks.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = APResponseBlocks.h; sourceTree = "<group>"; };
 		726B971C18F6BAC000149290 /* Sample_495KB.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = Sample_495KB.jpg; sourceTree = "<group>"; };
 		726EE18618D4DE89005C5675 /* APIncrementalStore.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = APIncrementalStore.h; sourceTree = "<group>"; };
-		726EE18918D4ED7A005C5675 /* APLocalCache.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = APLocalCache.h; sourceTree = "<group>"; };
-		726EE18A18D4ED7A005C5675 /* APLocalCache.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = APLocalCache.m; sourceTree = "<group>"; };
+		726EE18918D4ED7A005C5675 /* APDiskCache.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = APDiskCache.h; sourceTree = "<group>"; };
+		726EE18A18D4ED7A005C5675 /* APDiskCache.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = APDiskCache.m; sourceTree = "<group>"; };
 		726EE18C18D4EEE7005C5675 /* APParseConnector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = APParseConnector.h; sourceTree = "<group>"; };
 		726EE18D18D4EEE7005C5675 /* APParseConnector.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = APParseConnector.m; sourceTree = "<group>"; };
 		7278C14118E4D906001E749A /* CoreDataControllerTestCase.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CoreDataControllerTestCase.m; sourceTree = "<group>"; };
@@ -138,7 +138,7 @@
 		72CE78ED18CF69AD00F24F9F /* EditBookTVC.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EditBookTVC.h; sourceTree = "<group>"; };
 		72CE78EE18CF69AD00F24F9F /* EditBookTVC.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = EditBookTVC.m; sourceTree = "<group>"; };
 		72F02EF818E98D0800DBC2C8 /* APParseConnectorTestCase.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = APParseConnectorTestCase.m; sourceTree = "<group>"; };
-		72F02EFF18EB39C100DBC2C8 /* APLocalCacheTestCase.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = APLocalCacheTestCase.m; sourceTree = "<group>"; };
+		72F02EFF18EB39C100DBC2C8 /* APDiskCacheTestCase.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = APDiskCacheTestCase.m; sourceTree = "<group>"; };
 		72F9A3A518FABE8B007B0EB6 /* UnitTestingCommon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = UnitTestingCommon.h; sourceTree = "<group>"; };
 		72F9A3A618FABE8B007B0EB6 /* UnitTestingCommon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = UnitTestingCommon.m; sourceTree = "<group>"; };
 		72FD020918CA002300CC7E78 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
@@ -264,7 +264,7 @@
 			children = (
 				72F9A3A518FABE8B007B0EB6 /* UnitTestingCommon.h */,
 				72F9A3A618FABE8B007B0EB6 /* UnitTestingCommon.m */,
-				72F02EFF18EB39C100DBC2C8 /* APLocalCacheTestCase.m */,
+				72F02EFF18EB39C100DBC2C8 /* APDiskCacheTestCase.m */,
 				72F02EF818E98D0800DBC2C8 /* APParseConnectorTestCase.m */,
 				7278C14118E4D906001E749A /* CoreDataControllerTestCase.m */,
 				724ADAEE18C9226800DEE706 /* Supporting Files */,
@@ -288,8 +288,8 @@
 			children = (
 				726EE18618D4DE89005C5675 /* APIncrementalStore.h */,
 				722A804218D4EF59001E6643 /* APIncrementalStore.m */,
-				726EE18918D4ED7A005C5675 /* APLocalCache.h */,
-				726EE18A18D4ED7A005C5675 /* APLocalCache.m */,
+				726EE18918D4ED7A005C5675 /* APDiskCache.h */,
+				726EE18A18D4ED7A005C5675 /* APDiskCache.m */,
 				726EE18C18D4EEE7005C5675 /* APParseConnector.h */,
 				726EE18D18D4EEE7005C5675 /* APParseConnector.m */,
 				722A804418D5D68B001E6643 /* APError.h */,
@@ -450,7 +450,7 @@
 				72369EAA18CBA5D90095BC69 /* ListBooksTVC.m in Sources */,
 				72CE78EF18CF69AD00F24F9F /* EditBookTVC.m in Sources */,
 				722A804C18D5DEA4001E6643 /* NSArray+Enumerable.m in Sources */,
-				726EE18B18D4ED7A005C5675 /* APLocalCache.m in Sources */,
+				726EE18B18D4ED7A005C5675 /* APDiskCache.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -462,7 +462,7 @@
 				7278C13018E0A87F001E749A /* ListAuthorsTVC.m in Sources */,
 				72F02EFA18E9A2ED00DBC2C8 /* APParseConnector.m in Sources */,
 				7217EC1D18EC82F40032D559 /* Common.m in Sources */,
-				72F02F0018EB39C100DBC2C8 /* APLocalCacheTestCase.m in Sources */,
+				72F02F0018EB39C100DBC2C8 /* APDiskCacheTestCase.m in Sources */,
 				7278C14218E4D906001E749A /* CoreDataControllerTestCase.m in Sources */,
 				72F9A3A718FABE8B007B0EB6 /* UnitTestingCommon.m in Sources */,
 			);

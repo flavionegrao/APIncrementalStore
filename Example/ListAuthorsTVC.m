@@ -155,7 +155,6 @@ static NSString* const kParsePassword = @"1234";
     Author* selectedAuthor = [self.frc objectAtIndexPath:selectedIndexPath];
     listBooksTVC.author = selectedAuthor;
     listBooksTVC.title = [NSString stringWithFormat:@"Books from %@", selectedAuthor.name];
-    
 }
 
 @end
