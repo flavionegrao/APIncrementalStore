@@ -4,7 +4,8 @@ APIncrementalStore
 Cutting the long story short, after StackMob [went to hell](https://blog.stackmob.com/2014/02/stackmob-announcement/) and all my development based on that SDK dragged along with it, I decided to implement my own `NSIncrementalStore` subclass.
 Yes I have looked around for alternatives and even taking into account what is available, none of them are at the moment how I had designed my app.
 I need an implementation that works most of time offline and sync with the backend BaaS when internet is available, which is quite the opposite of the APIs that I had found.
-Special thanks to the great Mattt Thompson for the inspiring [AFIncrementalStore] (https://github.com/AFNetworking/AFIncrementalStore)
+Special thanks to the great Mattt Thompson for the inspiring [AFIncrementalStore] (https://github.com/AFNetworking/AFIncrementalStore).
+The code is based on Apple guidelines for [NSIncrementalStore subclassing] (https://developer.apple.com/library/mac/documentation/DataManagement/Conceptual/IncrementalStorePG/Introduction/Introduction.html#//apple_ref/doc/uid/TP40010706)
 
 There are basically three main classes:
 
