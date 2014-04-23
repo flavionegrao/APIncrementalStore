@@ -30,13 +30,19 @@ pod 'APIncrementalStore' , :git => 'https://github.com/flavionegrao/APIncrementa
 ### Run the example app
 
 1) Download the project
+
 2) Create a Parse account and a test App you may name it whatever you want.
+
 3) On your new test Parse App create a class User and add a new object to it with username:test_user and password:1234
-5) [Install cocoapods](http://guides.cocoapods.org/using/getting-started.html#getting-started)
+
 4) Navigate to the *Example* project directory in the Terminal
-5) Run the following command: `pod install`
+
+5) Run the following command: `pod install`  - [Install cocoapods](http://guides.cocoapods.org/using/getting-started.html#getting-started) if you don't have it.
+
 6) Open `APIncrementalStore.xcworkspace` in Xcode
+
 7) Navigate to the *Example* project's `AppDelegate.m` file and set the `APParsepApplicationId` and `APParseClientKey`
+
 8) You may run it on multiple devices (iOS Simulator + real iOS devices) to check to syncronization process
 
 ###Few tips when using the library:
