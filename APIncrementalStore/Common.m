@@ -18,9 +18,9 @@
 
 #pragma mark - Cache Support Attribute Key Names
 
-NSString* const APObjectUIDAttributeName = @"APObjectUID";
-NSString* const APObjectIsDeletedAttributeName = @"APObjectIsDeleted";
+NSString* const APObjectUIDAttributeName = @"apObjectUID";
+NSString* const APObjectIsDeletedAttributeName = @"apObjectIsDeleted";
 
-NSString* const APObjectLastModifiedAttributeName = @"APObjectLastModified";
-NSString* const APObjectIsDirtyAttributeName = @"APObjectIsDirty";
-NSString* const APObjectIsCreatedRemotelyAttributeName = @"APObjectIsCreatedRemotely";
+NSString* const APObjectLastModifiedAttributeName = @"apObjectLastModified";
+NSString* const APObjectIsDirtyAttributeName = @"apObjectIsDirty";
+NSString* const APObjectIsCreatedRemotelyAttributeName = @"apObjectIsCreatedRemotely";
