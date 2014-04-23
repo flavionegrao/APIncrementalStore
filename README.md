@@ -27,9 +27,6 @@ platform :ios, '7.0'
 pod 'APIncrementalStore' , :git => 'https://github.com/flavionegrao/APIncrementalStore.git'
 ```
 
-I have not managed to find a way to statically include the Parse library or even better include it as a dependency (Parse doesn't have a Pod available). Therefore you need to include it manually:
-![Link parse framework](https://dl.dropboxusercontent.com/u/628444/GitHub%20Images/APIncrementalStore_parse.png)
-
 ###Few tips:
 - Set Parse keys at `AppDelegate.m` if you want to try the Example App
 - Login with an user (`PFUser`) and pass it as parameter to `APIncrementalStore`.
