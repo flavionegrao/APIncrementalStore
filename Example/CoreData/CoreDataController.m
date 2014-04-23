@@ -85,9 +85,9 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
 
 #pragma mark - Gettters and Setters
 
-- (void) setRemoteDBAuthenticatedUser:(id)remoteDBAuthenticatedUser {
+- (void) setAuthenticatedUser:(id)authenticatedUser {
     
-    _remoteDBAuthenticatedUser = remoteDBAuthenticatedUser;
+    _authenticatedUser = authenticatedUser;
     [self configPersistantStoreCoordinator];
 }
 
@@ -96,7 +96,7 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
     
     if (!_mainContext) {
         
-        if (!self.remoteDBAuthenticatedUser) {
+        if (!self.authenticatedUser) {
             ELog(@"Please set remoteDBAuthenticatedUser before starting using the managedContext");
             
         } else {
@@ -117,6 +117,9 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
     
     if (AP_DEBUG_METHODS) {MLog()}
     
+    // Set it to nil, if we are changing users existing contexts will be invalid
+    self.mainContext = nil;
+    
     [NSPersistentStoreCoordinator registerStoreClass:[APIncrementalStore class] forStoreType:[APIncrementalStore type]];
     
     NSManagedObjectModel* model = [NSManagedObjectModel mergedModelFromBundles:nil];
@@ -125,7 +128,7 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
     [self.psc addPersistentStoreWithType:[APIncrementalStore type]
                            configuration:nil
                                      URL:nil
-                                 options:@{APOptionAuthenticatedUserObjectKey:self.remoteDBAuthenticatedUser,
+                                 options:@{APOptionAuthenticatedUserObjectKey:self.authenticatedUser,
                                            APOptionCacheFileNameKey:APLocalCacheFileName,
                                           // APIncrementalStoreOptionCacheFileReset:@NO,
                                            APOptionMergePolicyKey:APOptionMergePolicyServerWins}

@@ -27,7 +27,12 @@ BOOL AP_DEBUG_METHODS = NO;
 BOOL AP_DEBUG_ERRORS = NO;
 BOOL AP_DEBUG_INFO = NO;
 
-// NSUserDefaults entry to reference the earliest object date synced from Parse.
+/* 
+ NSUserDefaults entry to reference the earliest object date synced from Parse.
+ We use this Dictionary to keep a "pointer" to a reference date per entity that for the last updated object synced from Parse
+ There will be one dictionary per logged user.
+ @see -[APParseConnector latestObjectSyncedKey]
+ */
 static NSString* const APLatestObjectSyncedKey = @"com.apetis.apincrementalstore.parseconnector.request.latestobjectsynced.key";
 
 /* 
@@ -80,6 +85,14 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 - (void) setMergePolicy:(APMergePolicy)mergePolicy {
     
     _mergePolicy = mergePolicy;
+}
+
+- (NSString*) authenticatedUserID {
+    if (self.authenticatedUser) {
+        return self.authenticatedUser.objectId;
+    } else {
+        return nil;
+    }
 }
 
 
@@ -488,22 +501,34 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 }
 
 
+
+- (NSString*) latestObjectSyncedKey {
+    
+    NSString* key;
+    if (self.authenticatedUserID) {
+        key = [self.authenticatedUserID stringByAppendingString:APLatestObjectSyncedKey];
+    }
+    
+    return key;
+}
+
+
 - (void) setLatestObjectSyncedDate: (NSDate*) date forEntityName: (NSString*) entityName {
     
     if (AP_DEBUG_METHODS) { MLog(@"Date: %@",date)}
 
-    NSMutableDictionary* latestObjectSyncedDates = [[[NSUserDefaults standardUserDefaults] objectForKey:APLatestObjectSyncedKey]mutableCopy] ?: [NSMutableDictionary dictionary];
+    NSMutableDictionary* latestObjectSyncedDates = [[[NSUserDefaults standardUserDefaults] objectForKey:[self latestObjectSyncedKey]]mutableCopy] ?: [NSMutableDictionary dictionary];
     
     if ([[latestObjectSyncedDates[entityName] laterDate:date] isEqualToDate:date] || latestObjectSyncedDates[entityName] == nil) {
         latestObjectSyncedDates[entityName] = date;
-        [[NSUserDefaults standardUserDefaults]setObject:latestObjectSyncedDates forKey:APLatestObjectSyncedKey];
+        [[NSUserDefaults standardUserDefaults]setObject:latestObjectSyncedDates forKey:[self latestObjectSyncedKey]];
     }
 }
 
 
 - (NSDate*) latestObjectSyncedDateForEntityName: (NSString*) entityName{
 
-    NSDictionary* latestObjectSyncedDate =[[NSUserDefaults standardUserDefaults] objectForKey:APLatestObjectSyncedKey];
+    NSDictionary* latestObjectSyncedDate =[[NSUserDefaults standardUserDefaults] objectForKey:[self latestObjectSyncedKey]];
     return latestObjectSyncedDate[entityName];
 }
 

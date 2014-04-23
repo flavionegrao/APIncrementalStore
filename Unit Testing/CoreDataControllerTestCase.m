@@ -51,7 +51,6 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     MLog();
     
     [super setUp];
-    NSLog(@"---------Setting up the test environement----------");
     
     self.coreDataController = [[CoreDataController alloc]init];
     
@@ -60,17 +59,20 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     self.queue = dispatch_queue_create("CoreDataControllerTestCase", DISPATCH_QUEUE_CONCURRENT);
     self.group = dispatch_group_create();
     
-    __block PFUser* authenticatedUser;
-    dispatch_group_async(self.group, self.queue, ^{
-        authenticatedUser = [PFUser currentUser];
-        if (!authenticatedUser ) {
-            authenticatedUser = [PFUser logInWithUsername:APUnitTestingParseUserName password:APUnitTestingParsePassword];
-        }
-        [self removeAllEntriesFromParse];
-    });
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    if (!self.coreDataController.authenticatedUser) {
     
-    [self.coreDataController setRemoteDBAuthenticatedUser:authenticatedUser];
+        __block PFUser* authenticatedUser;
+        dispatch_group_async(self.group, self.queue, ^{
+            authenticatedUser = [PFUser currentUser];
+            if (!authenticatedUser ) {
+                authenticatedUser = [PFUser logInWithUsername:APUnitTestingParseUserName password:APUnitTestingParsePassword];
+            }
+            [self removeAllEntriesFromParse];
+        });
+        dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+        
+        self.coreDataController.authenticatedUser = authenticatedUser;
+    }
     
     // Starting fresh
     DLog(@"Reseting Cache");
@@ -86,7 +88,8 @@ static NSString* const kBookName2 = @"A Clash of Kings";
      
      */
     dispatch_group_async(self.group, self.queue, ^{
-        // Populating Parse with test objects
+        DLog(@"Populating Parse with test objects");
+        
         NSError* saveError = nil;
         PFObject* book = [PFObject objectWithClassName:@"Book"];
         [book setValue:kBookName1 forKey:@"name"];
@@ -149,15 +152,54 @@ static NSString* const kBookName2 = @"A Clash of Kings";
 
 - (void) testCoreDataControllerIsNotNil {
     
-    MLog();
-    
     XCTAssertNotNil(self.coreDataController);
 }
 
 
-- (void) testExistingRelationshipBetweenBookAndAuthor {
+- (void) testChangeLoggedUser {
     
-    MLog();
+    XCTAssertNotNil([PFUser currentUser]);
+    
+    NSError* error;
+    
+    // Create a Author object under current logged user.
+    Author* author1 = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.coreDataController.mainContext];
+    author1.name = @"Author from User#1";
+    [self.coreDataController.mainContext save:&error];
+    XCTAssertNil(error);
+    
+    [PFUser logOut];
+    
+    // Switch to the second user
+    __block PFUser* anotherUser;
+    dispatch_group_async(self.group, self.queue, ^{
+        anotherUser = [PFUser logInWithUsername:APUnitTestingParseUserName2 password:APUnitTestingParsePassword];
+    });
+    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+   self.coreDataController.authenticatedUser = anotherUser;
+    
+    // The author created by the original user can't be found
+    NSFetchRequest* fr = [NSFetchRequest fetchRequestWithEntityName:@"Author"];
+    fr.predicate = [NSPredicate predicateWithFormat:@"name == %@",@"Author from User#1"];
+    NSArray* resultsFromAnotherUser = [self.coreDataController.mainContext executeFetchRequest:fr error:&error];
+    XCTAssertTrue([resultsFromAnotherUser count] == 0);
+    
+    // Switch back to the original user
+    [PFUser logOut];
+    __block PFUser* originalUser;
+    dispatch_group_async(self.group, self.queue, ^{
+        originalUser = [PFUser logInWithUsername:APUnitTestingParseUserName password:APUnitTestingParsePassword];
+    });
+    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    self.coreDataController.authenticatedUser = originalUser;
+    
+    // The author created by the original user should be present
+    NSArray* resultsFromOriginalUser = [self.coreDataController.mainContext executeFetchRequest:fr error:&error];
+    XCTAssertTrue([resultsFromOriginalUser count] == 1);
+}
+
+
+- (void) testExistingRelationshipBetweenBookAndAuthor {
     
     Author* fetchedAuthor = [self fetchAuthor];
     Book* fetchedBook = [self fetchBook];
@@ -169,8 +211,6 @@ static NSString* const kBookName2 = @"A Clash of Kings";
 
 
 - (void) testCountNumberOfAuthors {
-    
-    MLog();
     
     NSManagedObjectContext* context = self.coreDataController.mainContext;
     NSFetchRequest* fr = [NSFetchRequest fetchRequestWithEntityName:@"Author"];
@@ -512,7 +552,7 @@ Below are how much time each attempt took when using more than one thread.
     // Recreate Coredata stack
     self.coreDataController = nil;
     self.coreDataController = [[CoreDataController alloc]init];
-    [self.coreDataController setRemoteDBAuthenticatedUser:[PFUser currentUser]];
+    self.coreDataController.authenticatedUser = [PFUser currentUser];
     
     // Check is the updated book has been saved to disk properly.
     NSFetchRequest* bookFetchRequest = [[NSFetchRequest alloc]initWithEntityName:@"Book"];
@@ -541,7 +581,7 @@ Below are how much time each attempt took when using more than one thread.
     // Recreate Coredata stack
     self.coreDataController = nil;
     self.coreDataController = [[CoreDataController alloc]init];
-    [self.coreDataController setRemoteDBAuthenticatedUser:[PFUser currentUser]];
+    self.coreDataController.authenticatedUser = [PFUser currentUser];
     
     // Check is the updated book has been saved to disk properly.
     Author* authorReFetched = [self fetchAuthor];

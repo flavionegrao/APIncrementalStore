@@ -20,4 +20,5 @@
 /* Parse config */
 
 extern NSString* const APUnitTestingParseUserName;
+extern NSString* const APUnitTestingParseUserName2; // Used to test changing logged user
 extern NSString* const APUnitTestingParsePassword;

@@ -18,6 +18,6 @@
 #import <Foundation/Foundation.h>
 #import "APDiskCache.h"
 
-@interface APParseConnector : NSObject <APRemoteDBConnector>
+@interface APParseConnector : NSObject <APWebServiceConnector>
 
 @end

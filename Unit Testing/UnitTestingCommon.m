@@ -22,4 +22,5 @@
  */
 
 NSString* const APUnitTestingParseUserName = @"test_user";
+NSString* const APUnitTestingParseUserName2 = @"test_user2";
 NSString* const APUnitTestingParsePassword = @"1234";

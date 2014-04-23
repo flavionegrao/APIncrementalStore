@@ -77,7 +77,7 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqllite";
                                       translateToObjectUIDBlock:translateBlock
                                              localStoreFileName:APCacheSqliteFile
                                            shouldResetCacheFile:YES
-                                              remoteDBConnector:self.parseConnector];
+                                              webServiceConnector:self.parseConnector];
 }
 
 

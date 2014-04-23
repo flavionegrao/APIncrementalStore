@@ -22,8 +22,9 @@
 #import "Common.h"
 #import "APError.h"
 
-static NSString* const APIncrementalStorePrivateAttribute = @"kAPIncrementalStorePrivateAttribute";
-static NSString* const APIncrementalStoreLocalPrivateAttribute = @"kAPIncrementalStoreLocalPrivateAttribute";
+// If a NSEnitityDescription has this key set to NO on its userInfo propriety then it will be included
+// in the representation of a cached managed object that is passed to APIncrementalstore
+static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalStorePrivateAttribute";
 
 
 @interface APDiskCache()
@@ -33,8 +34,7 @@ static NSString* const APIncrementalStoreLocalPrivateAttribute = @"kAPIncrementa
 @property (nonatomic, strong) NSString* localStoreFileName;
 @property (nonatomic, assign) BOOL shouldResetCacheFile;
 @property (nonatomic, strong) NSString* (^translateManagedObjectIDToObjectUIDBlock) (NSManagedObjectID*);
-
-@property (nonatomic, weak) id <APRemoteDBConnector> remoteDBConnector;
+@property (nonatomic, weak) id <APWebServiceConnector> connector;
 
 // Context used for saving in BG
 @property (nonatomic, strong) NSManagedObjectContext* privateContext;
@@ -64,18 +64,18 @@ static NSString* const APIncrementalStoreLocalPrivateAttribute = @"kAPIncrementa
  translateToObjectUIDBlock: (NSString* (^)(NSManagedObjectID*)) translateBlock
         localStoreFileName: (NSString*) localStoreFileName
       shouldResetCacheFile: (BOOL) shouldResetCache
-         remoteDBConnector: (id <APRemoteDBConnector>) remoteDBConnector {
+       webServiceConnector: (id <APWebServiceConnector>) connector {
     
     if (AP_DEBUG_METHODS) { MLog()}
     
     self = [super init];
     
     if (self) {
-        if (model && translateBlock && localStoreFileName && remoteDBConnector) {
+        if (model && translateBlock && localStoreFileName && connector) {
             _localStoreFileName = localStoreFileName;
             _translateManagedObjectIDToObjectUIDBlock = translateBlock;
             _shouldResetCacheFile = shouldResetCache;
-            _remoteDBConnector = remoteDBConnector;
+            _connector = connector;
             self.model = model;
             
         } else {
@@ -115,13 +115,14 @@ static NSString* const APIncrementalStoreLocalPrivateAttribute = @"kAPIncrementa
         [uidProperty setAttributeType:NSStringAttributeType];
         [uidProperty setIndexed:YES];
         [uidProperty setOptional:NO];
+        [uidProperty setUserInfo:@{APIncrementalStorePrivateAttributeKey:@NO}];
         [additionalProperties addObject:uidProperty];
         
         NSAttributeDescription *lastModifiedProperty = [[NSAttributeDescription alloc] init];
         [lastModifiedProperty setName:APObjectLastModifiedAttributeName];
         [lastModifiedProperty setAttributeType:NSDateAttributeType];
         [lastModifiedProperty setIndexed:NO];
-        [lastModifiedProperty setUserInfo:@{APIncrementalStoreLocalPrivateAttribute:@YES}];
+        [lastModifiedProperty setUserInfo:@{APIncrementalStorePrivateAttributeKey:@YES}];
         [additionalProperties addObject:lastModifiedProperty];
         
         NSAttributeDescription *deletedProperty = [[NSAttributeDescription alloc] init];
@@ -130,6 +131,7 @@ static NSString* const APIncrementalStoreLocalPrivateAttribute = @"kAPIncrementa
         [deletedProperty setIndexed:NO];
         [deletedProperty setOptional:NO];
         [deletedProperty setDefaultValue:@NO];
+        [deletedProperty setUserInfo:@{APIncrementalStorePrivateAttributeKey:@YES}];
         [additionalProperties addObject:deletedProperty];
         
         NSAttributeDescription *isDirtyProperty = [[NSAttributeDescription alloc] init];
@@ -138,7 +140,7 @@ static NSString* const APIncrementalStoreLocalPrivateAttribute = @"kAPIncrementa
         [isDirtyProperty setIndexed:NO];
         [isDirtyProperty setOptional:NO];
         [isDirtyProperty setDefaultValue:@NO];
-        [isDirtyProperty setUserInfo:@{APIncrementalStoreLocalPrivateAttribute:@YES}];
+        [isDirtyProperty setUserInfo:@{APIncrementalStorePrivateAttributeKey:@YES}];
         [additionalProperties addObject:isDirtyProperty];
         
         NSAttributeDescription *createdRemotelyProperty = [[NSAttributeDescription alloc] init];
@@ -147,6 +149,7 @@ static NSString* const APIncrementalStoreLocalPrivateAttribute = @"kAPIncrementa
         [createdRemotelyProperty setIndexed:NO];
         [createdRemotelyProperty setOptional:NO];
         [createdRemotelyProperty setDefaultValue:@NO];
+        [createdRemotelyProperty setUserInfo:@{APIncrementalStorePrivateAttributeKey:@YES}];
         [additionalProperties addObject:createdRemotelyProperty];
         
         [entity setProperties:[entity.properties arrayByAddingObjectsFromArray:additionalProperties]];
@@ -245,8 +248,8 @@ static NSString* const APIncrementalStoreLocalPrivateAttribute = @"kAPIncrementa
         
         // Count objects to be synced and report it via block
         if (countingBlock) {
-            NSUInteger localObjects = [self.remoteDBConnector countLocalObjectsToBeSyncedInContext:self.syncContext error:&error];
-            NSUInteger remoteObjects = [self.remoteDBConnector countRemoteObjectsToBeSyncedInContext:self.syncContext fullSync:allObjects error:&error];
+            NSUInteger localObjects = [self.connector countLocalObjectsToBeSyncedInContext:self.syncContext error:&error];
+            NSUInteger remoteObjects = [self.connector countRemoteObjectsToBeSyncedInContext:self.syncContext fullSync:allObjects error:&error];
             [[NSOperationQueue mainQueue]addOperationWithBlock:^{
                 if (!error) {
                     countingBlock(localObjects, remoteObjects);
@@ -257,7 +260,7 @@ static NSString* const APIncrementalStoreLocalPrivateAttribute = @"kAPIncrementa
         }
         
         // Local Updates - all objects marked as "dirty" and add entries from temporary to permanent objectsUID
-        BOOL mergeSuccess = [self.remoteDBConnector mergeManagedContext:self.syncContext onSyncObject:^{
+        BOOL mergeSuccess = [self.connector mergeManagedContext:self.syncContext onSyncObject:^{
                                  [[NSOperationQueue mainQueue]addOperationWithBlock:^{
                                      if (syncObjectBlock) syncObjectBlock(YES);
                                  }];
@@ -271,7 +274,7 @@ static NSString* const APIncrementalStoreLocalPrivateAttribute = @"kAPIncrementa
         
         // Remote Updates - all objects that have updated date earlier than our last successful sync
         NSDictionary* mergedFromServer;
-        mergedFromServer = [self.remoteDBConnector mergeRemoteObjectsWithContext:self.syncContext fullSync:allObjects onSyncObject:^{
+        mergedFromServer = [self.connector mergeRemoteObjectsWithContext:self.syncContext fullSync:allObjects onSyncObject:^{
             [[NSOperationQueue mainQueue]addOperationWithBlock:^{
                 if (syncObjectBlock) syncObjectBlock(YES);
             }];
@@ -381,7 +384,7 @@ static NSString* const APIncrementalStoreLocalPrivateAttribute = @"kAPIncrementa
         if ([propertyDescription isKindOfClass:[NSAttributeDescription class]]) {
             
             // Attribute
-            if ([[propertyDescription.userInfo valueForKey:APIncrementalStorePrivateAttribute] boolValue] != YES ) {
+            if ([[propertyDescription.userInfo valueForKey:APIncrementalStorePrivateAttributeKey] boolValue] != YES ) {
                 representation[propertyName] = [cacheObject primitiveValueForKey:propertyName] ?: [NSNull null];
             }
             

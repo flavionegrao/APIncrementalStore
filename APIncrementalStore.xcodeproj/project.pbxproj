@@ -231,10 +231,10 @@
 		724ADACB18C9226800DEE706 /* Example */ = {
 			isa = PBXGroup;
 			children = (
+				724ADAD718C9226800DEE706 /* Main.storyboard */,
 				72AB4F0218C9F421005D1FB6 /* Core Data */,
 				724ADAD418C9226800DEE706 /* AppDelegate.h */,
 				724ADAD518C9226800DEE706 /* AppDelegate.m */,
-				724ADAD718C9226800DEE706 /* Main.storyboard */,
 				724ADADD18C9226800DEE706 /* ListAuthorsTVC.h */,
 				724ADADE18C9226800DEE706 /* ListAuthorsTVC.m */,
 				72369EA818CBA5D90095BC69 /* ListBooksTVC.h */,

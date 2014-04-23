@@ -27,14 +27,15 @@
 #import "NSLogEmoji.h"
 
 /* Parse config */
-static NSString* const kParseUserName = @"test_user";
-static NSString* const kParsePassword = @"1234";
+static NSString* const APDefaultParseUserName = @"test_user";
+static NSString* const APDefaultParsePassword = @"1234";
 
 
-@interface ListAuthorsTVC () <UITableViewDataSource,UITableViewDelegate>
+@interface ListAuthorsTVC () <UITableViewDataSource,UITableViewDelegate,UIAlertViewDelegate>
 
 @property (nonatomic, strong) UIBarButtonItem *syncButton;
 @property (nonatomic, strong) UIBarButtonItem *addButton;
+@property (weak, nonatomic) IBOutlet UIBarButtonItem *loginButton;
 
 @end
 
@@ -46,40 +47,94 @@ static NSString* const kParsePassword = @"1234";
     [super viewDidLoad];
     
     self.syncButton = [[UIBarButtonItem alloc]
-                                   initWithTitle:@"Sync"
-                                   style:UIBarButtonItemStylePlain
-                                   target:self
-                                   action:@selector(syncButtonTouched:)];
+                       initWithTitle:@"Sync"
+                       style:UIBarButtonItemStylePlain
+                       target:self
+                       action:@selector(syncButtonTouched:)];
     
     self.addButton = [[UIBarButtonItem alloc]
-                                  initWithBarButtonSystemItem:UIBarButtonSystemItemAdd
-                                  target:self
-                                  action:@selector(addButtonTouched:)];
-    self.addButton.enabled = NO;
-    self.syncButton.enabled = NO;
+                      initWithBarButtonSystemItem:UIBarButtonSystemItemAdd
+                      target:self
+                      action:@selector(addButtonTouched:)];
     
     [self.navigationItem setRightBarButtonItems:@[self.addButton,self.syncButton]];
     
+    [self configNavBarForLoggedUser:NO];
 }
+
 
 - (IBAction)loginButtonTouched:(id)sender {
     
-    [PFUser logInWithUsernameInBackground:kParseUserName password:kParsePassword block:^(PFUser *user, NSError *error) {
-        if (!error) {
-            DLog(@"Authentication OK");
-            [[CoreDataController sharedInstance]setRemoteDBAuthenticatedUser:user];
-            [self configFetchResultController];
-            self.addButton.enabled = YES;
-            self.syncButton.enabled = YES;
-        } else {
-            NSString* errorMessage = [NSString stringWithFormat:@"Authentication failure: %@",error.localizedDescription];
-            [[[UIAlertView alloc]initWithTitle:nil message:errorMessage delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil]show];
-            ELog(@"Authentication Failure with error: %@",error);
-            self.addButton.enabled = NO;
-            self.syncButton.enabled = NO;
+    if ([PFUser currentUser] && [self.loginButton.title isEqualToString:@"Logout"]) {
+        [PFUser logOut];
+        self.frc = nil;
+        [self configNavBarForLoggedUser:NO];
+        
+    } else if ([PFUser currentUser]) {
+        [[[UIAlertView alloc] initWithTitle:nil
+                                    message:[NSString stringWithFormat:@"User: %@ was already logged, to login with another user select logout first",[PFUser currentUser].username]
+                                   delegate:self
+                          cancelButtonTitle:@"Ok"
+                          otherButtonTitles:nil]show];
+        [CoreDataController sharedInstance].authenticatedUser = [PFUser currentUser];
+        [self configFetchResultController];
+        [self configNavBarForLoggedUser:YES];
+        
+    } else {
+        [self.loginButton setTitle:@"Logging in..."];
+        self.loginButton.enabled = NO;
+        
+        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Login"
+                                                        message:[NSString stringWithFormat:@"Enter username and password or leave both blank to login as test_user/1234"]
+                                                       delegate:self
+                                              cancelButtonTitle:@"Ok"
+                                              otherButtonTitles:nil];
+        
+        [alert setAlertViewStyle:UIAlertViewStyleLoginAndPasswordInput];
+        [alert show];
+    }
+}
 
-        }
-    }];
+
+- (void) alertView:(UIAlertView *)alert clickedButtonAtIndex:(NSInteger)buttonIndex {
+    
+    if (alert.alertViewStyle == UIAlertViewStyleLoginAndPasswordInput) {
+        NSString* username = ([[[alert textFieldAtIndex:0] text] length] == 0) ? APDefaultParseUserName : [[alert textFieldAtIndex:0] text];
+        NSString* password = ([[[alert textFieldAtIndex:1] text] length] == 0) ? APDefaultParsePassword : [[alert textFieldAtIndex:1] text];
+        
+        [PFUser logInWithUsernameInBackground:username password:password block:^(PFUser *user, NSError *error) {
+            if (!error) {
+                DLog(@"Authentication OK");
+                [CoreDataController sharedInstance].authenticatedUser = user;
+                [self configFetchResultController];
+                [self configNavBarForLoggedUser:YES];
+                
+            } else {
+                NSString* errorMessage = [NSString stringWithFormat:@"Authentication failure: %@",error.localizedDescription];
+                [[[UIAlertView alloc]initWithTitle:nil message:errorMessage delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil]show];
+                ELog(@"Authentication Failure with error: %@",error);
+                [self configNavBarForLoggedUser:NO];
+            }
+        }];
+    }
+}
+
+
+- (void) configNavBarForLoggedUser: (BOOL) userIsLoggedIn {
+    
+    if (userIsLoggedIn) {
+        self.addButton.enabled = YES;
+        self.syncButton.enabled = YES;
+        self.loginButton.enabled = YES;
+        [self.loginButton setTitle:@"Logout"];
+        self.navigationItem.prompt = [NSString stringWithFormat:@"Logged username: %@",[PFUser currentUser].username];
+    } else {
+        self.addButton.enabled = NO;
+        self.syncButton.enabled = NO;
+        self.loginButton.enabled = YES;
+        [self.loginButton setTitle:@"Login"];
+        self.navigationItem.prompt = nil;
+    }
 }
 
 
@@ -113,7 +168,7 @@ static NSString* const kParsePassword = @"1234";
     }
     
     Author* newAuthor = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:[CoreDataController sharedInstance].mainContext];
-    newAuthor.name = [NSString stringWithFormat:@"Author#%lu",(unsigned long)numberOfExistingAuthors];
+    newAuthor.name = [NSString stringWithFormat:@"Author#%lu (%@)",(unsigned long)numberOfExistingAuthors,[PFUser currentUser].username];
     
     [context save:&error];
     if(error){
@@ -126,7 +181,7 @@ static NSString* const kParsePassword = @"1234";
     
     NSManagedObjectContext* moc = [CoreDataController sharedInstance].mainContext;
     NSFetchRequest* fr = [NSFetchRequest fetchRequestWithEntityName:@"Author"];
-    fr.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"name" ascending:NO]];
+    fr.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"name" ascending:YES]];
     self.frc = [[NSFetchedResultsController alloc]initWithFetchRequest:fr managedObjectContext:moc sectionNameKeyPath:nil cacheName:nil];
 }
 
@@ -155,6 +210,7 @@ static NSString* const kParsePassword = @"1234";
     Author* selectedAuthor = [self.frc objectAtIndexPath:selectedIndexPath];
     listBooksTVC.author = selectedAuthor;
     listBooksTVC.title = [NSString stringWithFormat:@"Books from %@", selectedAuthor.name];
+    listBooksTVC.navigationItem.prompt = [NSString stringWithFormat:@"Logged username: %@",[PFUser currentUser].username];
 }
 
 @end

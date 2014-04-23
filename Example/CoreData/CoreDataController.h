@@ -28,7 +28,7 @@ extern NSString* const CoreDataControllerNotificationDidResetTheCache;
 /// It is mandatory that remoteDBAuthenticatedUser is set before use it.
 @property (nonatomic, strong, readonly) NSManagedObjectContext *mainContext;
 
-@property (nonatomic, strong) id remoteDBAuthenticatedUser;
+@property (nonatomic, strong) id authenticatedUser;
 
 @property (atomic,readonly) BOOL isSyncingTheCache;
 @property (atomic,readonly) BOOL isResetingTheCache;

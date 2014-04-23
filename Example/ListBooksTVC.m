@@ -19,6 +19,7 @@
 #import "EditBookTVC.h"
 #import "Book.h"
 #import "CoreDataController.h"
+#import <Parse/Parse.h>
 
 @interface ListBooksTVC ()
 
@@ -61,6 +62,7 @@
     if ([segue.identifier isEqualToString:@"addBook"]) {
         UINavigationController* nav = segue.destinationViewController;
         EditBookTVC* vc = (EditBookTVC*) nav.topViewController;
+        vc.navigationItem.prompt = [NSString stringWithFormat:@"Logged username: %@",[PFUser currentUser].username];
         
         self.childContext = [[NSManagedObjectContext alloc]initWithConcurrencyType:NSMainQueueConcurrencyType];
         self.childContext.parentContext = [CoreDataController sharedInstance].mainContext;
@@ -85,7 +87,8 @@
         }];
         
     } else {
-       EditBookTVC* vc = (EditBookTVC*) segue.destinationViewController;
+        EditBookTVC* vc = (EditBookTVC*) segue.destinationViewController;
+        vc.navigationItem.prompt = [NSString stringWithFormat:@"Logged username: %@",[PFUser currentUser].username];
         NSIndexPath* indexPath = [self.tableView indexPathForCell:sender];
         Book* book = [self.frc objectAtIndexPath:indexPath];
         
@@ -128,12 +131,6 @@
         }];
     }
 }
-
-
-- (IBAction)createNewLoteButtonTouched:(id)sender {
-    
-}
-
 
 
 @end

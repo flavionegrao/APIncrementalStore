@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="5053" systemVersion="13C64" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" initialViewController="SCZ-Jt-Dgm">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="5056" systemVersion="13C64" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" initialViewController="SCZ-Jt-Dgm">
     <dependencies>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="3733"/>
     </dependencies>
@@ -71,6 +71,7 @@
                         </barButtonItem>
                     </navigationItem>
                     <connections>
+                        <outlet property="loginButton" destination="lsL-Zo-tkT" id="cy2-gW-SeG"/>
                         <outlet property="tableView" destination="2hg-eU-42b" id="cUZ-HR-Iml"/>
                     </connections>
                 </viewController>
@@ -90,22 +91,25 @@
                         <rect key="frame" x="0.0" y="0.0" width="320" height="568"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                         <subviews>
-                            <label opaque="NO" clipsSubviews="YES" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="Name:" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="BRp-PY-4Cg">
+                            <label opaque="NO" clipsSubviews="YES" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Name:" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="BRp-PY-4Cg">
                                 <rect key="frame" x="25" y="90" width="51" height="21"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                 <color key="textColor" cocoaTouchSystemColor="darkTextColor"/>
                                 <nil key="highlightedColor"/>
                             </label>
-                            <textField opaque="NO" clipsSubviews="YES" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="Qca-Z9-YfG">
+                            <textField opaque="NO" clipsSubviews="YES" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="Qca-Z9-YfG">
                                 <rect key="frame" x="79" y="86" width="221" height="30"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="14"/>
                                 <textInputTraits key="textInputTraits"/>
                             </textField>
-                            <button hidden="YES" opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="yNw-HX-dli">
+                            <button hidden="YES" opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="yNw-HX-dli">
                                 <rect key="frame" x="101" y="518" width="123" height="30"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="123" id="Fvz-s3-P0l"/>
+                                </constraints>
                                 <state key="normal" title="Delete book">
                                     <color key="titleColor" red="1" green="0.084323937370000004" blue="0.090402820970000006" alpha="1" colorSpace="calibratedRGB"/>
                                     <color key="titleShadowColor" white="0.5" alpha="1" colorSpace="calibratedWhite"/>
@@ -114,12 +118,16 @@
                                     <action selector="deleteButtonTouched:" destination="foM-9p-fg8" eventType="touchUpInside" id="xEa-dU-WK1"/>
                                 </connections>
                             </button>
-                            <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="lto-xk-cNl">
+                            <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="lto-xk-cNl">
                                 <rect key="frame" x="23" y="141" width="275" height="369"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <constraints>
+                                    <constraint firstAttribute="height" constant="369" id="6Ec-Ih-ujT"/>
+                                    <constraint firstAttribute="width" constant="275" id="TDA-xJ-1WJ"/>
+                                </constraints>
                             </imageView>
-                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="1Im-J2-YcO">
-                                <rect key="frame" x="123" y="311" width="74" height="30"/>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="1Im-J2-YcO">
+                                <rect key="frame" x="124" y="311" width="74" height="30"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Add Cover">
                                     <color key="titleShadowColor" white="0.5" alpha="1" colorSpace="calibratedWhite"/>
@@ -130,6 +138,19 @@
                             </button>
                         </subviews>
                         <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="calibratedWhite"/>
+                        <constraints>
+                            <constraint firstItem="Qca-Z9-YfG" firstAttribute="top" secondItem="R38-rF-EIY" secondAttribute="bottom" constant="22" id="Bcn-ly-aHh"/>
+                            <constraint firstItem="yNw-HX-dli" firstAttribute="top" secondItem="lto-xk-cNl" secondAttribute="bottom" constant="8" symbolic="YES" id="CIz-76-YSf"/>
+                            <constraint firstItem="1Im-J2-YcO" firstAttribute="leading" secondItem="mV9-Lr-xw6" secondAttribute="leading" constant="124" id="FMa-1j-UdX"/>
+                            <constraint firstAttribute="trailing" secondItem="yNw-HX-dli" secondAttribute="trailing" constant="96" id="GwG-99-kKp"/>
+                            <constraint firstAttribute="bottom" secondItem="yNw-HX-dli" secondAttribute="bottom" constant="20" symbolic="YES" id="Rga-pN-1DN"/>
+                            <constraint firstItem="BRp-PY-4Cg" firstAttribute="leading" secondItem="mV9-Lr-xw6" secondAttribute="leading" constant="25" id="Y06-i0-xS9"/>
+                            <constraint firstItem="Qca-Z9-YfG" firstAttribute="leading" secondItem="BRp-PY-4Cg" secondAttribute="trailing" constant="3" id="dAk-fy-pGp"/>
+                            <constraint firstAttribute="bottom" secondItem="1Im-J2-YcO" secondAttribute="bottom" constant="227" id="ihC-aV-X7K"/>
+                            <constraint firstItem="BRp-PY-4Cg" firstAttribute="top" secondItem="R38-rF-EIY" secondAttribute="bottom" constant="26" id="oYr-Li-vdy"/>
+                            <constraint firstAttribute="trailing" secondItem="Qca-Z9-YfG" secondAttribute="trailing" constant="20" symbolic="YES" id="sZT-0z-ngY"/>
+                            <constraint firstItem="lto-xk-cNl" firstAttribute="centerX" secondItem="mV9-Lr-xw6" secondAttribute="centerX" id="v3B-6z-G6r"/>
+                        </constraints>
                     </view>
                     <navigationItem key="navigationItem" title="New Book" id="ECh-q9-ivL">
                         <barButtonItem key="leftBarButtonItem" title="Cancel" id="iXZ-Nc-ZR6">

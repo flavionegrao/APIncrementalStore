@@ -30,7 +30,7 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
     APMergePolicyClientWins = 1
 };
 
-@protocol APRemoteDBConnector;
+@protocol APWebServiceConnector;
 
 
 @interface APDiskCache : NSObject
@@ -46,7 +46,7 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
  translateToObjectUIDBlock:(NSString* (^)(NSManagedObjectID*)) translateBlock
         localStoreFileName:(NSString*) localStoreFileName
       shouldResetCacheFile:(BOOL) shouldResetCache
-         remoteDBConnector:(id <APRemoteDBConnector>) remoteDBConnector;
+       webServiceConnector:(id <APWebServiceConnector>) connector;
 
 
 /**
@@ -125,10 +125,12 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
  The APDiskCache will use it to interact with the remote web service provider to persist
  your data remotely. This API implements connectivity to Parse through the class APParseConnector
  */
-@protocol APRemoteDBConnector <NSObject>
+@protocol APWebServiceConnector <NSObject>
 
 - (instancetype)initWithAuthenticatedUser:(id) user
                               mergePolicy:(APMergePolicy) policy;
+
+- (NSString*) authenticatedUserID;
 
 - (void) setMergePolicy:(APMergePolicy) policy;
 

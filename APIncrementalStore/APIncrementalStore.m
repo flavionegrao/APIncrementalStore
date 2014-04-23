@@ -78,7 +78,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
 @property (nonatomic,strong) APDiskCache* diskCache;
 @property (nonatomic,strong) NSString* diskCacheFileName;
 @property (nonatomic,assign) BOOL shouldResetCacheFile;
-@property (nonatomic,strong) id <APRemoteDBConnector> remoteDBConnector;
+@property (nonatomic,strong) id <APWebServiceConnector> webServiceConnector;
 @property (nonatomic,strong) NSManagedObjectModel* model;
 
 
@@ -139,13 +139,17 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
             return nil;
         }
         APMergePolicy mergePolicy = [[options valueForKey:APOptionMergePolicyKey] integerValue];
-        _remoteDBConnector = [[APParseConnector alloc]initWithAuthenticatedUser:authenticatedUser mergePolicy:mergePolicy];
-        if (![_remoteDBConnector conformsToProtocol:@protocol(APRemoteDBConnector)]) {
+        _webServiceConnector = [[APParseConnector alloc]initWithAuthenticatedUser:authenticatedUser mergePolicy:mergePolicy];
+        if (![_webServiceConnector conformsToProtocol:@protocol(APWebServiceConnector)]) {
             [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Object not complatible with APIncrementalStoreConnector protocol"];
         }
         
         _model = psc.managedObjectModel;
-        _diskCacheFileName = [options valueForKey:APOptionCacheFileNameKey] ?: APDefaultLocalCacheFileName;
+        
+        // There will be one sqlite store file for each user. The file name will be <username>-<APOptionCacheFileNameKey>
+        // ie: flavio-apincrementalstorediskcache.sqlite
+        NSString* diskCacheFileNameSuffix = [@"-" stringByAppendingString:[options valueForKey:APOptionCacheFileNameKey] ?: APDefaultLocalCacheFileName];
+        _diskCacheFileName = [[self.webServiceConnector authenticatedUserID]stringByAppendingString: diskCacheFileNameSuffix];
         _shouldResetCacheFile = [options[APOptionCacheFileResetKey] boolValue];
         
         [self registerForNotifications];
@@ -197,10 +201,10 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         };
         
         _diskCache = [[APDiskCache alloc]initWithManagedModel:self.model
-                                      translateToObjectUIDBlock:translateBlock
-                                             localStoreFileName:self.diskCacheFileName
-                                           shouldResetCacheFile:self.shouldResetCacheFile
-                                              remoteDBConnector:self.remoteDBConnector];
+                                    translateToObjectUIDBlock:translateBlock
+                                           localStoreFileName:self.diskCacheFileName
+                                         shouldResetCacheFile:self.shouldResetCacheFile
+                                          webServiceConnector:self.webServiceConnector];
     }
     return _diskCache;
 }
@@ -420,7 +424,6 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
             [NSException raise:APIncrementalStoreExceptionIncompatibleRequest format:@"Unknown request type."];
             break;
     }
-    
     return result;
 }
 

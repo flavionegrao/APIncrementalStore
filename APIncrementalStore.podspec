@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = "APIncrementalStore"
-  s.version          = "0.2.0"
+  s.version          = "0.2.1"
   s.summary          = "Apple NSIncrementalStore subclass that implements local cache and sync to remote BaaS."
   s.homepage         = "https://github.com/flavionegrao/APIncrementalStore"
   s.license          = 'MIT'
@@ -12,6 +12,8 @@ Pod::Spec.new do |s|
   s.framework  = 'CoreData'
 
   s.ios.deployment_target = '6.0'
+  s.ios.dependency 'Parse-iOS-SDK'
+
   s.requires_arc = true
 
 end
