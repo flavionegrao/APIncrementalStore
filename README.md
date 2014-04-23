@@ -13,22 +13,19 @@ There are basically three main classes:
 
 2) `APDiskCache` - the APIncrementalStore uses this class as a local cache to respond to all the requests. This class exchanges NSDictionaries representations of the managed objects and uses a objectID to uniquely identify them across the managed contexts (`NSIncrementalStore` and Disk Cache). This class uses a complete core data stack to store the cached objects. There will be one sqlite store for each logged user, so that on distinct cache per user.
 
-3) `APParseConnector` - Responsible to merge the local cache context in background as requested by the cache. Please be mindful that relationships are being represented as Parse Pointers for Core Data To-One and Parse Relationships for Core Data To-Many relationships. All relationships have its inverse reflected at Parse as well for consistency sake. At the moment this class does not support Parse Array Relationships. 
+3) `APParseConnector` - Responsible for merging the local cache context in background as requested by the cache. Please be mindful that relationships are being represented as Parse Pointers for Core Data To-One and Parse Relationships for Core Data To-Many relationships. All relationships have its inverse reflected at Parse as well for consistency sake. At the moment this class does not support Parse Array Relationships. 
 
 I will include descent documentation in the next weeks, for the time being take a look at the folder Example in the repository, you are going to find a very basic usage of this library.
 
 Well, that's it, sorry about the short README and the English as it's not my first idiom as you have probably noticed at this point.
 
 ###Installation
-Easy, you may clone it locally or use Pod:
+Easy, you may clone it locally or use CocoaPods:
 
 ```
 platform :ios, '7.0'
 pod 'APIncrementalStore' , :git => 'https://github.com/flavionegrao/APIncrementalStore.git'
 ```
-
-I have not managed to find a way to statically include the Parse library or even better include it as a dependency (Parse doesn't have a Pod available). Therefore you need to include it manually:
-![Link parse framework](https://dl.dropboxusercontent.com/u/628444/GitHub%20Images/APIncrementalStore_parse.png)
 
 ###Few tips:
 - Set Parse keys at `AppDelegate.m` if you want to try the Example App
