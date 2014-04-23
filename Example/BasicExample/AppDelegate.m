@@ -16,7 +16,7 @@
  */
 
 #import "AppDelegate.h"
-#import <Parse/Parse.h>
+#import <Parse-iOS-SDK/Parse.h>
 
 static NSString* const APParsepApplicationId = @"";
 static NSString* const APParseClientKey =  @"";
@@ -27,8 +27,7 @@ static NSString* const APParseClientKey =  @"";
 {
     // Override point for customization after application launch.
     
-    if ([APParseClientKey length] == 0 ||
-        [APParsepApplicationId length] == 0) {
+    if ([APParseClientKey length] == 0 || [APParsepApplicationId length] == 0) {
         [NSException raise:@"App config exception" format:@"Set the correct Parse keys on AppDelegate.m"];
     }
     [Parse setApplicationId:APParsepApplicationId clientKey:APParseClientKey];

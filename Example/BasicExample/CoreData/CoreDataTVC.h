@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#import <UIKit/UIKit.h>
-#import <CoreData/CoreData.h>
+@import UIKit;
+@import CoreData;
 
 /**
  If the SubClass implementes searching via searchDisplayController
