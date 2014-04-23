@@ -20,7 +20,7 @@ I will include descent documentation in the next weeks, for the time being take 
 Well, that's it, sorry about the short README and the English as it's not my first idiom as you have probably noticed at this point.
 
 ###Installation
-Easy, you may clone it locally or use Pod:
+Easy, you may clone it locally or use CocoaPods:
 
 ```
 platform :ios, '7.0'
