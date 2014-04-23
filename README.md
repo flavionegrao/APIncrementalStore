@@ -27,12 +27,29 @@ platform :ios, '7.0'
 pod 'APIncrementalStore' , :git => 'https://github.com/flavionegrao/APIncrementalStore.git'
 ```
 
-###Few tips:
-- Set Parse keys at `AppDelegate.m` if you want to try the Example App
+### Run the example app
+
+1) Download the project
+
+2) Create a Parse account and a test App you may name it whatever you want.
+
+3) On your new test Parse App create a class User and add a new object to it with username:test_user and password:1234
+
+4) Navigate to the *Example* project directory in the Terminal
+
+5) Run the following command: `pod update`  - [Install cocoapods](http://guides.cocoapods.org/using/getting-started.html#getting-started) if you don't have it.
+
+6) Open `APIncrementalStore.xcworkspace` in Xcode
+
+7) Navigate to the *Example* project's `AppDelegate.m` file and set the `APParsepApplicationId` and `APParseClientKey`
+
+8) You may run it on multiple devices (iOS Simulator + real iOS devices) to check to syncronization process
+
+###Few tips when using the library:
+- Don't forget to set Parse keys
 - Login with an user (`PFUser`) and pass it as parameter to `APIncrementalStore`.
-- `APParseConnector` will sync all entities found on your model and use the exactly same entity naming to find the classes from Parse.
+- `APParseConnector` will sync all entities found on your model and use the exactly same entity names to find the classes from Parse.
 - I have done nothing in regards to Parse ACL yet, so that it will sync everything that the logged user has access to.
-- I'm still planning to do something about the situation when the user changes, for example invalidate the cache or some other smarter approach.
 
 ###Unit Testing
 On `UnitTestingCommon.m` config a valid Parse User/Password.
