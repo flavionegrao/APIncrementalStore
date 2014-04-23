@@ -1,0 +1,13 @@
+xcodeproj 'Tests'
+workspace '../APIncrementalStore'
+inhibit_all_warnings!
+
+def import_pods
+  pod 'APIncrementalStore', :path => '../'
+end
+
+target :Tests do
+  platform :ios, '7.0'
+  link_with 'Tests'
+  import_pods
+end

@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = "APIncrementalStore"
-  s.version          = "0.2.2"
+  s.version          = "0.2.3"
   s.summary          = "Apple NSIncrementalStore subclass that implements local cache and sync to remote BaaS."
   s.homepage         = "https://github.com/flavionegrao/APIncrementalStore"
   s.license          = 'MIT'

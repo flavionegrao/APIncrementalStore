@@ -1,0 +1,20 @@
+PODS:
+  - APIncrementalStore (0.2.2):
+    - Parse-iOS-SDK
+  - Facebook-iOS-SDK (3.13.1)
+  - Parse-iOS-SDK (1.2.19):
+    - Facebook-iOS-SDK (~> 3.7)
+
+DEPENDENCIES:
+  - APIncrementalStore (from `../`)
+
+EXTERNAL SOURCES:
+  APIncrementalStore:
+    :path: ../
+
+SPEC CHECKSUMS:
+  APIncrementalStore: de26f2f4e16d6a7f554309b7cc706e9d960cc229
+  Facebook-iOS-SDK: 0d121e16437981fabff9379e07bf646bd5ab245c
+  Parse-iOS-SDK: 48e366fb9a8956c4e50d93cfd16243176938fae1
+
+COCOAPODS: 0.32.1

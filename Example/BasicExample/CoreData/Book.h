@@ -16,13 +16,23 @@
  */
 
 #import <Foundation/Foundation.h>
-#import <Parse-iOS-SDK/Parse.h>
+#import <CoreData/CoreData.h>
 
-/* Parse config */
+@class Author, Page;
 
-extern NSString* const APParseApplicationID;
-extern NSString* const APParseClientKey;
+@interface Book : NSManagedObject
 
-extern NSString* const APUnitTestingParseUserName;
-extern NSString* const APUnitTestingParseUserName2; // Used to test changing logged user
-extern NSString* const APUnitTestingParsePassword;
+@property (nonatomic, retain) NSString * name;
+@property (nonatomic, retain) NSData * picture;
+@property (nonatomic, retain) Author *author;
+@property (nonatomic, retain) NSSet *pages;
+@end
+
+@interface Book (CoreDataGeneratedAccessors)
+
+- (void)addPagesObject:(Page *)value;
+- (void)removePagesObject:(Page *)value;
+- (void)addPages:(NSSet *)values;
+- (void)removePages:(NSSet *)values;
+
+@end

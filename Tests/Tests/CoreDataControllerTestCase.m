@@ -20,7 +20,6 @@
 
 #import "CoreDataController.h"
 
-#import <Parse/Parse.h>
 #import "NSLogEmoji.h"
 #import "Common.h"
 
@@ -51,6 +50,8 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     MLog();
     
     [super setUp];
+    
+    [Parse setApplicationId:APParseApplicationID clientKey:APParseClientKey];
     
     self.coreDataController = [[CoreDataController alloc]init];
     
@@ -540,7 +541,7 @@ Below are how much time each attempt took when using more than one thread.
     MLog();
     Book* book = [self fetchBook];
     // 495KB JPG Image sample image
-    NSURL *imageURL = [[[NSBundle mainBundle]bundleURL] URLByAppendingPathComponent:@"Sample_495KB.jpg"];
+    NSURL *imageURL = [[[NSBundle bundleForClass:[self class]]bundleURL] URLByAppendingPathComponent:@"Sample_495KB.jpg"];
     NSData* bookCoverData = [NSData dataWithContentsOfURL:imageURL];
     XCTAssertNotNil(bookCoverData);
     
@@ -570,7 +571,7 @@ Below are how much time each attempt took when using more than one thread.
 - (void) testSaveImageUsingTransformableAttribute {
     
     Author* author = [self fetchAuthor];
-    NSURL *imageURL = [[[NSBundle mainBundle]bundleURL] URLByAppendingPathComponent:@"JRR_Tolkien.jpg"];
+    NSURL *imageURL = [[[NSBundle bundleForClass:[self class]]bundleURL] URLByAppendingPathComponent:@"JRR_Tolkien.jpg"];
     NSData* authorPhotoData = [NSData dataWithContentsOfURL:imageURL];
     XCTAssertNotNil(authorPhotoData);
     

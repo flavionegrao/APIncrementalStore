@@ -15,14 +15,12 @@
  * limitations under the License.
  */
 
-#import <Foundation/Foundation.h>
-#import <Parse-iOS-SDK/Parse.h>
+#import "Page.h"
+#import "Book.h"
 
-/* Parse config */
 
-extern NSString* const APParseApplicationID;
-extern NSString* const APParseClientKey;
+@implementation Page
 
-extern NSString* const APUnitTestingParseUserName;
-extern NSString* const APUnitTestingParseUserName2; // Used to test changing logged user
-extern NSString* const APUnitTestingParsePassword;
+@dynamic book;
+
+@end

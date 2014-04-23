@@ -19,7 +19,7 @@
 
 #import "APDiskCache.h"
 #import "APParseConnector.h"
-#import <Parse/Parse.h>
+
 #import "Common.h"
 #import "NSLogEmoji.h"
 #import "UnitTestingCommon.h"
@@ -46,7 +46,7 @@ static NSString* const APNSManagedObjectIDKey = @"kAPNSManagedObjectIDKey";
 
 /* Test core data persistant store file name */
 static NSString* const APCacheSqliteFile = @"APCacheStore.sqlite";
-static NSString* const APTestSqliteFile = @"APTestStore.sqllite";
+static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
 
 
 @interface APDiskCacheTestCase : XCTestCase
@@ -66,6 +66,8 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqllite";
     [super setUp];
     // Put setup code here. This method is called before the invocation of each test method in the class.
     
+    [Parse setApplicationId:APParseApplicationID clientKey:APParseClientKey];
+    
     __weak  typeof(self) weakSelf = self;
     NSString* (^translateBlock)(NSManagedObjectID*) = ^NSString* (NSManagedObjectID* objectID) {
         return weakSelf.mapManagedObjectIDToObjectUID[objectID];
@@ -73,11 +75,11 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqllite";
     
     self.parseConnector = [[APParseConnector alloc]initWithAuthenticatedUser:[self authenticatedUser] mergePolicy:APMergePolicyClientWins];
     
-    self.localCache = [[APDiskCache alloc]initWithManagedModel:[NSManagedObjectModel mergedModelFromBundles:nil]
-                                      translateToObjectUIDBlock:translateBlock
-                                             localStoreFileName:APCacheSqliteFile
-                                           shouldResetCacheFile:YES
-                                              webServiceConnector:self.parseConnector];
+    self.localCache = [[APDiskCache alloc]initWithManagedModel:[self testModel]
+                                     translateToObjectUIDBlock:translateBlock
+                                            localStoreFileName:APCacheSqliteFile
+                                          shouldResetCacheFile:YES
+                                           webServiceConnector:self.parseConnector];
 }
 
 
@@ -338,15 +340,14 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqllite";
 - (NSManagedObjectContext*) testContext {
     
     if (!_testContext) {
-        NSManagedObjectModel* model = [NSManagedObjectModel mergedModelFromBundles:nil];
-        NSPersistentStoreCoordinator* psc = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:model];
-        NSDictionary *options = @{NSMigratePersistentStoresAutomaticallyOption: @YES,
-                                  NSInferMappingModelAutomaticallyOption: @YES,
-                                  NSSQLitePragmasOption:@{@"journal_mode":@"DELETE"}};
+        NSPersistentStoreCoordinator* psc = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:[self testModel]];
+//        NSDictionary *options = @{NSMigratePersistentStoresAutomaticallyOption: @YES,
+//                                  NSInferMappingModelAutomaticallyOption: @YES,
+//                                  NSSQLitePragmasOption:@{@"journal_mode":@"DELETE"}};
         NSURL *storeURL = [NSURL fileURLWithPath:[self pathToLocalStore]];
         
         NSError *error = nil;
-        [psc addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:storeURL options:options error:&error];
+        [psc addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:storeURL options:nil error:&error];
         
         if (error) {
             ELog(@"Error adding store to PSC:%@",error);
@@ -438,6 +439,14 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqllite";
     }];
     
     return representation;
+}
+
+
+- (NSManagedObjectModel*) testModel {
+    
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    NSManagedObjectModel* model = [NSManagedObjectModel mergedModelFromBundles:@[bundle]];
+    return model;
 }
 
                     

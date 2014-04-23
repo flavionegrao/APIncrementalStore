@@ -18,9 +18,7 @@
 
 @import XCTest;
 @import CoreData;
-@import AVFoundation;
 
-#import <Parse/Parse.h>
 #import "APParseConnector.h"
 
 #import "NSLogEmoji.h"
@@ -70,7 +68,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     MLog();
     
     [super setUp];
-    DLog(@"---------Setting up the test environement----------");
+    [Parse setApplicationId:APParseApplicationID clientKey:APParseClientKey];
     
     // Remove SQLite file
     [self removeCacheStore];
@@ -561,7 +559,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     dispatch_group_async(self.group, self.queue, ^{
         
         // 495KB JPG Image sample image
-        NSURL *imageURL = [[[NSBundle mainBundle]bundleURL] URLByAppendingPathComponent:@"Sample_495KB.jpg"];
+        NSURL *imageURL = [[[NSBundle bundleForClass:[self class]]bundleURL] URLByAppendingPathComponent:@"Sample_495KB.jpg"];
         NSData* bookCoverData = [NSData dataWithContentsOfURL:imageURL];
         XCTAssertNotNil(bookCoverData);
         
@@ -621,7 +619,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         XCTAssertNotNil(book);
         
         // 495KB JPG Image sample image
-        NSURL *imageURL = [[[NSBundle mainBundle]bundleURL] URLByAppendingPathComponent:@"Sample_495KB.jpg"];
+        NSURL *imageURL = [[[NSBundle bundleForClass:[self class]]bundleURL] URLByAppendingPathComponent:@"Sample_495KB.jpg"];
         NSData* bookCoverData = [NSData dataWithContentsOfURL:imageURL];
         XCTAssertNotNil(bookCoverData);
         
@@ -939,7 +937,8 @@ Expected Results:
     
     if (!_testModel) {
         
-        NSManagedObjectModel* model = [[NSManagedObjectModel mergedModelFromBundles:nil]copy];
+        NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+        NSManagedObjectModel* model = [[NSManagedObjectModel mergedModelFromBundles:@[bundle]]copy];
         
         /*
          Adding support properties
@@ -1054,8 +1053,6 @@ Expected Results:
         }
     }
 }
-
-
 
 
 @end

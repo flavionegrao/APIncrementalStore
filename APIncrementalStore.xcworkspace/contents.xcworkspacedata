@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+   version = "1.0">
+   <Group
+      location = "group:APIncrementalStore"
+      name = "APIncrementalStore">
+      <FileRef
+         location = "group:APDiskCache.h">
+      </FileRef>
+      <FileRef
+         location = "group:APDiskCache.m">
+      </FileRef>
+      <FileRef
+         location = "group:APError.h">
+      </FileRef>
+      <FileRef
+         location = "group:APError.m">
+      </FileRef>
+      <FileRef
+         location = "group:APIncrementalStore.h">
+      </FileRef>
+      <FileRef
+         location = "group:APIncrementalStore.m">
+      </FileRef>
+      <FileRef
+         location = "group:APParseConnector.h">
+      </FileRef>
+      <FileRef
+         location = "group:APParseConnector.m">
+      </FileRef>
+      <FileRef
+         location = "group:Common.h">
+      </FileRef>
+      <FileRef
+         location = "group:Common.m">
+      </FileRef>
+      <FileRef
+         location = "group:NSArray+Enumerable.h">
+      </FileRef>
+      <FileRef
+         location = "group:NSArray+Enumerable.m">
+      </FileRef>
+      <FileRef
+         location = "group:NSLogEmoji.h">
+      </FileRef>
+   </Group>
+   <FileRef
+      location = "group:Example/Example.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:Tests/Tests.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:Tests/Pods/Pods.xcodeproj">
+   </FileRef>
+</Workspace>
