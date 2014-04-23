@@ -59,8 +59,6 @@
 		72F02EF918E98D0800DBC2C8 /* APParseConnectorTestCase.m in Sources */ = {isa = PBXBuildFile; fileRef = 72F02EF818E98D0800DBC2C8 /* APParseConnectorTestCase.m */; };
 		72F02EFA18E9A2ED00DBC2C8 /* APParseConnector.m in Sources */ = {isa = PBXBuildFile; fileRef = 726EE18D18D4EEE7005C5675 /* APParseConnector.m */; };
 		72F02F0018EB39C100DBC2C8 /* APDiskCacheTestCase.m in Sources */ = {isa = PBXBuildFile; fileRef = 72F02EFF18EB39C100DBC2C8 /* APDiskCacheTestCase.m */; };
-		72F9A3A318FA0AFB007B0EB6 /* Parse.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72201BC718F733F7007D933C /* Parse.framework */; };
-		72F9A3A418FA0B41007B0EB6 /* Parse.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72201BC718F733F7007D933C /* Parse.framework */; };
 		72F9A3A718FABE8B007B0EB6 /* UnitTestingCommon.m in Sources */ = {isa = PBXBuildFile; fileRef = 72F9A3A618FABE8B007B0EB6 /* UnitTestingCommon.m */; };
 		72FD020A18CA002300CC7E78 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72FD020918CA002300CC7E78 /* Security.framework */; };
 		72FD020D18CA016700CC7E78 /* Model.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 72FD020B18CA016700CC7E78 /* Model.xcdatamodeld */; };
@@ -82,7 +80,6 @@
 /* Begin PBXFileReference section */
 		7217EC1A18EC7E9E0032D559 /* Common.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Common.m; sourceTree = "<group>"; };
 		7217EC1C18EC7F750032D559 /* NSLogEmoji.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NSLogEmoji.h; sourceTree = "<group>"; };
-		72201BC718F733F7007D933C /* Parse.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Parse.framework; path = ../../Frameworks/Parse.framework; sourceTree = "<group>"; };
 		722A804218D4EF59001E6643 /* APIncrementalStore.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = APIncrementalStore.m; sourceTree = "<group>"; };
 		722A804418D5D68B001E6643 /* APError.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = APError.h; sourceTree = "<group>"; };
 		722A804718D5D6C6001E6643 /* APError.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = APError.m; sourceTree = "<group>"; };
@@ -122,6 +119,7 @@
 		72A1BCC418F72CAB00980A10 /* APIncrementalStore.podspec */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = APIncrementalStore.podspec; sourceTree = "<group>"; };
 		72AB4EFF18C9F41A005D1FB6 /* CoreDataController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CoreDataController.h; sourceTree = "<group>"; };
 		72AB4F0018C9F41A005D1FB6 /* CoreDataController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CoreDataController.m; sourceTree = "<group>"; };
+		72B02F5F19081CA900C3AA88 /* Parse.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Parse.framework; sourceTree = "<group>"; };
 		72B1D10218F2E4A200703BDD /* APIncrementalStore.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = APIncrementalStore.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		72B1D10318F2E4A600703BDD /* APIncrementalStoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = APIncrementalStoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		72B1D10718F4667400703BDD /* Page.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Page.h; sourceTree = "<group>"; };
@@ -154,7 +152,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				72F9A3A318FA0AFB007B0EB6 /* Parse.framework in Frameworks */,
 				72CE78B318CC935300F24F9F /* StoreKit.framework in Frameworks */,
 				72FD020A18CA002300CC7E78 /* Security.framework in Frameworks */,
 				72CE78B118CC934800F24F9F /* QuartzCore.framework in Frameworks */,
@@ -174,7 +171,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				72F9A3A418FA0B41007B0EB6 /* Parse.framework in Frameworks */,
 				72DE79FC18DDBFD400AC972F /* SystemConfiguration.framework in Frameworks */,
 				72DE79FB18DDBFCC00AC972F /* StoreKit.framework in Frameworks */,
 				72DE79FA18DDBFC700AC972F /* Security.framework in Frameworks */,
@@ -199,7 +195,7 @@
 			children = (
 				72A1BCC418F72CAB00980A10 /* APIncrementalStore.podspec */,
 				726EE18818D4DE8F005C5675 /* APIncrementalStore */,
-				724ADACB18C9226800DEE706 /* Example */,
+				724ADACB18C9226800DEE706 /* Example App */,
 				724ADAED18C9226800DEE706 /* Unit Testing */,
 				724ADAC418C9226800DEE706 /* Frameworks */,
 				72B1D10218F2E4A200703BDD /* APIncrementalStore.app */,
@@ -210,7 +206,7 @@
 		724ADAC418C9226800DEE706 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				72201BC718F733F7007D933C /* Parse.framework */,
+				72B02F5E19081CA900C3AA88 /* Parse-iOS-SDK */,
 				72CE78B218CC935300F24F9F /* StoreKit.framework */,
 				72CE78B018CC934800F24F9F /* QuartzCore.framework */,
 				72CE78AE18CC933A00F24F9F /* libz.dylib */,
@@ -228,7 +224,7 @@
 			path = Frameworks;
 			sourceTree = "<group>";
 		};
-		724ADACB18C9226800DEE706 /* Example */ = {
+		724ADACB18C9226800DEE706 /* Example App */ = {
 			isa = PBXGroup;
 			children = (
 				724ADAD718C9226800DEE706 /* Main.storyboard */,
@@ -245,7 +241,7 @@
 				724ADAE018C9226800DEE706 /* Images.xcassets */,
 				724ADACC18C9226800DEE706 /* Supporting Files */,
 			);
-			path = Example;
+			path = "Example App";
 			sourceTree = "<group>";
 		};
 		724ADACC18C9226800DEE706 /* Supporting Files */ = {
@@ -317,6 +313,15 @@
 			);
 			name = "Core Data";
 			path = CoreData;
+			sourceTree = "<group>";
+		};
+		72B02F5E19081CA900C3AA88 /* Parse-iOS-SDK */ = {
+			isa = PBXGroup;
+			children = (
+				72B02F5F19081CA900C3AA88 /* Parse.framework */,
+			);
+			name = "Parse-iOS-SDK";
+			path = "../../MilkMap-iOS/Pods/Parse-iOS-SDK";
 			sourceTree = "<group>";
 		};
 		72FD021218CA099200CC7E78 /* Core Data Auto Classes */ = {

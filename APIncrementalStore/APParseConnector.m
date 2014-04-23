@@ -17,7 +17,7 @@
 
 #import "APParseConnector.h"
 
-#import <Parse/Parse.h>
+#import <Parse-iOS-SDK/Parse.h>
 #import "APError.h"
 #import "Common.h"
 #import "NSLogEmoji.h"
