@@ -37,7 +37,7 @@ pod 'APIncrementalStore' , :git => 'https://github.com/flavionegrao/APIncrementa
 
 4) Navigate to the *Example* project directory in the Terminal
 
-5) Run the following command: `pod install`  - [Install cocoapods](http://guides.cocoapods.org/using/getting-started.html#getting-started) if you don't have it.
+5) Run the following command: `pod update`  - [Install cocoapods](http://guides.cocoapods.org/using/getting-started.html#getting-started) if you don't have it.
 
 6) Open `APIncrementalStore.xcworkspace` in Xcode
 
