@@ -435,72 +435,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 }
 
 
-#pragma mark - Util Methods
-
-- (void) insertOnParseManagedObject:(NSManagedObject*) managedObject
-                              error:(NSError *__autoreleasing*)error {
-    
-    if (AP_DEBUG_METHODS) { MLog(@"Managed Object:%@",managedObject)}
-    
-    NSError* localError;
-    
-    PFObject* parseObject = [[PFObject alloc]initWithClassName:managedObject.entity.name];
-    [self populateParseObject:parseObject withManagedObject:managedObject error:&localError];
-   
-    if (!localError) {
-        
-        if ([parseObject save:&localError]) {
-            if (AP_DEBUG_INFO) { DLog(@"Parse object saved: %@",parseObject)}
-            
-            /* Parse sets the objectId and updatedAt for a new object only after we save it. */
-            [managedObject setValue:parseObject.updatedAt forKey:APObjectLastModifiedAttributeName];
-            [managedObject setValue:@YES forKey:APObjectIsCreatedRemotelyAttributeName];
-            
-        } else {
-             *error = localError;
-        }
-    }
-}
-
-
-- (NSArray*) managedObjectsMarkedAsDirtyInContext: (NSManagedObjectContext *)context {
-    
-    if (AP_DEBUG_METHODS) { MLog()}
-    
-    __block NSError* error;
-    
-    NSMutableArray* dirtyManagedObjects = [NSMutableArray array];
-    NSArray* allEntities = context.persistentStoreCoordinator.managedObjectModel.entities;
-    [allEntities enumerateObjectsUsingBlock:^(NSEntityDescription* entity, NSUInteger idx, BOOL *stop) {
-        NSFetchRequest* request = [NSFetchRequest fetchRequestWithEntityName:entity.name];
-        request.predicate = [NSPredicate predicateWithFormat:@"%K == YES",APObjectIsDirtyAttributeName];
-        [dirtyManagedObjects addObjectsFromArray:[context executeFetchRequest:request error:&error]];
-    }];
-    
-    if (!error) {
-        return dirtyManagedObjects;
-        
-    } else {
-        if (AP_DEBUG_ERRORS) {ELog(@"Error: %@",error)}
-        return nil;
-    }
-}
-
-
-- (BOOL) isUserAuthenticated:(NSError**) error {
-    
-    if (AP_DEBUG_METHODS) {MLog()}
-    
-    if (![self.authenticatedUser isAuthenticated]) {
-        *error = [NSError errorWithDomain:APIncrementalStoreErrorDomain code:APIncrementalStoreErrorCodeUserCredentials userInfo:nil];
-        return NO;
-        
-    } else {
-        return YES;
-    }
-}
-
-
+#pragma mark - Sync dates
 
 - (NSString*) latestObjectSyncedKey {
     
@@ -533,35 +468,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 }
 
 
-- (PFObject*) parseObjectFromClassName:(NSString*) className objectUID: (NSString*) objectUID {
-    
-    if (AP_DEBUG_METHODS) {MLog(@"Class:%@ - ObjectUID: %@",className,objectUID)}
-    
-    PFObject* parseObject;
-    
-    PFQuery* query = [PFQuery queryWithClassName:className];
-    [query whereKey:APObjectUIDAttributeName equalTo:objectUID];
-    
-    NSError* error;
-    NSArray* results = [query findObjects:&error];
-    
-    if (error) {
-        if (AP_DEBUG_ERRORS) {ELog(@"Error finding objects at Parse: %@",error)}
-    
-    } else if ([results count] > 1) {
-        if (AP_DEBUG_ERRORS) {ELog(@"Error - WTF?? more than one object with the objectID: %@",objectUID)}
-    
-    } else if ([results count] == 0) {
-        if (AP_DEBUG_ERRORS) {ELog(@"Error - There's no existing object using the objectID: %@",objectUID)}
-    
-    } else {
-        parseObject = [results lastObject];
-    }
-    
-     if (AP_DEBUG_INFO) {DLog(@"Parse object %@ retrieved: %@",parseObject.parseClassName, [parseObject valueForKey:APObjectUIDAttributeName])}
-    return parseObject;
-}
-
+#pragma mark - Populating Objects
 
 - (void) populateManagedObject:(NSManagedObject*) managedObject
      withSerializedParseObject:(NSDictionary*) parseObjectDictRepresentation
@@ -620,6 +527,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     }];
 }
 
+
 - (void) populateParseObject:(PFObject*) parseObject
            withManagedObject:(NSManagedObject*) managedObject
                        error:(NSError *__autoreleasing*)error {
@@ -629,7 +537,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     __block NSError* localError;
     
     NSMutableDictionary* mutableProperties = [[managedObject.entity propertiesByName]mutableCopy];
-    //[mutableProperties removeObjectForKey:APObjectUIDAttributeName];
+    
+    // Remove properties that won't be sent to Parse
     [mutableProperties removeObjectForKey:APObjectLastModifiedAttributeName];
     [mutableProperties removeObjectForKey:APObjectIsDirtyAttributeName];
     [mutableProperties removeObjectForKey:APObjectIsCreatedRemotelyAttributeName];
@@ -640,32 +549,52 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         if ([propertyDesctiption isKindOfClass:[NSAttributeDescription class]]) {
             NSAttributeDescription* attrDescription = (NSAttributeDescription*) propertyDesctiption;
             
-            if (propertyValue == nil) {
-                [parseObject setValue:[NSNull null] forKey:propertyName];
+            if ([propertyName isEqualToString:APCoreDataACLAttributeName]) {
                 
-            } else {
+                // Managed Object has an ACL attribute
                 
-                if (attrDescription.attributeType == NSBooleanAttributeType) {
-                    [parseObject setValue:@([propertyValue boolValue]) forKey:propertyName];
-                
-                } else if (attrDescription.attributeType == NSBinaryDataAttributeType ||
-                           attrDescription.attributeType == NSTransformableAttributeType) {
-                    PFFile* file = [PFFile fileWithData:propertyValue];
-                    
-                    NSError* fileSavingError;
-                    if (![file save:&fileSavingError]) {
-                       if (AP_DEBUG_ERRORS) {ELog(@"Error saving file to Parse: %@",fileSavingError)}
-                        *error = fileSavingError;
+                if (propertyValue) {
+                    if (![self addACLData:propertyValue toParseObject:parseObject error:&localError]) {
+                        if (AP_DEBUG_ERRORS) {ELog(@"Error saving file to Parse: %@",localError)}
+                        *error = localError;
                         return;
                     }
-                    [parseObject setValue:file forKey:propertyName];
+                }
+                
+            } else {
+            
+                if (propertyValue == nil) {
+                    [parseObject setValue:[NSNull null] forKey:propertyName];
                     
                 } else {
-                    [parseObject setValue:propertyValue forKey:propertyName];
+                    
+                    if (attrDescription.attributeType == NSBooleanAttributeType) {
+                        [parseObject setValue:@([propertyValue boolValue]) forKey:propertyName];
+                        
+                    } else if (attrDescription.attributeType == NSBinaryDataAttributeType ||
+                               attrDescription.attributeType == NSTransformableAttributeType) {
+                        
+                        // Binary
+                        
+                        PFFile* file = [PFFile fileWithData:propertyValue];
+                        
+                        if (![file save:&localError]) {
+                            if (AP_DEBUG_ERRORS) {ELog(@"Error saving file to Parse: %@",localError)}
+                            *error = localError;
+                            return;
+                        }
+                        [parseObject setValue:file forKey:propertyName];
+                        
+                    } else {
+                        [parseObject setValue:propertyValue forKey:propertyName];
+                    }
                 }
             }
             
         } else {
+            
+            // Relationships
+            
             NSRelationshipDescription* relationshipDescription = (NSRelationshipDescription*) propertyDesctiption;
             
             if (propertyValue) {
@@ -678,23 +607,10 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                     PFRelation* relation = [parseObject relationForKey:propertyName];
                     
                     for (NSManagedObject* relatedManagedObject in relatedManagedObjects) {
-                        PFObject* relatedParseObject;
-                        NSString* relatedObjectUID = [relatedManagedObject valueForKey:APObjectUIDAttributeName];
-                        
-                        if ([[relatedManagedObject valueForKey:APObjectIsCreatedRemotelyAttributeName]isEqualToNumber:@NO]) {
-                            relatedParseObject = [PFObject objectWithClassName:relatedManagedObject.entity.name];
-                            [relatedParseObject setValue:relatedObjectUID forKey:APObjectUIDAttributeName];
-
-                            [relatedParseObject save:&localError];
-                            if (localError) {
-                                *error = localError;
-                                *stop = YES;
-                            }
-                            [relatedManagedObject setValue:relatedParseObject.updatedAt forKey:APObjectLastModifiedAttributeName];
-                            [relatedManagedObject setValue:@YES forKey:APObjectIsCreatedRemotelyAttributeName];
-                        
-                        } else {
-                            relatedParseObject = [self parseObjectFromClassName:relationshipDescription.destinationEntity.name objectUID:relatedObjectUID];
+                        PFObject* relatedParseObject = [self parseObjectFromManagedObject:relatedManagedObject error:&localError];
+                        if (localError){
+                            *error = localError;
+                            return;
                         }
                         [relation addObject:relatedParseObject];
                     }
@@ -704,35 +620,162 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                     // To-One relationship
                     
                     NSManagedObject* relatedManagedObject = (NSManagedObject*) propertyValue;
-                    PFObject* relatedParseObject;
-                    NSString* relatedObjectUID = [relatedManagedObject valueForKey:APObjectUIDAttributeName];
-                    
-                    if ([[relatedManagedObject valueForKey:APObjectIsCreatedRemotelyAttributeName]isEqualToNumber:@NO]) {
-                        relatedParseObject = [PFObject objectWithClassName:relatedManagedObject.entity.name];
-                        [relatedParseObject setValue:relatedObjectUID forKey:APObjectUIDAttributeName];
-                        [relatedParseObject save:&localError];
-                        if (localError) {
-                            *error = localError;
-                            return;
-                        }
-                        [relatedManagedObject setValue:relatedParseObject.updatedAt forKey:APObjectLastModifiedAttributeName];
-                        [relatedManagedObject setValue:@YES forKey:APObjectIsCreatedRemotelyAttributeName];
-                        
-                    } else {
-                         relatedParseObject = [self parseObjectFromClassName:relationshipDescription.destinationEntity.name objectUID:relatedObjectUID];
+                    PFObject* relatedParseObject = [self parseObjectFromManagedObject:relatedManagedObject error:&localError];
+                    if (localError){
+                        *error = localError;
+                        return;
                     }
-                    
-                    if (relatedParseObject == nil) {
-                        *stop = YES;
-                        *error = [NSError errorWithDomain:APIncrementalStoreErrorDomain code:APIncrementalStoreErrorCodeMergingLocalObjects userInfo:nil];
-                        
-                    } else {
-                        [parseObject setValue:relatedParseObject forKey:propertyName];
-                    }
+                    [parseObject setValue:relatedParseObject forKey:propertyName];
                 }
             }
         }
     }];
+}
+
+
+- (BOOL) addACLData:(NSData*) ACLData
+      toParseObject:(PFObject*) object
+              error:(NSError *__autoreleasing*)error {
+    
+    BOOL success = YES;
+    NSError* localError;
+    
+    NSDictionary* dictACL = [NSJSONSerialization JSONObjectWithData:ACLData options:0 error:&localError];
+    if (localError) {
+        if (AP_DEBUG_ERRORS) {ELog(@"Error saving file to Parse: %@",localError)}
+        *error = localError;
+        success = NO;
+   
+    } else {
+        PFACL* ACL = object.ACL ?: [PFACL ACL];
+        [dictACL enumerateKeysAndObjectsUsingBlock:^(NSString* who, NSDictionary* privileges, BOOL *stop) {
+            BOOL writeAccess = [privileges[@"write"] isEqualToString:@"true"];
+            BOOL readAccess = [privileges[@"read"] isEqualToString:@"true"];
+            
+            NSString* rolePrefix = @"role:";
+            if ([who hasPrefix:rolePrefix]) {
+                NSString* roleName = [who stringByReplacingOccurrencesOfString:rolePrefix withString:@""];
+                if (privileges[@"read"]) [ACL setReadAccess:readAccess forRoleWithName:roleName];
+                if (privileges[@"write"]) [ACL setWriteAccess:writeAccess forRoleWithName:roleName];
+            } else {
+                if (privileges[@"read"]) [ACL setReadAccess:readAccess forUserId:who];
+                if (privileges[@"write"]) [ACL setWriteAccess:writeAccess forUserId:who];
+            }
+        }];
+        object.ACL = ACL;
+    }
+    return success;
+}
+
+
+- (void) insertOnParseManagedObject:(NSManagedObject*) managedObject
+                              error:(NSError *__autoreleasing*)error {
+    
+    if (AP_DEBUG_METHODS) { MLog(@"Managed Object:%@",managedObject)}
+    
+    NSError* localError;
+    
+    PFObject* parseObject = [[PFObject alloc]initWithClassName:managedObject.entity.name];
+    [self populateParseObject:parseObject withManagedObject:managedObject error:&localError];
+    
+    if (!localError) {
+        
+        if ([parseObject save:&localError]) {
+            if (AP_DEBUG_INFO) { DLog(@"Parse object saved: %@",parseObject)}
+            
+            /* Parse sets the objectId and updatedAt for a new object only after we save it. */
+            [managedObject setValue:parseObject.updatedAt forKey:APObjectLastModifiedAttributeName];
+            [managedObject setValue:@YES forKey:APObjectIsCreatedRemotelyAttributeName];
+            
+        } else {
+            *error = localError;
+        }
+    }
+}
+
+
+#pragma mark - Getting Parse Objects
+
+- (PFObject*) parseObjectFromManagedObject:(NSManagedObject*) managedObject
+                                     error:(NSError *__autoreleasing*)error {
+ 
+    PFObject* parseObject;
+    NSError* localError;
+    
+    NSString* relatedObjectUID = [managedObject valueForKey:APObjectUIDAttributeName];
+    
+    if ([[managedObject valueForKey:APObjectIsCreatedRemotelyAttributeName]isEqualToNumber:@NO]) {
+        parseObject = [PFObject objectWithClassName:managedObject.entity.name];
+        [parseObject setValue:relatedObjectUID forKey:APObjectUIDAttributeName];
+        
+        [parseObject save:&localError];
+        if (localError) {
+            *error = localError;
+            return nil;
+        }
+        [managedObject setValue:parseObject.updatedAt forKey:APObjectLastModifiedAttributeName];
+        [managedObject setValue:@YES forKey:APObjectIsCreatedRemotelyAttributeName];
+        
+    } else {
+        parseObject = [self parseObjectFromClassName:managedObject.entity.name objectUID:relatedObjectUID];
+    }
+    
+    return parseObject;
+}
+
+- (PFObject*) parseObjectFromClassName:(NSString*) className objectUID: (NSString*) objectUID {
+    
+    if (AP_DEBUG_METHODS) {MLog(@"Class:%@ - ObjectUID: %@",className,objectUID)}
+    
+    PFObject* parseObject;
+    
+    PFQuery* query = [PFQuery queryWithClassName:className];
+    [query whereKey:APObjectUIDAttributeName equalTo:objectUID];
+    
+    NSError* error;
+    NSArray* results = [query findObjects:&error];
+    
+    if (error) {
+        if (AP_DEBUG_ERRORS) {ELog(@"Error finding objects at Parse: %@",error)}
+        
+    } else if ([results count] > 1) {
+        if (AP_DEBUG_ERRORS) {ELog(@"Error - WTF?? more than one object with the objectID: %@",objectUID)}
+        
+    } else if ([results count] == 0) {
+        if (AP_DEBUG_ERRORS) {ELog(@"Error - There's no existing object using the objectID: %@",objectUID)}
+        
+    } else {
+        parseObject = [results lastObject];
+    }
+    
+    if (AP_DEBUG_INFO) {DLog(@"Parse object %@ retrieved: %@",parseObject.parseClassName, [parseObject valueForKey:APObjectUIDAttributeName])}
+    return parseObject;
+}
+
+
+#pragma mark - Getting Managed Objects
+
+- (NSArray*) managedObjectsMarkedAsDirtyInContext: (NSManagedObjectContext *)context {
+    
+    if (AP_DEBUG_METHODS) { MLog()}
+    
+    __block NSError* error;
+    
+    NSMutableArray* dirtyManagedObjects = [NSMutableArray array];
+    NSArray* allEntities = context.persistentStoreCoordinator.managedObjectModel.entities;
+    [allEntities enumerateObjectsUsingBlock:^(NSEntityDescription* entity, NSUInteger idx, BOOL *stop) {
+        NSFetchRequest* request = [NSFetchRequest fetchRequestWithEntityName:entity.name];
+        request.predicate = [NSPredicate predicateWithFormat:@"%K == YES",APObjectIsDirtyAttributeName];
+        [dirtyManagedObjects addObjectsFromArray:[context executeFetchRequest:request error:&error]];
+    }];
+    
+    if (!error) {
+        return dirtyManagedObjects;
+        
+    } else {
+        if (AP_DEBUG_ERRORS) {ELog(@"Error: %@",error)}
+        return nil;
+    }
 }
 
 
@@ -829,6 +872,13 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             
             // Object ACL
             
+            /* 
+             PFACL object doesn't show which users/roles are associated with it,
+             unless you know it IDs/RoleNames beforehand.
+             I haven't figured out a way to extract that information to enable the serialization
+             of that into the managed object.
+             Via REST it is possible to see it, I'm trying to stay away from interacting via REST at the moment...
+             */
             
         } else {
             
@@ -842,6 +892,22 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     dictionaryRepresentation[APObjectUIDAttributeName] = [parseObject valueForKey:APObjectUIDAttributeName];
     
     return dictionaryRepresentation;
+}
+
+
+#pragma mark - Util Methods
+
+- (BOOL) isUserAuthenticated:(NSError**) error {
+    
+    if (AP_DEBUG_METHODS) {MLog()}
+    
+    if (![self.authenticatedUser isAuthenticated]) {
+        *error = [NSError errorWithDomain:APIncrementalStoreErrorDomain code:APIncrementalStoreErrorCodeUserCredentials userInfo:nil];
+        return NO;
+        
+    } else {
+        return YES;
+    }
 }
 
 

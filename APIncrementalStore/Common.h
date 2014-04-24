@@ -33,6 +33,26 @@ extern NSString* const APObjectIsDeletedAttributeName;
 /// 
 extern NSString* const APObjectIsCreatedRemotelyAttributeName;
 
+/** 
+ If a Core Data entity has this attribute it will be interpreted as a Parse PFACL attribute. 
+ It should be Binary Property containing a JSON object encoded with UTF-8. 
+ It will follow the same Parse REST format, which means a Dictionary
+ 
+ Example:
+ 
+ NSMutableDictionary* ACL = [NSMutableDictionary dictionary];
+ 
+ NSString* roleName = [NSString stringWithFormat:@"role:%@",role.name];
+ NSString* permission = [NSString stringWithFormat:@"write:YES"];
+ [ACL setValue:permission forKey:roleName];
+ NSData* ACLData = [NSJSONSerialization dataWithJSONObject:ACL options:0 error:nil];
+ 
+ [managedObject setValue:ACLData forKey:@"__ACL"];
+ 
+ @see https://www.parse.com/docs/rest#roles
+ */
+extern NSString* const APCoreDataACLAttributeName;
+
 
 #pragma mark - Logs
 

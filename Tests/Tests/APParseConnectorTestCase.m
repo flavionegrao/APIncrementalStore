@@ -821,6 +821,7 @@ Expected Results:
     dispatch_group_async(self.group, self.queue, ^{
         PFObject* book = [[PFObject alloc]initWithClassName:@"Book"];
         [book setValue:@"some name" forKeyPath:@"name"];
+        [book setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
         [book save:nil];
         NSDate* updatedAtAfterSave = book.updatedAt;
         
@@ -833,6 +834,57 @@ Expected Results:
     });
     
     dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+}
+
+
+- (void) testIncludeACLFromManagedObjectToParseObejct {
+    
+    dispatch_group_async(self.group, self.queue, ^{
+        
+        Book* newBook = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.testContext];
+        newBook.name = @"Book#1";
+        [newBook setValue:@YES forKey:APObjectIsDirtyAttributeName];
+        [newBook setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
+        
+        NSMutableDictionary* ACL;
+        ACL = [NSMutableDictionary dictionary];
+        
+        // Roles
+        [ACL setValue:@{@"write":@"true", @"read":@"false"} forKey:[@"role:" stringByAppendingString:@"Role_Name"]];
+        [ACL setValue:@{@"write":@"false",@"read":@"true"} forKey:[@"role:" stringByAppendingString:@"Role_Name2"]];
+        
+        // Users
+        [ACL setValue:@{@"write":@"true",@"read":@"true"} forKey:[PFUser currentUser].objectId];
+        [ACL setValue:@{@"write":@"false", @"read":@"false"} forKey:@"FDfaLRcqn1"];
+        
+        NSData* ACLData = [NSJSONSerialization dataWithJSONObject:ACL options:0 error:nil];
+        [newBook setValue:ACLData forKey:@"__ACL"];
+        
+        NSError* error;
+        [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&error];
+
+        PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
+        [bookQuery whereKey:@"name" containsString:@"Book#1"];
+        PFObject* parseBook = [bookQuery getFirstObject:&error];
+        XCTAssertNil(error);
+        
+        PFACL* acl = parseBook.ACL;
+        XCTAssertTrue([acl getWriteAccessForUser:[PFUser currentUser]] == YES);
+        XCTAssertTrue([acl getWriteAccessForUserId:@"FDfaLRcqn1"] == NO);
+        XCTAssertTrue([acl getWriteAccessForRoleWithName:@"Role_Name"] == YES);
+        XCTAssertTrue([acl getWriteAccessForRoleWithName:@"Role_Name2"] == NO);
+        
+        XCTAssertTrue([acl getReadAccessForUser:[PFUser currentUser]] == YES);
+        XCTAssertTrue([acl getReadAccessForUserId:@"FDfaLRcqn1"] == NO);
+        XCTAssertTrue([acl getReadAccessForRoleWithName:@"Role_Name"] == NO);
+        XCTAssertTrue([acl getReadAccessForRoleWithName:@"Role_Name2"] == YES);
+        
+    });
+    
+    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    
 }
 
 /*
@@ -953,7 +1005,6 @@ Expected Results:
                 continue;
             }
             
-            
             NSMutableArray* additionalProperties = [NSMutableArray array];
             
             NSAttributeDescription *uidProperty = [[NSAttributeDescription alloc] init];
@@ -962,6 +1013,13 @@ Expected Results:
             [uidProperty setIndexed:YES];
             [uidProperty setOptional:NO];
             [additionalProperties addObject:uidProperty];
+            
+            NSAttributeDescription *aclProperty = [[NSAttributeDescription alloc] init];
+            [aclProperty setName:APCoreDataACLAttributeName];
+            [aclProperty setAttributeType:NSBinaryDataAttributeType];
+            [aclProperty setIndexed:NO];
+            [aclProperty setOptional:YES];
+            [additionalProperties addObject:aclProperty];
             
             NSAttributeDescription *lastModifiedProperty = [[NSAttributeDescription alloc] init];
             [lastModifiedProperty setName:APObjectLastModifiedAttributeName];
