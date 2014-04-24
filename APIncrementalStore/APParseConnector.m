@@ -125,15 +125,17 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         }
         
         // We count the object before fetching (see APParseQueryFetchLimit explanation)
-        NSUInteger numberOfObjectsToBeFetched = [query countObjects:&localError];
-        if (localError) {
-            *error = localError;
-            return nil;
-        }
-        NSMutableArray* parseObjects = [[NSMutableArray alloc]initWithCapacity:numberOfObjectsToBeFetched];
+//        NSUInteger numberOfObjectsToBeFetched = [query countObjects:&localError];
+//        if (localError) {
+//            *error = localError;
+//            return nil;
+//        }
         
+        NSMutableArray* parseObjects = [[NSMutableArray alloc]init];
         NSUInteger skip = 0;
-        while (skip < numberOfObjectsToBeFetched) {
+        BOOL thereAreObjectsToBeFetched = YES;
+        
+        while (thereAreObjectsToBeFetched) {
             [query setSkip:skip];
             NSArray* batchOfObjects = [query findObjects:&localError];
             
@@ -142,7 +144,11 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 return nil;
             }
             [parseObjects addObjectsFromArray:batchOfObjects];
-            skip += APParseQueryFetchLimit;
+            if ([batchOfObjects count] == APParseQueryFetchLimit) {
+                skip += APParseQueryFetchLimit;
+            } else {
+                thereAreObjectsToBeFetched = NO;
+            }
         }
         
         for (PFObject* parseObject in parseObjects) {
@@ -215,20 +221,9 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             if (![entityEntry[NSInsertedObjectsKey] containsObject:[parseObject valueForKey:APObjectUIDAttributeName]]) {
                 NSArray* mergedObjectUIDs = entityEntry[objectStatus] ?: [[NSArray alloc]init];
                 entityEntry[objectStatus] = [mergedObjectUIDs arrayByAddingObject:[parseObject valueForKey:APObjectUIDAttributeName]];
-                
-                /* We need to include any existent reference to temporary IDs as well, 
-                 otherwise context still holding reference to temporary managed object ID 
-                 will not update those objects
-                 */
-//                if ([objectStatus isEqualToString:NSDeletedObjectsKey] || [objectStatus isEqualToString:NSUpdatedObjectsKey]) {
-//                    if ([[self.mapOfTemporaryToPermanentUID allValues]containsObject:parseObject.objectId]) {
-//                        NSString* key = [[self.mapOfTemporaryToPermanentUID allKeysForObject:parseObject.objectId]lastObject];
-//                        NSArray* mergedObjectUIDs = entityEntry[objectStatus];
-//                        entityEntry[objectStatus] = [mergedObjectUIDs arrayByAddingObject:key];
-//                    }
-//                }
                 mergedObjectsUIDsNestedByEntityName[entityDescription.name] = entityEntry;
             }
+            
             if (onSyncObject) onSyncObject();
         }
         

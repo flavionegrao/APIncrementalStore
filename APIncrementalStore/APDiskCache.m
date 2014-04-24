@@ -246,24 +246,26 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
             if (conpletionBlock) conpletionBlock(mutableObjectUIDsNestedByEntityName,error);
         };
         
-        // Count objects to be synced and report it via block
+        // Count objects to be synced and report it via countingBlock
         if (countingBlock) {
             NSUInteger localObjects = [self.connector countLocalObjectsToBeSyncedInContext:self.syncContext error:&error];
+            if (error) {
+                [[NSOperationQueue mainQueue]addOperationWithBlock:failureBlock];
+                return;
+            }
+            
             NSUInteger remoteObjects = [self.connector countRemoteObjectsToBeSyncedInContext:self.syncContext fullSync:allObjects error:&error];
-            [[NSOperationQueue mainQueue]addOperationWithBlock:^{
-                if (!error) {
-                    countingBlock(localObjects, remoteObjects);
-                } else {
-                    failureBlock();
-                }
-            }];
+            if (error) {
+                [[NSOperationQueue mainQueue]addOperationWithBlock:failureBlock];
+                return;
+            }
+            
+            [[NSOperationQueue mainQueue]addOperationWithBlock:^{ countingBlock(localObjects, remoteObjects); }];
         }
         
         // Local Updates - all objects marked as "dirty" and add entries from temporary to permanent objectsUID
         BOOL mergeSuccess = [self.connector mergeManagedContext:self.syncContext onSyncObject:^{
-                                 [[NSOperationQueue mainQueue]addOperationWithBlock:^{
-                                     if (syncObjectBlock) syncObjectBlock(YES);
-                                 }];
+                                 [[NSOperationQueue mainQueue]addOperationWithBlock:^{if (syncObjectBlock) syncObjectBlock(YES); }];
                              } error:&error];
         
         if (!mergeSuccess) {
@@ -275,9 +277,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         // Remote Updates - all objects that have updated date earlier than our last successful sync
         NSDictionary* mergedFromServer;
         mergedFromServer = [self.connector mergeRemoteObjectsWithContext:self.syncContext fullSync:allObjects onSyncObject:^{
-            [[NSOperationQueue mainQueue]addOperationWithBlock:^{
-                if (syncObjectBlock) syncObjectBlock(YES);
-            }];
+            [[NSOperationQueue mainQueue]addOperationWithBlock:^{ if (syncObjectBlock) syncObjectBlock(YES); }];
         } error:&error];
         
         [mutableObjectUIDsNestedByEntityName addEntriesFromDictionary:mergedFromServer];
@@ -300,7 +300,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 }
 
 
-- (BOOL) saveSyncContext: (NSError *__autoreleasing*)error {
+- (BOOL) saveSyncContext:(NSError *__autoreleasing*) error {
     
     __block BOOL success = YES;
     
@@ -419,10 +419,8 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     return representation;
 }
 
-/*
- Translates a user submited predicate to a one suitable for local cache queries.
- 
- */
+
+// Translates a user submited predicate to a "translated" for local cache queries.
 - (NSPredicate*) cachePredicateFromPredicate:(NSPredicate *)predicate
                                forEntityName:(NSString*) entityName {
     
@@ -616,7 +614,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 
 - (BOOL)updateObjectRepresentations:(NSArray*) updateObjects
                          entityName:(NSString*) entityName
-                              error:(NSError *__autoreleasing *)error {
+                              error:(NSError *__autoreleasing *) error {
     
     if (AP_DEBUG_METHODS) {MLog()}
     

@@ -467,12 +467,12 @@ Expected Results:
 }
 
 /*
-Below are how much time each attempt took when using more than one thread.
- - 15Mbps ADSL Connection
+ Scenario:
+ - 15Mbps down / 1Mbps up ADSL Connection
  - iPhone simulator 32bits
  
  I am aware that Unit Testing does not aim at performance measurements, but this give us a good idea how multithreading affects performance.
- 
+ Below are how much time each attempt took when using more than one thread to create 1000 objects at Parse (1st part of the test)
             Average time
  Threads    Simulator   iPhone 5
  1          6'14"       6'29"
@@ -483,8 +483,13 @@ Below are how much time each attempt took when using more than one thread.
  10         1'58"       1'53"
  20         2'20"       2'01"
  30         2'15"       2'01"
+ 
+ On average it took a little less time to download and sync all objcts to our disk cache, I guess due to better download speed perhaps.
+ As no multithreadind is enable on sync process it took on average almost 6" to complete this step.
+ 
+ ATTENTION: This test is disabled by default as it took a considerable amount of time to be completed, turn it on when necessary
 */
-- (void) testCreateAThousandObjects {
+- (void) testCreateAThousandObjects_ENABLE_IT_ONDEMAND {
     
     NSDate* start = [NSDate date];
     
@@ -503,6 +508,7 @@ Below are how much time each attempt took when using more than one thread.
                 PFObject* author = [PFObject objectWithClassName:@"Author"];
                 [author setValue:[NSString stringWithFormat:@"Author#%lu",(unsigned long) thread * skip + i] forKey:@"name"];
                 [author setValue:@NO forKey:APObjectIsDeletedAttributeName];
+                [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
                 [author save:&saveError];
                 DLog(@"Author created: %@",[author valueForKeyPath:@"name"])
                 XCTAssertNil(saveError);
@@ -524,9 +530,14 @@ Below are how much time each attempt took when using more than one thread.
     XCTAssertTrue(numberOfAuthorsCreated == numberOfAuthorsToBeCreated + 1); //1 from the Setup
     
     // Sync and wait untill it's finished
+    
+    ALog(@"Start Syncing");
+    NSDate* startSync = [NSDate date];
     [self.coreDataController requestSyncCache];
     while (self.coreDataController.isSyncingTheCache &&
            [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
+    
+    ALog(@"Seconds to sync all objects: %f",[[NSDate date]timeIntervalSince1970] - [startSync timeIntervalSince1970]);
     
     NSError* fetchError;
     NSFetchRequest* fr = [NSFetchRequest fetchRequestWithEntityName:@"Author"];
