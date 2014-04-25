@@ -15,10 +15,12 @@
  * limitations under the License.
  */
 
-#import <Foundation/Foundation.h>
+@import CoreData;
+@import Foundation;
 
 extern NSString* const CoreDataControllerNotificationDidSync;
 extern NSString* const CoreDataControllerNotificationDidResetTheCache;
+extern NSString* const CoreDataControllerACLAttributeName;
 
 
 @interface CoreDataController : NSObject
@@ -56,5 +58,31 @@ extern NSString* const CoreDataControllerNotificationDidResetTheCache;
  @returns If the save was successful returns YES otherwise NO
  */
 - (BOOL) saveMainContextAndRequestCacheSync:(NSError* __autoreleasing*) error;
+
+
+/**
+ APIncrementalStore will add ACLa to a Parse Object when it finds a managed object that is being synced and
+ contains a binary (NSData) property called '__ACL'. The property must be set as Binary and his content should be a JSON object
+ UTF-8 encoded Parse ACL. Follow the same Parse ACL structure found on its REST API:
+ 
+ {
+    "8TOXdXf3tz": { "write": true },
+    "role:Members": { "read": true },
+    "role:Moderators": {"write": true }
+ }
+ 
+ Use PFObject objectID to identify specific users or role:<Role Name> for roles.
+ This helper method show how to create and included it to a managed object.
+ 
+ The Parse iOS-SDK doesn't allow us to inspect any existing ACL unless you know the user/role and you ask
+ for the existing previlegies on that object. Based on that APIncrementalStore will only add ACLs to object, but it will not
+ change any existent one.
+ */
+
+- (void) addWriteAccess:(BOOL)writeAccess
+             readAccess:(BOOL)readAccess
+                 isRole:(BOOL)isRole
+     forParseIdentifier:(NSString*) identifier
+       forManagedObject:(NSManagedObject*) managedObject;
 
 @end

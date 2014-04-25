@@ -22,8 +22,11 @@
 
 NSString* const CoreDataControllerNotificationDidSync = @"CoreDataControllerNotificationDidSync";
 NSString* const CoreDataControllerNotificationDidResetTheCache = @"CoreDataControllerNotificationDidResetTheCache";
+NSString* const CoreDataControllerACLAttributeName = @"__ACL";
 
 static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
+
+
 
 @interface CoreDataController ()
 
@@ -48,6 +51,7 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
     });
     return sharedInstance;
 }
+
 
 - (instancetype)init {
     
@@ -122,8 +126,7 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
     
     [NSPersistentStoreCoordinator registerStoreClass:[APIncrementalStore class] forStoreType:[APIncrementalStore type]];
     
-    NSManagedObjectModel* model = [NSManagedObjectModel mergedModelFromBundles:nil];
-    self.psc = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:model];
+    self.psc = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:[self model]];
     
     [self.psc addPersistentStoreWithType:[APIncrementalStore type]
                            configuration:nil
@@ -133,6 +136,32 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
                                           // APIncrementalStoreOptionCacheFileReset:@NO,
                                            APOptionMergePolicyKey:APOptionMergePolicyServerWins}
                                    error:nil];
+}
+
+
+- (NSManagedObjectModel*) model {
+    
+    if (AP_DEBUG_METHODS) { MLog()}
+    
+    NSManagedObjectModel* model = [NSManagedObjectModel mergedModelFromBundles:nil];
+    NSManagedObjectModel *adjustedModel = [model copy];
+    
+    for (NSEntityDescription *entity in adjustedModel.entities) {
+        
+        // Don't add properties for sub-entities, as they already exist in the super-entity
+        if ([entity superentity]) {
+            continue;
+        }
+        
+        NSAttributeDescription *objectACLProperty = [[NSAttributeDescription alloc] init];
+        [objectACLProperty setName:CoreDataControllerACLAttributeName];
+        [objectACLProperty setAttributeType:NSBinaryDataAttributeType];
+        [objectACLProperty setOptional:YES];
+        [objectACLProperty setIndexed:NO];
+        
+        [entity setProperties:[entity.properties arrayByAddingObjectsFromArray:@[objectACLProperty]]];
+    }
+    return adjustedModel;
 }
 
 
@@ -239,6 +268,39 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
     }];
     
     return success;
+}
+
+
+#pragma mark - ACLs
+
+- (void) addWriteAccess:(BOOL)writeAccess
+             readAccess:(BOOL)readAccess
+                 isRole:(BOOL)isRole
+     forParseIdentifier:(NSString*) identifier
+       forManagedObject:(NSManagedObject*) managedObject {
+    
+    NSMutableDictionary* ACL;
+    
+    NSData* currentACLData = [managedObject valueForKey:CoreDataControllerACLAttributeName];
+    if (currentACLData) {
+        ACL = [NSMutableDictionary dictionaryWithDictionary:[NSJSONSerialization JSONObjectWithData:currentACLData options:0 error:nil]];
+    } else {
+        ACL = [NSMutableDictionary dictionary];
+    }
+    
+    NSString* adjustedIdentifier;
+    if (isRole){
+        adjustedIdentifier= [NSString stringWithFormat:@"role:%@",identifier];
+    } else {
+        adjustedIdentifier = identifier;
+    }
+    
+    NSDictionary* readPermission = @{@"read": (readAccess)?@"true":@"false"};
+    NSDictionary* writePermission = @{@"write": (readAccess)?@"true":@"false"};
+    [ACL setValue:readPermission forKey:adjustedIdentifier];
+    [ACL setValue:writePermission forKey:adjustedIdentifier];
+    NSData* ACLData = [NSJSONSerialization dataWithJSONObject:ACL options:0 error:nil];
+    [managedObject setValue:ACLData forKey:CoreDataControllerACLAttributeName];
 }
 
 @end

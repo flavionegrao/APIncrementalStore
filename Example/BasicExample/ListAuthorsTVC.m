@@ -147,6 +147,7 @@ static NSString* const APDefaultParsePassword = @"1234";
     
 }
 
+
 - (void) didReceiveSyncIsFinished: (NSNotification*) note {
     self.syncButton.enabled = YES;
     [[NSNotificationCenter defaultCenter] removeObserver:self name:CoreDataControllerNotificationDidSync object:[CoreDataController sharedInstance]];
@@ -169,6 +170,11 @@ static NSString* const APDefaultParsePassword = @"1234";
     
     Author* newAuthor = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:[CoreDataController sharedInstance].mainContext];
     newAuthor.name = [NSString stringWithFormat:@"Author#%lu (%@)",(unsigned long)numberOfExistingAuthors,[PFUser currentUser].username];
+    
+    // Set ACL to the object.
+    NSString* currentUserObjectId = [PFUser currentUser].objectId;
+    [[CoreDataController sharedInstance] addWriteAccess:YES readAccess:YES isRole:NO forParseIdentifier:currentUserObjectId forManagedObject:newAuthor];
+    [[CoreDataController sharedInstance] addWriteAccess:YES readAccess:YES isRole:YES forParseIdentifier:@"Moderators" forManagedObject:newAuthor];
     
     [context save:&error];
     if(error){

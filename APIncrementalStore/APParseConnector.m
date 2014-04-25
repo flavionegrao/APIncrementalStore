@@ -430,7 +430,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 }
 
 
-#pragma mark - Sync dates
+#pragma mark - Util Methods
 
 - (NSString*) latestObjectSyncedKey {
     
