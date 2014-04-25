@@ -55,11 +55,76 @@ pod 'APIncrementalStore' , :git => 'https://github.com/flavionegrao/APIncrementa
 - Don't forget to set Parse keys
 - Login with an user (`PFUser`) and pass it as parameter to `APIncrementalStore`.
 - `APParseConnector` will sync all entities found on your model and use the exactly same entity names to find the classes from Parse.
-- I have done nothing in regards to Parse ACL yet, so that it will sync everything that the logged user has access to.
+
+###Parse ACLs
+`APIncrementalStore` tries to be as much agnostic as possible in regards to the backend webservice, thus pretty much only `APParseConnector` class deals with Parse. If you want to deal with ACLs I can see two ways you can achieve it:
+
+1) Use a default ACL set perhaps when your user successfuly login at Parse:
+```
+PFACL *defaultACL = [PFACL ACL];
+// Everybody can read objects created by this user
+[defaultACL setPublicReadAccess:YES];
+// Moderators can also modify these objects
+[defaultACL setWriteAccess:YES forRoleWithName:@"Moderators"];
+// And the user can read and modify its own objects
+[PFACL setDefaultACL:defaultACL withAccessForCurrentUser:YES];
+```
+See [Parse Documentation](https://www.parse.com/docs/ios_guide#roles/iOS) for more information
+
+2) If you want to set ACL individually to objects you have created localy add a property *__ACL* to your core data entity. `APIncrementalStore` will add ACL to a Parse Object when it finds a managed object that is being synced and
+ contains a binary (NSData) property called *__ACL*. The property must be set as Binary and his content should be a JSON object UTF-8 encoded Parse ACL. Follow the same Parse ACL structure found on the REST API methods:
+ ```
+ {
+    "8TOXdXf3tz": { "write": true },
+    "role:Members": { "read": true },
+    "role:Moderators": {"write": true }
+ }
+ ```
+ Use PFObject objectID to identify specific users or role:<Role Name> for roles.
+ On the example project you will find a helper method that shows how to create and included it to a managed object.
+ ```-[CoreDataController addWriteAccess:readAccess:isRole:forParseIdentifier:forManagedObject:managedObject:]```
+ 
+ To adjust your model and avoid including the *__ACL* property by hand to each of your entities you may include a method to add it programatically to all of them.
+ 
+ ```
+ - (NSManagedObjectModel*) model {
+    
+    NSManagedObjectModel* model = [NSManagedObjectModel mergedModelFromBundles:nil];
+    NSManagedObjectModel *adjustedModel = [model copy];
+    
+    for (NSEntityDescription *entity in adjustedModel.entities) {
+        
+        // Don't add properties for sub-entities, as they already exist in the super-entity
+        if ([entity superentity]) {
+            continue;
+        }
+        
+        NSAttributeDescription *objectACLProperty = [[NSAttributeDescription alloc] init];
+        [objectACLProperty setName:@"__ACL"];
+        [objectACLProperty setAttributeType:NSBinaryDataAttributeType];
+        [objectACLProperty setOptional:YES];
+        [objectACLProperty setIndexed:NO];
+        
+        [entity setProperties:[entity.properties arrayByAddingObjectsFromArray:@[objectACLProperty]]];
+    }
+    return adjustedModel;
+}
+```
+ 
+ The Parse iOS-SDK doesn't allow us to inspect any existing ACL unless you know the user/role and you ask
+ for the existing previlegies on that object. Therefore 'APIncrementalStore' will only add ACLs to object, but it will not change any existent privileges.
 
 ###Unit Testing
 On `UnitTestingCommon.m` config a valid Parse User/Password.
-Use a test Parse App as it will include few additional classes needed for testing. 
+Use a test Parse App as it will include few additional classes needed for testing.
+
+###Disclaimer
+APIncrementalStore is not affiliated, associated, authorized, endorsed by, or in any way officially connected with Parse.com, Parse Inc., or any of its subsidiaries or its affiliates. 
+The official Parse web site is available at [www.parse.com](www.parse.com)
+
+###License
+APIncrementalStore is available under the MIT license. 
+See the LICENSE file for more info.
 
 
 Cheers. Flavio
