@@ -24,3 +24,5 @@ NSString* const APObjectIsDeletedAttributeName = @"apObjectIsDeleted";
 NSString* const APObjectLastModifiedAttributeName = @"apObjectLastModified";
 NSString* const APObjectIsDirtyAttributeName = @"apObjectIsDirty";
 NSString* const APObjectIsCreatedRemotelyAttributeName = @"apObjectIsCreatedRemotely";
+
+NSString* const APCoreDataACLAttributeName = @"__ACL";
