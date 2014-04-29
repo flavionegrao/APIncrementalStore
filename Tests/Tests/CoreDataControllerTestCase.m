@@ -51,6 +51,11 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     
     [super setUp];
     
+    if ([APParseApplicationID length] == 0 || [APParseClientKey length] == 0) {
+        ELog(@"It seems that you haven't set the correct Parse Keys");
+        return;
+    }
+    
     [Parse setApplicationId:APParseApplicationID clientKey:APParseClientKey];
     
     self.coreDataController = [[CoreDataController alloc]init];
@@ -589,6 +594,11 @@ Expected Results:
     author.photo = [UIImage imageWithData:authorPhotoData];
     NSError* savingError;
     [self.coreDataController.mainContext save:&savingError];
+    
+    // start sync and wait
+    [self.coreDataController requestSyncCache];
+    while (self.coreDataController.isSyncingTheCache &&
+           [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
     
     // Recreate Coredata stack
     self.coreDataController = nil;

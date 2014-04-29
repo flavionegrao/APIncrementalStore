@@ -68,6 +68,12 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     MLog();
     
     [super setUp];
+    
+    if ([APParseApplicationID length] == 0 || [APParseClientKey length] == 0) {
+        ELog(@"It seems that you haven't set the correct Parse Keys");
+        return;
+    }
+    
     [Parse setApplicationId:APParseApplicationID clientKey:APParseClientKey];
     
     // Remove SQLite file

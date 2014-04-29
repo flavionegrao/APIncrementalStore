@@ -539,7 +539,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     [mutableProperties removeObjectForKey:APObjectIsCreatedRemotelyAttributeName];
     
     [mutableProperties enumerateKeysAndObjectsUsingBlock:^(NSString* propertyName, NSPropertyDescription* propertyDesctiption, BOOL *stop) {
-        id propertyValue = [managedObject valueForKey:propertyName];
+        id propertyValue = [managedObject primitiveValueForKey:propertyName];
         
         if ([propertyDesctiption isKindOfClass:[NSAttributeDescription class]]) {
             NSAttributeDescription* attrDescription = (NSAttributeDescription*) propertyDesctiption;

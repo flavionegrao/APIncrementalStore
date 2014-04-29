@@ -64,8 +64,12 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
 - (void)setUp {
     
     [super setUp];
-    // Put setup code here. This method is called before the invocation of each test method in the class.
     
+    if ([APParseApplicationID length] == 0 || [APParseClientKey length] == 0) {
+        ELog(@"It seems that you haven't set the correct Parse Keys");
+        return;
+    }
+        
     [Parse setApplicationId:APParseApplicationID clientKey:APParseClientKey];
     
     __weak  typeof(self) weakSelf = self;
