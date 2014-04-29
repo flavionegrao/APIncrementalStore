@@ -478,7 +478,9 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             
             if ([propertyDesctiption isKindOfClass:[NSAttributeDescription class]]) {
                 if (parseObjectValue != [NSNull null]) {
-                    [managedObject setPrimitiveValue:parseObjectValue forKey:propertyName];
+                    [managedObject willChangeValueForKey:propertyName];
+                        [managedObject setPrimitiveValue:parseObjectValue forKey:propertyName];
+                    [managedObject didChangeValueForKey:propertyName];
                 }
                 
             } else {
@@ -539,7 +541,10 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     [mutableProperties removeObjectForKey:APObjectIsCreatedRemotelyAttributeName];
     
     [mutableProperties enumerateKeysAndObjectsUsingBlock:^(NSString* propertyName, NSPropertyDescription* propertyDesctiption, BOOL *stop) {
-        id propertyValue = [managedObject primitiveValueForKey:propertyName];
+        [managedObject willAccessValueForKey:propertyName];
+            id propertyValue = [managedObject primitiveValueForKey:propertyName];
+        [managedObject didAccessValueForKey:propertyName];
+
         
         if ([propertyDesctiption isKindOfClass:[NSAttributeDescription class]]) {
             NSAttributeDescription* attrDescription = (NSAttributeDescription*) propertyDesctiption;
