@@ -478,7 +478,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             
             if ([propertyDesctiption isKindOfClass:[NSAttributeDescription class]]) {
                 if (parseObjectValue != [NSNull null]) {
-                    [managedObject setValue:parseObjectValue forKey:propertyName];
+                    [managedObject setPrimitiveValue:parseObjectValue forKey:propertyName];
                 }
                 
             } else {
