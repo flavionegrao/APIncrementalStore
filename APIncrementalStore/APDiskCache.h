@@ -18,7 +18,7 @@
  * This class implements what is described on Apple's NSIncrementalStore Programing
  * Guide as "The Disk Cache".
  * https://developer.apple.com/library/mac/documentation/DataManagement/Conceptual/IncrementalStorePG/Introduction/Introduction.html#//apple_ref/doc/uid/TP40010706
- * 
+ *
  * The cache is only populated assyncronously through the method -[APDiskCache syncAllObjects:onCountingObjects:onSyncObject:onCompletion:],
  * so that fetching the cache will not triger any network operation.
  */
@@ -154,6 +154,13 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
 - (BOOL) mergeManagedContext:(NSManagedObjectContext *)context
                 onSyncObject:(void (^)(void)) onSyncObject
                        error:(NSError*__autoreleasing*) error;
+
+/**
+ Let connector know that sync process has been finished
+ Use this method to free any resource in use related to sync or save last versions of synced objects.
+ @param success whether the process was succesful or not
+ */
+- (void) syncProcessDidFinish:(BOOL) success;
 
 
 - (NSUInteger) countLocalObjectsToBeSyncedInContext:(NSManagedObjectContext *)context

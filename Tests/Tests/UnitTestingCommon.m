@@ -21,8 +21,8 @@
  Parse config - Include yours to enable unit testing
  */
 
-NSString* const APParseApplicationID = @"";
-NSString* const APParseClientKey = @"";
+NSString* const APParseApplicationID = @"qIUyjec7eqM57Hfq06Gy2TA0gnIr3h2tDZ6evGN3";
+NSString* const APParseClientKey = @"W9VdyfLihytmUBXxu85PezCOEh0PYNrrictEcm18";
 
 NSString* const APUnitTestingParseUserName = @"test_user";
 NSString* const APUnitTestingParseUserName2 = @"test_user2";

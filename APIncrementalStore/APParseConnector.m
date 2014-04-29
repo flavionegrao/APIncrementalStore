@@ -27,7 +27,7 @@ BOOL AP_DEBUG_METHODS = NO;
 BOOL AP_DEBUG_ERRORS = NO;
 BOOL AP_DEBUG_INFO = NO;
 
-/* 
+/*
  NSUserDefaults entry to reference the earliest object date synced from Parse.
  We use this Dictionary to keep a "pointer" to a reference date per entity that for the last updated object synced from Parse
  There will be one dictionary per logged user.
@@ -35,9 +35,9 @@ BOOL AP_DEBUG_INFO = NO;
  */
 static NSString* const APLatestObjectSyncedKey = @"com.apetis.apincrementalstore.parseconnector.request.latestobjectsynced.key";
 
-/* 
- It specifies the maximum number of objects that a sinble parse query should return when executed. 
- If there are more objects than this limit it will be fetched in batches. 
+/*
+ It specifies the maximum number of objects that a sinble parse query should return when executed.
+ If there are more objects than this limit it will be fetched in batches.
  Parse specifies that 100 is the default but can be increased to maximum 1000.
  */
 static NSUInteger const APParseQueryFetchLimit = 100;
@@ -47,6 +47,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 
 @property (strong,nonatomic) PFUser* authenticatedUser;
 @property (assign,nonatomic) APMergePolicy mergePolicy;
+@property (strong,nonatomic) NSMutableDictionary* latestObjectSyncedDates;
 
 @end
 
@@ -107,7 +108,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     
     if (![self isUserAuthenticated:&localError]) {
         *error = localError;
-        return NO;
+        return nil;
     }
     
     __block NSMutableDictionary* mergedObjectsUIDsNestedByEntityName = [NSMutableDictionary dictionary];
@@ -118,18 +119,18 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         PFQuery *query = [PFQuery queryWithClassName:entityDescription.name];
         
         if (!fullSync) {
-            NSDate* lastSync = [self latestObjectSyncedDateForEntityName:entityDescription.name];
+            NSDate* lastSync = self.latestObjectSyncedDates[entityDescription.name];
             if (lastSync) {
                 [query whereKey:@"updatedAt" greaterThan:lastSync];
             }
         }
         
         // We count the object before fetching (see APParseQueryFetchLimit explanation)
-//        NSUInteger numberOfObjectsToBeFetched = [query countObjects:&localError];
-//        if (localError) {
-//            *error = localError;
-//            return nil;
-//        }
+        //        NSUInteger numberOfObjectsToBeFetched = [query countObjects:&localError];
+        //        if (localError) {
+        //            *error = localError;
+        //            return nil;
+        //        }
         
         NSMutableArray* parseObjects = [[NSMutableArray alloc]init];
         NSUInteger skip = 0;
@@ -199,19 +200,19 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 
                 if (parseObjectIsDeleted) {
                     [context deleteObject:managedObject];
-                     objectStatus = NSDeletedObjectsKey;
+                    objectStatus = NSDeletedObjectsKey;
                     
                 } else {
-                   [self populateManagedObject:managedObject withSerializedParseObject:[self serializeParseObject:parseObject] onInsertedRelatedObject:^(NSManagedObject *insertedObject) {
-                       
-                       /// Include an entry for the inserterd into the return NSDictionary if any related objects isn't relflected locally yet
-                       
-                       NSMutableDictionary* relatedEntityEntry = mergedObjectsUIDsNestedByEntityName[insertedObject.entity.name] ?: [NSMutableDictionary dictionary];
-                       NSArray* mergedObjectUIDs = relatedEntityEntry[NSInsertedObjectsKey] ?: [[NSArray alloc]init];
-                       NSString* relatedObjectObjectID = [insertedObject valueForKey:APObjectUIDAttributeName];
-                       relatedEntityEntry[NSInsertedObjectsKey] = [mergedObjectUIDs arrayByAddingObject:relatedObjectObjectID];
-                       mergedObjectsUIDsNestedByEntityName[insertedObject.entity.name] = relatedEntityEntry;
-                   }];
+                    [self populateManagedObject:managedObject withSerializedParseObject:[self serializeParseObject:parseObject] onInsertedRelatedObject:^(NSManagedObject *insertedObject) {
+                        
+                        /// Include an entry for the inserterd into the return NSDictionary if any related objects isn't relflected locally yet
+                        
+                        NSMutableDictionary* relatedEntityEntry = mergedObjectsUIDsNestedByEntityName[insertedObject.entity.name] ?: [NSMutableDictionary dictionary];
+                        NSArray* mergedObjectUIDs = relatedEntityEntry[NSInsertedObjectsKey] ?: [[NSArray alloc]init];
+                        NSString* relatedObjectObjectID = [insertedObject valueForKey:APObjectUIDAttributeName];
+                        relatedEntityEntry[NSInsertedObjectsKey] = [mergedObjectUIDs arrayByAddingObject:relatedObjectObjectID];
+                        mergedObjectsUIDsNestedByEntityName[insertedObject.entity.name] = relatedEntityEntry;
+                    }];
                     objectStatus = NSUpdatedObjectsKey;
                 }
             }
@@ -232,30 +233,30 @@ static NSUInteger const APParseQueryFetchLimit = 100;
          Unit testing - [APParseConnectorTestCase testMergingWithOtherClientMergingSimultaneously]
          Do not let this uncommented if you are not executing this very specif test
          */
-//        static BOOL firstRun = YES;
-//        if ([entityDescription.name isEqualToString:@"Book"] && firstRun){
-//            firstRun = NO;
-//            NSError* saveError;
-//            
-//            PFObject* anotherBook = [PFObject objectWithClassName:@"Book"];
-//            [anotherBook setValue:@"another book" forKey:@"name"];
-//            [anotherBook setValue:@NO forKey:APObjectIsDeletedAttributeName];
-//            [anotherBook save:&saveError];
-//            DLog(@"Another book %@ has been created",anotherBook);
-//            
-//            PFObject* page = [PFObject objectWithClassName:@"Page"];
-//            [page setValue:@NO forKey:APObjectIsDeletedAttributeName];
-//            
-//            [page save:&saveError];
-//            DLog(@"Page has been created");
-//            
-//            PFObject* lastBook = [parseObjects lastObject];
-//            [[lastBook relationForKey:@"pages"]addObject:page];
-//            [lastBook save:&saveError];
-//            
-//            [page setObject:lastBook forKey:@"book"];
-//            [page save:&saveError];
-//        }
+        //        static BOOL firstRun = YES;
+        //        if ([entityDescription.name isEqualToString:@"Book"] && firstRun){
+        //            firstRun = NO;
+        //            NSError* saveError;
+        //
+        //            PFObject* anotherBook = [PFObject objectWithClassName:@"Book"];
+        //            [anotherBook setValue:@"another book" forKey:@"name"];
+        //            [anotherBook setValue:@NO forKey:APObjectIsDeletedAttributeName];
+        //            [anotherBook save:&saveError];
+        //            DLog(@"Another book %@ has been created",anotherBook);
+        //
+        //            PFObject* page = [PFObject objectWithClassName:@"Page"];
+        //            [page setValue:@NO forKey:APObjectIsDeletedAttributeName];
+        //
+        //            [page save:&saveError];
+        //            DLog(@"Page has been created");
+        //
+        //            PFObject* lastBook = [parseObjects lastObject];
+        //            [[lastBook relationForKey:@"pages"]addObject:page];
+        //            [lastBook save:&saveError];
+        //
+        //            [page setObject:lastBook forKey:@"book"];
+        //            [page save:&saveError];
+        //        }
     }
     return  mergedObjectsUIDsNestedByEntityName;
 }
@@ -311,7 +312,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                     [managedObject setValue:@NO forKey:APObjectIsDirtyAttributeName];
                 }
             }
-        
+            
         } else {
             PFObject* parseObject = [self parseObjectFromClassName:managedObject.entity.name objectUID:objectUID];
             
@@ -335,11 +336,11 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 
                 if ([parseObject.updatedAt isEqualToDate:localObjectUpdatedAt] || localObjectUpdatedAt == nil) {
                     [self populateParseObject:parseObject withManagedObject:managedObject error:&localError];
-                     if (AP_DEBUG_INFO) { DLog(@"Object remains the same, we are good to merge it")}
+                    if (AP_DEBUG_INFO) { DLog(@"Object remains the same, we are good to merge it")}
                     
                     if (localError) {
                         reportErrorStopEnumerating();
-                   
+                        
                     } else {
                         
                         if (![parseObject save:&localError]) {
@@ -403,6 +404,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                                             fullSync: (BOOL) fullSync
                                                error: (NSError*__autoreleasing*) error {
     
+    [self loadLatestObjectSyncedDates];
+    
     NSUInteger numberOfObjects = 0;
     NSError* countError;
     NSManagedObjectModel* model = context.persistentStoreCoordinator.managedObjectModel;
@@ -411,7 +414,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         PFQuery *query = [PFQuery queryWithClassName:entityDescription.name];
         
         if (!fullSync) {
-            NSDate* lastSync = [self latestObjectSyncedDateForEntityName:entityDescription.name];
+            NSDate* lastSync = self.latestObjectSyncedDates[entityDescription.name];
             if (lastSync) {
                 [query whereKey:@"updatedAt" greaterThan:lastSync];
             }
@@ -425,8 +428,15 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             continue;
         }
     }
-    
     return numberOfObjects;
+}
+
+
+- (void) syncProcessDidFinish:(BOOL)success {
+    
+    if (success) {
+        [self saveLatestObjectSyncedDate];
+    }
 }
 
 
@@ -438,28 +448,29 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     if (self.authenticatedUserID) {
         key = [self.authenticatedUserID stringByAppendingString:APLatestObjectSyncedKey];
     }
-    
     return key;
 }
 
 
 - (void) setLatestObjectSyncedDate: (NSDate*) date forEntityName: (NSString*) entityName {
     
-    if (AP_DEBUG_METHODS) { MLog(@"Date: %@",date)}
-
-    NSMutableDictionary* latestObjectSyncedDates = [[[NSUserDefaults standardUserDefaults] objectForKey:[self latestObjectSyncedKey]]mutableCopy] ?: [NSMutableDictionary dictionary];
+    if (AP_DEBUG_METHODS) {MLog(@"Date: %@",date)}
     
-    if ([[latestObjectSyncedDates[entityName] laterDate:date] isEqualToDate:date] || latestObjectSyncedDates[entityName] == nil) {
-        latestObjectSyncedDates[entityName] = date;
-        [[NSUserDefaults standardUserDefaults]setObject:latestObjectSyncedDates forKey:[self latestObjectSyncedKey]];
+    if ([[self.latestObjectSyncedDates[entityName] laterDate:date] isEqualToDate:date] || self.latestObjectSyncedDates[entityName] == nil) {
+        self.latestObjectSyncedDates[entityName] = date;
     }
 }
 
 
-- (NSDate*) latestObjectSyncedDateForEntityName: (NSString*) entityName{
+- (void) loadLatestObjectSyncedDates {
+    
+    self.latestObjectSyncedDates = [[[NSUserDefaults standardUserDefaults] objectForKey:[self latestObjectSyncedKey]]mutableCopy];
+}
 
-    NSDictionary* latestObjectSyncedDate =[[NSUserDefaults standardUserDefaults] objectForKey:[self latestObjectSyncedKey]];
-    return latestObjectSyncedDate[entityName];
+
+- (void) saveLatestObjectSyncedDate {
+    
+    [[NSUserDefaults standardUserDefaults]setObject:self.latestObjectSyncedDates forKey:[self latestObjectSyncedKey]];
 }
 
 
@@ -479,7 +490,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             if ([propertyDesctiption isKindOfClass:[NSAttributeDescription class]]) {
                 if (parseObjectValue != [NSNull null]) {
                     [managedObject willChangeValueForKey:propertyName];
-                        [managedObject setPrimitiveValue:parseObjectValue forKey:propertyName];
+                    [managedObject setPrimitiveValue:parseObjectValue forKey:propertyName];
                     [managedObject didChangeValueForKey:propertyName];
                 }
                 
@@ -542,9 +553,9 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     
     [mutableProperties enumerateKeysAndObjectsUsingBlock:^(NSString* propertyName, NSPropertyDescription* propertyDesctiption, BOOL *stop) {
         [managedObject willAccessValueForKey:propertyName];
-            id propertyValue = [managedObject primitiveValueForKey:propertyName];
+        id propertyValue = [managedObject primitiveValueForKey:propertyName];
         [managedObject didAccessValueForKey:propertyName];
-
+        
         
         if ([propertyDesctiption isKindOfClass:[NSAttributeDescription class]]) {
             NSAttributeDescription* attrDescription = (NSAttributeDescription*) propertyDesctiption;
@@ -562,7 +573,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 }
                 
             } else {
-            
+                
                 if (propertyValue == nil) {
                     [parseObject setValue:[NSNull null] forKey:propertyName];
                     
@@ -645,7 +656,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         if (AP_DEBUG_ERRORS) {ELog(@"Error saving file to Parse: %@",localError)}
         *error = localError;
         success = NO;
-   
+        
     } else {
         PFACL* ACL = object.ACL ?: [PFACL ACL];
         [dictACL enumerateKeysAndObjectsUsingBlock:^(NSString* who, NSDictionary* privileges, BOOL *stop) {
@@ -698,7 +709,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 
 - (PFObject*) parseObjectFromManagedObject:(NSManagedObject*) managedObject
                                      error:(NSError *__autoreleasing*)error {
- 
+    
     PFObject* parseObject;
     NSError* localError;
     
@@ -799,13 +810,13 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     if (!fetchError) {
         
         if ([fetchResults count] > 1) {
-             @throw [NSException exceptionWithName:APIncrementalStoreExceptionInconsistency reason:@"More than one cached result for parse object" userInfo:nil];
-        
+            @throw [NSException exceptionWithName:APIncrementalStoreExceptionInconsistency reason:@"More than one cached result for parse object" userInfo:nil];
+            
         } else if ([fetchResults count] == 0) {
             
             if (createIfNecessary) {
                 managedObject = [NSEntityDescription insertNewObjectForEntityForName:entity.name inManagedObjectContext:context];
-                 if (AP_DEBUG_INFO) { DLog(@"New object created: %@",managedObject.objectID)}
+                if (AP_DEBUG_INFO) { DLog(@"New object created: %@",managedObject.objectID)}
                 [managedObject setValue:objectUID forKey:APObjectUIDAttributeName];
                 
                 NSError* permanentIdError;
@@ -872,7 +883,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             
             // Object ACL
             
-            /* 
+            /*
              PFACL object doesn't show which users/roles are associated with it,
              unless you know it IDs/RoleNames beforehand.
              I haven't figured out a way to extract that information to enable the serialization

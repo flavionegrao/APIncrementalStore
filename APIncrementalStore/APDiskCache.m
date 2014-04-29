@@ -224,10 +224,8 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
       onCountingObjects: (void (^)(NSUInteger localObjects, NSUInteger remoteObjects)) countingBlock
            onSyncObject: (void (^)(BOOL isRemoteObject)) syncObjectBlock
            onCompletion: (void (^)(NSDictionary* objectUIDsNestedByEntityName, NSError* syncError)) conpletionBlock {
-
-    if (AP_DEBUG_METHODS) {MLog()}
     
-    self.syncContext = nil;
+    if (AP_DEBUG_METHODS) {MLog()}
     
     [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:YES];
     
@@ -265,8 +263,8 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         
         // Local Updates - all objects marked as "dirty" and add entries from temporary to permanent objectsUID
         BOOL mergeSuccess = [self.connector mergeManagedContext:self.syncContext onSyncObject:^{
-                                 [[NSOperationQueue mainQueue]addOperationWithBlock:^{if (syncObjectBlock) syncObjectBlock(YES); }];
-                             } error:&error];
+            [[NSOperationQueue mainQueue]addOperationWithBlock:^{if (syncObjectBlock) syncObjectBlock(YES); }];
+        } error:&error];
         
         if (!mergeSuccess) {
             if (AP_DEBUG_ERRORS) { ELog(@"Error syncing local changes: %@",error)}
@@ -292,10 +290,14 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         
         NSError* savingError;
         if (![self saveSyncContext:&savingError]) {
-             [[NSOperationQueue mainQueue]addOperationWithBlock:failureBlock];
+            [self.connector syncProcessDidFinish:NO];
+            [[NSOperationQueue mainQueue]addOperationWithBlock:failureBlock];
         } else {
+            [self.connector syncProcessDidFinish:YES];
             [[NSOperationQueue mainQueue]addOperationWithBlock:successBlock];
         }
+        
+        self.syncContext = nil;
     }];
 }
 
@@ -309,7 +311,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         if (![self.syncContext save:error]) {
             if (AP_DEBUG_ERRORS) {ELog(@"Error saving sync context changes: %@",*error)}
             success = NO;
-       
+            
         } else {
             
             [self.mainContext performBlockAndWait:^{
@@ -317,7 +319,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
                 if (![self.mainContext save:error]) {
                     if (AP_DEBUG_ERRORS) {ELog(@"Error saving main context changes: %@",*error)}
                     success = NO;
-                
+                    
                 } else {
                     
                     [self.privateContext performBlock:^{
@@ -397,7 +399,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
                 
                 NSManagedObject* relatedObject = [cacheObject primitiveValueForKey:propertyName];
                 [relatedObject willAccessValueForKey:propertyName];
-                    representation[propertyName] = [relatedObject valueForKey:APObjectUIDAttributeName] ?: [NSNull null];
+                representation[propertyName] = [relatedObject valueForKey:APObjectUIDAttributeName] ?: [NSNull null];
                 [relatedObject didAccessValueForKey:propertyName];
             } else {
                 
@@ -407,7 +409,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
                 __block NSMutableArray* relatedObjectsRepresentation = [[NSMutableArray alloc] initWithCapacity:[relatedObjects count]];
                 [relatedObjects enumerateObjectsUsingBlock:^(NSManagedObject* relatedObject, BOOL *stop) {
                     [relatedObject willAccessValueForKey:propertyName];
-                        [relatedObjectsRepresentation addObject:[relatedObject valueForKey:APObjectUIDAttributeName]];
+                    [relatedObjectsRepresentation addObject:[relatedObject valueForKey:APObjectUIDAttributeName]];
                     [relatedObject didAccessValueForKey:propertyName];
                 }];
                 representation[propertyName] = relatedObjectsRepresentation ?: [NSNull null];
@@ -467,12 +469,12 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
             
         } else if ([comparisonPredicate.rightExpression.constantValue isKindOfClass:[NSString class]]) {
             
-//            if ([comparisonPredicate.rightExpression.constantValue hasPrefix:APObjectNewUIDPrefix]) {
-//                NSString* tempObjectID = comparisonPredicate.rightExpression.constantValue;
-//                NSString *referenceObject = [[self.remoteDBConnector mapOfTemporaryToPermanentUID]valueForKey:tempObjectID];
-//                NSExpression *rightExpression = [NSExpression expressionForConstantValue:referenceObject];
-//                predicateToReturn = [NSComparisonPredicate predicateWithLeftExpression:comparisonPredicate.leftExpression rightExpression:rightExpression modifier:comparisonPredicate.comparisonPredicateModifier type:comparisonPredicate.predicateOperatorType options:comparisonPredicate.options];
-//            }
+            //            if ([comparisonPredicate.rightExpression.constantValue hasPrefix:APObjectNewUIDPrefix]) {
+            //                NSString* tempObjectID = comparisonPredicate.rightExpression.constantValue;
+            //                NSString *referenceObject = [[self.remoteDBConnector mapOfTemporaryToPermanentUID]valueForKey:tempObjectID];
+            //                NSExpression *rightExpression = [NSExpression expressionForConstantValue:referenceObject];
+            //                predicateToReturn = [NSComparisonPredicate predicateWithLeftExpression:comparisonPredicate.leftExpression rightExpression:rightExpression modifier:comparisonPredicate.comparisonPredicateModifier type:comparisonPredicate.predicateOperatorType options:comparisonPredicate.options];
+            //            }
         }
     }
     
@@ -482,7 +484,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 
 
 - (NSDictionary*) fetchObjectRepresentationForObjectUID:(NSString*) objectUID
-                                              entityName:(NSString*) entityName {
+                                             entityName:(NSString*) entityName {
     
     if (AP_DEBUG_METHODS) { MLog()}
     
