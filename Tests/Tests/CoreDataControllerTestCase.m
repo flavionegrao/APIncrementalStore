@@ -611,6 +611,44 @@ Expected Results:
 }
 
 
+- (void) testSortDescriptors {
+    
+    NSArray* sortedNames = @[@"Author#10",@"Author#11",@"Author#12",@"Author#13"];
+    
+    dispatch_group_async(self.group, self.queue, ^{
+        
+        NSError* saveError = nil;
+        for (NSUInteger i = 0; i < [sortedNames count]; i++) {
+            PFObject* author = [PFObject objectWithClassName:@"Author"];
+            [author setValue:sortedNames[i] forKey:@"name"];
+            [author setValue:@NO forKey:APObjectIsDeletedAttributeName];
+            [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+            [author save:&saveError];
+            DLog(@"Author created: %@",[author valueForKeyPath:@"name"])
+            XCTAssertNil(saveError);
+        }
+    });
+    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    
+    [self.coreDataController requestSyncCache];
+    while (self.coreDataController.isSyncingTheCache &&
+           [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
+    
+    // Remove the first one created at SetUp
+    [self.coreDataController.mainContext deleteObject:[self fetchAuthor]];
+    
+    NSError* fetchError;
+    NSFetchRequest* fr = [NSFetchRequest fetchRequestWithEntityName:@"Author"];
+    fr.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"name" ascending:NO]];
+    NSArray* fetchedAuthors = [self.coreDataController.mainContext executeFetchRequest:fr error:&fetchError];
+    XCTAssertNil(fetchError);
+    
+     for (NSUInteger i = 0; i < [sortedNames count]; i++) {
+         XCTAssertTrue([[fetchedAuthors[i] valueForKey:@"name"] isEqualToString:sortedNames[[sortedNames count] - i - 1]]);
+     }
+}
+
+
 #pragma mark - Support Methods
 
 - (Book*) fetchBook {

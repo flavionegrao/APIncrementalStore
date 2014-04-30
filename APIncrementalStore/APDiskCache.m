@@ -344,11 +344,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
                                   error:(NSError *__autoreleasing*)error {
     
     if (AP_DEBUG_METHODS) { MLog()}
-    
-    NSFetchRequest *cacheFetchRequest = [[NSFetchRequest alloc]initWithEntityName:fetchRequest.entityName];
-    [cacheFetchRequest setEntity:[NSEntityDescription entityForName:fetchRequest.entityName inManagedObjectContext:self.mainContext]];
-    [cacheFetchRequest setReturnsDistinctResults:YES];
-    [cacheFetchRequest setPredicate:[self cachePredicateFromPredicate:fetchRequest.predicate forEntityName:fetchRequest.entityName]];
+    NSFetchRequest* cacheFetchRequest = [self cacheFetchRequestFromFetchRequest:fetchRequest];
     
     NSArray *cachedManagedObjects = [self.mainContext executeFetchRequest:cacheFetchRequest error:error];
     __block NSMutableArray* representations = [[NSMutableArray alloc]initWithCapacity:[cachedManagedObjects count]];
@@ -365,10 +361,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     
     if (AP_DEBUG_METHODS) { MLog()}
     
-    NSFetchRequest *cacheFetchRequest = [[NSFetchRequest alloc]initWithEntityName:fetchRequest.entityName];
-    [cacheFetchRequest setEntity:[NSEntityDescription entityForName:fetchRequest.entityName inManagedObjectContext:self.mainContext]];
-    [cacheFetchRequest setPredicate:[self cachePredicateFromPredicate:fetchRequest.predicate forEntityName:fetchRequest.entityName]];
-    
+    NSFetchRequest* cacheFetchRequest = [self cacheFetchRequestFromFetchRequest:fetchRequest];
     return  [self.mainContext countForFetchRequest:cacheFetchRequest error:error];
 }
 
@@ -419,6 +412,19 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     }];
     
     return representation;
+}
+
+
+// Translates a user submited fetchRequest to a "translated" for local cache queries.
+- (NSFetchRequest*) cacheFetchRequestFromFetchRequest:(NSFetchRequest*) fetchRequest {
+    
+    if (AP_DEBUG_METHODS) { MLog()}
+    
+    NSFetchRequest* cacheFetchRequest = [fetchRequest copy];
+    //[cacheFetchRequest setReturnsDistinctResults:YES];
+    [cacheFetchRequest setEntity:[NSEntityDescription entityForName:fetchRequest.entityName inManagedObjectContext:self.mainContext]];
+    [cacheFetchRequest setPredicate:[self cachePredicateFromPredicate:fetchRequest.predicate forEntityName:fetchRequest.entityName]];
+    return cacheFetchRequest;
 }
 
 
