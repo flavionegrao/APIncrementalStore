@@ -295,10 +295,10 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
         adjustedIdentifier = identifier;
     }
     
-    NSDictionary* readPermission = @{@"read": (readAccess)?@"true":@"false"};
-    NSDictionary* writePermission = @{@"write": (readAccess)?@"true":@"false"};
-    [ACL setValue:readPermission forKey:adjustedIdentifier];
-    [ACL setValue:writePermission forKey:adjustedIdentifier];
+    NSDictionary* permission = @{@"read": (readAccess) ? @"true": @"false",
+                                 @"write": (writeAccess) ? @"true" : @"false"};
+    
+    [ACL setValue:permission forKey:adjustedIdentifier];
     NSData* ACLData = [NSJSONSerialization dataWithJSONObject:ACL options:0 error:nil];
     [managedObject setValue:ACLData forKey:CoreDataControllerACLAttributeName];
 }
