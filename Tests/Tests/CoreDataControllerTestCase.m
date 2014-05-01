@@ -457,6 +457,9 @@ Expected Results:
             } else if ([[obj valueForKeyPath:@"name"] isEqualToString:kBookName2]) {
                 XCTAssertTrue([[obj valueForKey:APObjectIsDeletedAttributeName] isEqualToNumber:@YES]);
                 
+                PFObject* author = [obj objectForKey:@"author"];
+                XCTAssertTrue([author isEqual:[NSNull null]]);
+                
             } else {
                 XCTFail();
             }

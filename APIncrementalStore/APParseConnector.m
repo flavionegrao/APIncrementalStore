@@ -553,7 +553,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     
     [mutableProperties enumerateKeysAndObjectsUsingBlock:^(NSString* propertyName, NSPropertyDescription* propertyDesctiption, BOOL *stop) {
         [managedObject willAccessValueForKey:propertyName];
-        id propertyValue = [managedObject primitiveValueForKey:propertyName];
+            id propertyValue = [managedObject primitiveValueForKey:propertyName];
         [managedObject didAccessValueForKey:propertyName];
         
         
@@ -608,36 +608,55 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             
             NSRelationshipDescription* relationshipDescription = (NSRelationshipDescription*) propertyDesctiption;
             
-            if (propertyValue) {
+            if (relationshipDescription.isToMany) {
+                NSSet* relatedManagedObjects = (NSSet*) propertyValue;
                 
-                if (relationshipDescription.isToMany) {
-                    
-                    // To-Many relationship
-                    
-                    NSSet* relatedManagedObjects = (NSSet*) propertyValue;
-                    PFRelation* relation = [parseObject relationForKey:propertyName];
-                    
-                    for (NSManagedObject* relatedManagedObject in relatedManagedObjects) {
-                        PFObject* relatedParseObject = [self parseObjectFromManagedObject:relatedManagedObject error:&localError];
-                        if (localError){
-                            *error = localError;
-                            return;
-                        }
-                        [relation addObject:relatedParseObject];
-                    }
+                /*
+                 Would be nice if there was a method to empty a relationship easiser or check
+                 what objects are in the relation without querying Parse.
+                 The only way I was able to make it work was to query all objects and
+                 remove them one by one... awesome!
+                 */
+                
+                PFRelation* relation = [parseObject relationForKey:propertyName];
+                
+                // First check if this object has been created remotely
+                if (parseObject.objectId) {
+                    NSArray* currentObjectsInParseRelation = [[relation query]findObjects:&localError];
+                    if (localError) { *error = localError; return;}
+                    [currentObjectsInParseRelation enumerateObjectsUsingBlock:^(PFObject* currentRelatedParseObject, NSUInteger idx, BOOL *stop) {
+                        [relation removeObject:currentRelatedParseObject];
+                    }];
+                }
+                
+                /*
+                 Now fetch the equivalent Parse object from the local related managed object
+                 and add them all to the parse relation
+                 */
+                for (NSManagedObject* relatedManagedObject in relatedManagedObjects) {
+                    PFObject* relatedParseObject = [self parseObjectFromManagedObject:relatedManagedObject error:&localError];
+                    if (localError) { *error = localError; return;}
+                    [relation addObject:relatedParseObject];
+                }
+                
+            } else {
+                
+                // To-One relationship
+                
+                NSManagedObject* relatedManagedObject = (NSManagedObject*) propertyValue;
+                
+                if (!relatedManagedObject) {
+                    [parseObject setValue:[NSNull null] forKey:propertyName];
                     
                 } else {
-                    
-                    // To-One relationship
-                    
-                    NSManagedObject* relatedManagedObject = (NSManagedObject*) propertyValue;
                     PFObject* relatedParseObject = [self parseObjectFromManagedObject:relatedManagedObject error:&localError];
                     if (localError){
                         *error = localError;
                         return;
                     }
-                    [parseObject setValue:relatedParseObject forKey:propertyName];
+                    [parseObject setValue:relatedParseObject ?: [NSNull null] forKey:propertyName];
                 }
+                
             }
         }
     }];
