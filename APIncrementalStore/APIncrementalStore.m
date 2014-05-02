@@ -747,7 +747,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     
     if (AP_DEBUG_METHODS) { MLog()}
     
-    [self.diskCache syncAllObjects:allRemoteObjects onCountingObjects:^(NSUInteger localObjects, NSUInteger remoteObjects) {
+    [self.diskCache syncAllObjects:allRemoteObjects onCountingObjects:^(NSInteger localObjects, NSInteger remoteObjects) {
         NSDictionary* userInfo = @{APNotificationCacheNumberOfLocalObjectsKey: @(localObjects),
                                    APNotificationCacheNumberOfRemoteObjectsKey: @(remoteObjects)};
         [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationCacheWillStartSync object:self userInfo:userInfo];
@@ -758,6 +758,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationCacheDidSyncObject object:self userInfo:userInfo];
     
     } onCompletion:^(NSDictionary* objectUIDsNestedByEntityName, NSError *syncError) {
+        
         if (!syncError) {
             NSDictionary* translatedDictionary = [self translateObjectUIDsToManagedObjectIDs:objectUIDsNestedByEntityName];
             [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationCacheDidFinishSync object:self userInfo:translatedDictionary];

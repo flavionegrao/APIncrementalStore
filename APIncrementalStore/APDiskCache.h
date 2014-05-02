@@ -106,12 +106,12 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
 /**
  Requests the localCache to start the sync process using its remoteDBConnector
  @param allObjects if YES it will ignore whether an object had been already syncronized previously
- @param countingBlock before starting merging the objects this block will be called passing the total number of objects to be synced
+ @param countingBlock before starting merging the objects this block will be called passing the total number of objects to be synced, if counting is not supported by the employed webservice it will return -1
  @param syncObjectBlock whenever a object is synced this block gets called. The block parameter isRemoteObject is set to YES if the synced objects merged from the server otherwise it is a local object merged.
  @param conpletionBlock the block to be called when the sync is done passing a disctionary containing the objects that were successfuly synced keyed by the corresponding entity name.
  */
 - (void) syncAllObjects:(BOOL) allObjects
-      onCountingObjects:(void(^)(NSUInteger localObjects, NSUInteger remoteObjects)) countingBlock
+      onCountingObjects:(void(^)(NSInteger localObjects, NSInteger remoteObjects)) countingBlock
            onSyncObject:(void(^)(BOOL isRemoteObject)) syncObjectBlock
            onCompletion:(void(^)(NSDictionary* objectUIDsNestedByEntityName, NSError* syncError)) conpletionBlock;
 
@@ -162,11 +162,19 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
  */
 - (void) syncProcessDidFinish:(BOOL) success;
 
-
-- (NSUInteger) countLocalObjectsToBeSyncedInContext:(NSManagedObjectContext *)context
+/**
+ Counts and return the local objects that need to be synced. Doesn't make much sense implement it 
+ if the webservice does not support couting.
+ @returns the total number of local objects that need to be synced, if it's not supported return -1
+ */
+- (NSInteger) countLocalObjectsToBeSyncedInContext:(NSManagedObjectContext *)context
                                               error:(NSError*__autoreleasing*) error;
 
-- (NSUInteger) countRemoteObjectsToBeSyncedInContext:(NSManagedObjectContext *)context
+/**
+ If the webservice supports couting return the total number of objects that need to be synced.
+ @returns the total number of objects that need to be synced localy, if it's not supported return -1
+ */
+- (NSInteger) countRemoteObjectsToBeSyncedInContext:(NSManagedObjectContext *)context
                                             fullSync:(BOOL) fullSync
                                                error:(NSError*__autoreleasing*) error;
 

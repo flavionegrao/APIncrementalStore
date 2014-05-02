@@ -237,7 +237,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 #pragma mark - Sync
 
 - (void) syncAllObjects: (BOOL) allObjects
-      onCountingObjects: (void (^)(NSUInteger localObjects, NSUInteger remoteObjects)) countingBlock
+      onCountingObjects: (void (^)(NSInteger localObjects, NSInteger remoteObjects)) countingBlock
            onSyncObject: (void (^)(BOOL isRemoteObject)) syncObjectBlock
            onCompletion: (void (^)(NSDictionary* objectUIDsNestedByEntityName, NSError* syncError)) conpletionBlock {
     

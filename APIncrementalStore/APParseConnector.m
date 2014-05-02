@@ -392,43 +392,59 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     return success;
 }
 
-
-- (NSUInteger) countLocalObjectsToBeSyncedInContext: (NSManagedObjectContext *)context
+/*
+ As stated by a Parse techincian: We currently limit count operations to 160 api requests within a 
+ one minute period for each application. We may have to adjust this in the future 
+ depending on database performance.
+ https://parse.com/questions/code-154the-number-of-count-operations-in-progress-has-reached-its-limit-code-154-version-1125
+ 
+ Therefore can't be used in real world
+ */
+- (NSInteger) countLocalObjectsToBeSyncedInContext: (NSManagedObjectContext *)context
                                               error: (NSError*__autoreleasing*) error {
     
-    return [[self managedObjectsMarkedAsDirtyInContext:context]count];
+    //return [[self managedObjectsMarkedAsDirtyInContext:context]count];
+    return -1;
 }
 
 
-- (NSUInteger) countRemoteObjectsToBeSyncedInContext: (NSManagedObjectContext *)context
+/*
+ As stated by a Parse techincian: We currently limit count operations to 160 api requests within a
+ one minute period for each application. We may have to adjust this in the future
+ depending on database performance.
+ https://parse.com/questions/code-154the-number-of-count-operations-in-progress-has-reached-its-limit-code-154-version-1125
+ 
+ Therefore can't be used in real world
+ */
+- (NSInteger) countRemoteObjectsToBeSyncedInContext: (NSManagedObjectContext *)context
                                             fullSync: (BOOL) fullSync
                                                error: (NSError*__autoreleasing*) error {
-    
-    [self loadLatestObjectSyncedDates];
-    
-    NSUInteger numberOfObjects = 0;
-    NSError* countError;
-    NSManagedObjectModel* model = context.persistentStoreCoordinator.managedObjectModel;
-    
-    for (NSEntityDescription* entityDescription in [model entities]) {
-        PFQuery *query = [PFQuery queryWithClassName:entityDescription.name];
-        
-        if (!fullSync) {
-            NSDate* lastSync = self.latestObjectSyncedDates[entityDescription.name];
-            if (lastSync) {
-                [query whereKey:@"updatedAt" greaterThan:lastSync];
-            }
-        }
-        numberOfObjects += [query countObjects:&countError];
-        
-        if (countError) {
-            if(AP_DEBUG_ERRORS) ELog(@"Error counting: %@",countError);
-            *error = countError;
-            numberOfObjects = 0;
-            continue;
-        }
-    }
-    return numberOfObjects;
+    return -1;
+//    [self loadLatestObjectSyncedDates];
+//    
+//    NSUInteger numberOfObjects = 0;
+//    NSError* countError;
+//    NSManagedObjectModel* model = context.persistentStoreCoordinator.managedObjectModel;
+//    
+//    for (NSEntityDescription* entityDescription in [model entities]) {
+//        PFQuery *query = [PFQuery queryWithClassName:entityDescription.name];
+//        
+//        if (!fullSync) {
+//            NSDate* lastSync = self.latestObjectSyncedDates[entityDescription.name];
+//            if (lastSync) {
+//                [query whereKey:@"updatedAt" greaterThan:lastSync];
+//            }
+//        }
+//        numberOfObjects += [query countObjects:&countError];
+//        
+//        if (countError) {
+//            if(AP_DEBUG_ERRORS) ELog(@"Error counting: %@",countError);
+//            *error = countError;
+//            numberOfObjects = 0;
+//            continue;
+//        }
+//    }
+//    return numberOfObjects;
 }
 
 

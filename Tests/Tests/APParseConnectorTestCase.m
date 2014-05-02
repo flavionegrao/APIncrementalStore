@@ -517,10 +517,11 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     dispatch_group_async(self.group, self.queue, ^{
         
         NSError* countingError;
-        NSUInteger numberOfObjectsToBeSynced = [self.parseConnector countRemoteObjectsToBeSyncedInContext:self.testContext fullSync:YES error:&countingError];
-        
+        NSInteger numberOfObjectsToBeSynced = [self.parseConnector countRemoteObjectsToBeSyncedInContext:self.testContext fullSync:YES error:&countingError];
         XCTAssertNil(countingError);
-        XCTAssertTrue(numberOfObjectsToBeSynced == 3);
+        
+        // Parse doesn't quite support couting
+        XCTAssertTrue(numberOfObjectsToBeSynced == -1);
     });
     dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
 }
@@ -543,10 +544,11 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     XCTAssertNil(savingError);
     
     NSError* countingError;
-    NSUInteger numberOfObjectsToBeSynced = [self.parseConnector countLocalObjectsToBeSyncedInContext:self.testContext error:&countingError];
-    
+    NSInteger numberOfObjectsToBeSynced = [self.parseConnector countLocalObjectsToBeSyncedInContext:self.testContext error:&countingError];
     XCTAssertNil(countingError);
-    XCTAssertTrue(numberOfObjectsToBeSynced == numberOfBooksToBeCreated);
+    
+    // Parse doesn't quite support couting
+    XCTAssertTrue(numberOfObjectsToBeSynced == -1);
 }
 
 
