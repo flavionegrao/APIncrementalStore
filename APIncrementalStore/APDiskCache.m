@@ -103,6 +103,22 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     
     for (NSEntityDescription *entity in cacheModel.entities) {
         
+        /*
+         It's necessary to change all properties to be optional due to the possibility of the
+         APWebServiceConnector creates a new placeholder managed object for a relationship of a object
+         being synced that doesn't exist localy at the moment. That new placeholder object will 
+         only contain the APObjectUIDAttributeName and will be populated when the APWebServiceConnector
+         fetches it equivavalent representation from theWeb Service. If we have any optional property set to NO
+         it will not be possible to save it. This situation may happen when APWebServiceConnector say syncs
+         a Entity A and while it's syncing Entity B another client insert a new object A and B, if A has a relationship
+         to B a placeholder will be created localy to keep the model concistent untill the next sync
+         when the placeholder object A will be populated.
+         */
+        
+        [[entity propertiesByName] enumerateKeysAndObjectsUsingBlock:^(NSString* propertyName, NSPropertyDescription* description, BOOL *stop) {
+            [description setOptional:YES];
+        }];
+        
         // Don't add properties for sub-entities, as they already exist in the super-entity
         if ([entity superentity]) {
             continue;
@@ -441,9 +457,6 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     NSPredicate *predicateToReturn = [predicate copy];
     
     if ([predicate isKindOfClass:[NSCompoundPredicate class]]) {
-        
-        // apply SM_parsePredicate to each subpredicate of the compound predicate
-        
         NSCompoundPredicate *compoundPredicate = (NSCompoundPredicate*)predicate;
         NSArray *subpredicates = compoundPredicate.subpredicates;
         NSMutableArray *newSubpredicates = [NSMutableArray arrayWithCapacity:[subpredicates count]];
@@ -484,8 +497,16 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         }
     }
     
-    NSPredicate* excludeDeletedOjects = [NSPredicate predicateWithFormat:@"%K != YES",APObjectIsDeletedAttributeName];
-    return [NSCompoundPredicate andPredicateWithSubpredicates:@[predicateToReturn,excludeDeletedOjects]];
+    // see -[APDiskCache setModel:] for a comprensive explanation
+    NSPredicate* lastModifiedDateIsNil = [NSPredicate predicateWithFormat:@"%K == nil",APObjectLastModifiedAttributeName];
+    NSPredicate* isNotCreatedRemotely = [NSPredicate predicateWithFormat:@"%K == NO",APObjectIsCreatedRemotelyAttributeName];
+    NSPredicate* wasCreatedLocally = [NSCompoundPredicate andPredicateWithSubpredicates:@[lastModifiedDateIsNil,isNotCreatedRemotely]];
+    
+    NSPredicate* hasLastModifiedDate = [NSPredicate predicateWithFormat:@"%K != nil",APObjectLastModifiedAttributeName];
+    NSPredicate* hasLastModifiedDateOrWasCreatedLocally = [NSCompoundPredicate orPredicateWithSubpredicates:@[hasLastModifiedDate,wasCreatedLocally]];
+    NSPredicate* excludeDeletedObjects = [NSPredicate predicateWithFormat:@"%K != YES",APObjectIsDeletedAttributeName];
+    
+    return [NSCompoundPredicate andPredicateWithSubpredicates:@[predicateToReturn,excludeDeletedObjects,hasLastModifiedDateOrWasCreatedLocally]];
 }
 
 
@@ -607,6 +628,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         
         [self populateManagedObject:managedObject withRepresentation:representation];
         [managedObject setValue:@YES forKey:APObjectIsDirtyAttributeName];
+        [managedObject setValue:@NO forKey:APObjectIsCreatedRemotelyAttributeName];
         [managedObject setValue:@NO forKey:APObjectIsDeletedAttributeName];
     }];
     
