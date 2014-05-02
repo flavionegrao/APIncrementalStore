@@ -486,51 +486,60 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         
         if ([[parseObjectDictRepresentation allKeys]containsObject:propertyName]) {
             id parseObjectValue = [parseObjectDictRepresentation valueForKey:propertyName];
+            id managedObjectValue;
             
-            if ([propertyDesctiption isKindOfClass:[NSAttributeDescription class]]) {
-                if (parseObjectValue != [NSNull null]) {
-                    [managedObject willChangeValueForKey:propertyName];
-                    [managedObject setPrimitiveValue:parseObjectValue forKey:propertyName];
-                    [managedObject didChangeValueForKey:propertyName];
-                }
+            if ([parseObjectValue isEqual:[NSNull null]]) {
+                managedObjectValue = nil;
                 
             } else {
                 
-                NSRelationshipDescription* relationshipDescription = (NSRelationshipDescription*) propertyDesctiption;
-                NSArray *relatedParseObjets = (NSArray*) parseObjectValue;
-                
-                if (relationshipDescription.isToMany) {
-                    NSMutableSet* relatedManagedObjects = [[NSMutableSet alloc]initWithCapacity:[relatedParseObjets count]];
+                if ([propertyDesctiption isKindOfClass:[NSAttributeDescription class]]) {
+                    managedObjectValue = [parseObjectValue copy];
                     
-                    for (NSDictionary* dictParseObject in relatedParseObjets) {
-                        NSString* objectUID = [dictParseObject valueForKey:APObjectUIDAttributeName];
+                } else {
+                    
+                    NSRelationshipDescription* relationshipDescription = (NSRelationshipDescription*) propertyDesctiption;
+                    
+                    if (relationshipDescription.isToMany) {
+                        
+                        NSArray *relatedParseObjets = (NSArray*) parseObjectValue;
+                        NSMutableSet* relatedManagedObjects = [[NSMutableSet alloc]initWithCapacity:[relatedParseObjets count]];
+                        
+                        for (NSDictionary* dictParseObject in relatedParseObjets) {
+                            NSString* relatedObjectUID = [dictParseObject valueForKey:APObjectUIDAttributeName];
+                            NSManagedObject* relatedManagedObject;
+                            relatedManagedObject = [self managedObjectForObjectUID:relatedObjectUID entity:relationshipDescription.destinationEntity inContext:managedObject.managedObjectContext createIfNecessary:NO];
+                            
+                            if (!relatedManagedObject) {
+                                relatedManagedObject = [self managedObjectForObjectUID:relatedObjectUID entity:relationshipDescription.destinationEntity inContext:managedObject.managedObjectContext createIfNecessary:YES];
+                                [relatedManagedObject setValue:@YES forKeyPath:APObjectIsCreatedRemotelyAttributeName];
+                                if (block) block(relatedManagedObject);
+                            }
+                            [relatedManagedObjects addObject:relatedManagedObject];
+                        }
+                        managedObjectValue = relatedManagedObjects;
+                        
+                    } else {
+                        
+                        // To-One relationship
+                        
+                        NSString* relatedObjectUID = [parseObjectValue valueForKey:APObjectUIDAttributeName];
+                        
                         NSManagedObject* relatedManagedObject;
-                        relatedManagedObject = [self managedObjectForObjectUID:objectUID entity:relationshipDescription.destinationEntity inContext:managedObject.managedObjectContext createIfNecessary:NO];
+                        relatedManagedObject = [self managedObjectForObjectUID:relatedObjectUID entity:relationshipDescription.destinationEntity inContext:managedObject.managedObjectContext createIfNecessary:NO];
                         if (!relatedManagedObject) {
-                            relatedManagedObject = [self managedObjectForObjectUID:objectUID entity:relationshipDescription.destinationEntity inContext:managedObject.managedObjectContext createIfNecessary:YES];
+                            relatedManagedObject = [self managedObjectForObjectUID:relatedObjectUID entity:relationshipDescription.destinationEntity inContext:managedObject.managedObjectContext createIfNecessary:YES];
                             [relatedManagedObject setValue:@YES forKeyPath:APObjectIsCreatedRemotelyAttributeName];
                             if (block) block(relatedManagedObject);
                         }
-                        [relatedManagedObjects addObject:relatedManagedObject];
+                        managedObjectValue = relatedManagedObject;
                     }
-                    
-                    [managedObject setValue:relatedManagedObjects forKey:propertyName];
-                    
-                } else {
-                    NSString* objectUID = [parseObjectValue valueForKey:APObjectUIDAttributeName];
-                    if ([objectUID isKindOfClass:[NSString class]] == NO) {
-                        [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Check your model, received an invalid Parse ObjectID for a To-One relationship. Only Parse pointer relationships are valid for To-One CoreData relationships"];
-                    }
-                    NSManagedObject* relatedManagedObject;
-                    relatedManagedObject = [self managedObjectForObjectUID:objectUID entity:relationshipDescription.destinationEntity inContext:managedObject.managedObjectContext createIfNecessary:NO];
-                    if (!relatedManagedObject) {
-                        relatedManagedObject = [self managedObjectForObjectUID:objectUID entity:relationshipDescription.destinationEntity inContext:managedObject.managedObjectContext createIfNecessary:YES];
-                        [relatedManagedObject setValue:@YES forKeyPath:APObjectIsCreatedRemotelyAttributeName];
-                        if (block) block(relatedManagedObject);
-                    }
-                    [managedObject setValue:relatedManagedObject forKey:propertyName];
                 }
             }
+            
+            [managedObject willChangeValueForKey:propertyName];
+            [managedObject setPrimitiveValue:managedObjectValue forKey:propertyName];
+            [managedObject didChangeValueForKey:propertyName];
         }
     }];
 }
