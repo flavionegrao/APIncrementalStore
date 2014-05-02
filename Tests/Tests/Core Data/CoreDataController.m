@@ -68,7 +68,7 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
     
     if (AP_DEBUG_METHODS) {MLog()}
     
-    [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheDidStartSync:) name:APNotificationCacheDidStartSync object:nil];
+    [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheDidStartSync:) name:APNotificationCacheWillStartSync object:nil];
     [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheDidFinishSync:) name:APNotificationCacheDidFinishSync object:nil];
     [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheDidReset:) name:APNotificationCacheDidFinishReset object:nil];
 }
@@ -79,7 +79,7 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
     
     [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationCacheDidFinishReset object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationCacheDidFinishSync object:nil];
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationCacheDidStartSync object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationCacheWillStartSync object:nil];
 }
 
 

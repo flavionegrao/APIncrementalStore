@@ -37,8 +37,7 @@ NSString* const APNotificationRequestCacheSync = @"com.apetis.apincrementalstore
 NSString* const APNotificationRequestCacheFullSync = @"com.apetis.apincrementalstore.diskcache.request.fullsync";
 
 NSString* const APNotificationCacheWillStartSync = @"com.apetis.apincrementalstore.diskcache.willstartsync";
-NSString* const APNotificationCacheDidStartSync = @"com.apetis.apincrementalstore.diskcache.didstartsync";
-NSString* const APNotificationCacheDidSyncObject = @"com.apetis.apincrementalstore.diskcache.didfinishsincobject";
+NSString* const APNotificationCacheDidSyncObject = @"com.apetis.apincrementalstore.diskcache.didSyncObject";
 NSString* const APNotificationCacheDidFinishSync = @"com.apetis.apincrementalstore.diskcache.didfinishsinc";
 
 NSString* const APNotificationCacheNumberOfLocalObjectsKey = @"com.apetis.apincrementalstore.diskcache.numberoflocalobjects.key";
