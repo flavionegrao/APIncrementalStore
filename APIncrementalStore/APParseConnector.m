@@ -481,7 +481,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 - (NSMutableDictionary*) latestObjectSyncedDates {
     
     if (_latestObjectSyncedDates) {
-        self.latestObjectSyncedDates = [[[NSUserDefaults standardUserDefaults] objectForKey:[self latestObjectSyncedKey]]mutableCopy];
+        self.latestObjectSyncedDates = [[[NSUserDefaults standardUserDefaults] objectForKey:[self latestObjectSyncedKey]]mutableCopy] ?: [NSMutableDictionary dictionary];
     }
     return _latestObjectSyncedDates;
 }
