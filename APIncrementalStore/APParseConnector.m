@@ -105,7 +105,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     if (AP_DEBUG_METHODS) {MLog()}
     
     __block NSError* localError;
-    
+
     if (![self isUserAuthenticated:&localError]) {
         *error = localError;
         return nil;
@@ -180,7 +180,13 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                         [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Could not obtain permanent IDs for objects %@ with error %@", managedObject, localError];
                     }
                     
-                    [self populateManagedObject:managedObject withSerializedParseObject:[self serializeParseObject:parseObject] onInsertedRelatedObject:^(NSManagedObject *insertedObject) {
+                    NSDictionary* serializeParseObject = [self serializeParseObject:parseObject error:&localError];
+                    if (localError) {
+                        *error = localError;
+                        return nil;
+                    }
+                    
+                    [self populateManagedObject:managedObject withSerializedParseObject:serializeParseObject onInsertedRelatedObject:^(NSManagedObject *insertedObject) {
                         
                         // Include an entry for the inserted object into the returning NSDictionary
                         // if any related objects isn't relflected locally yet
@@ -203,7 +209,12 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                     objectStatus = NSDeletedObjectsKey;
                     
                 } else {
-                    [self populateManagedObject:managedObject withSerializedParseObject:[self serializeParseObject:parseObject] onInsertedRelatedObject:^(NSManagedObject *insertedObject) {
+                    NSDictionary* serializeParseObject = [self serializeParseObject:parseObject error:&localError];
+                    if (localError) {
+                        *error = localError;
+                        return nil;
+                    }
+                    [self populateManagedObject:managedObject withSerializedParseObject:serializeParseObject onInsertedRelatedObject:^(NSManagedObject *insertedObject) {
                         
                         /// Include an entry for the inserterd into the return NSDictionary if any related objects isn't relflected locally yet
                         
@@ -375,11 +386,17 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                         }
                         
                     } else if (self.mergePolicy == APMergePolicyServerWins) {
-                        
                         if (AP_DEBUG_INFO) { DLog(@"APMergePolicyServerWins")}
-                        [self populateManagedObject:managedObject withSerializedParseObject:[self serializeParseObject:parseObject] onInsertedRelatedObject:nil];
-                        [managedObject setValue:@NO forKey:APObjectIsDirtyAttributeName];
-                        [managedObject setValue:parseObject.updatedAt forKey:APObjectLastModifiedAttributeName];
+                        
+                        NSDictionary* serializeParseObject = [self serializeParseObject:parseObject error:&localError];
+                        if (localError) {
+                            reportErrorStopEnumerating();
+                        
+                        } else {
+                            [self populateManagedObject:managedObject withSerializedParseObject:serializeParseObject onInsertedRelatedObject:nil];
+                            [managedObject setValue:@NO forKey:APObjectIsDirtyAttributeName];
+                            [managedObject setValue:parseObject.updatedAt forKey:APObjectLastModifiedAttributeName];
+                        }
                         
                     } else {
                         [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Unkown Merge Policy"];
@@ -883,9 +900,12 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 }
 
 
-- (NSDictionary*) serializeParseObject:(PFObject*) parseObject {
+- (NSDictionary*) serializeParseObject:(PFObject*) parseObject
+                                 error:(NSError* __autoreleasing*) error {
     
     if (AP_DEBUG_METHODS) { MLog()}
+    
+    __block NSError* localError;
     
     NSMutableDictionary* dictionaryRepresentation = [NSMutableDictionary dictionary];
     [[parseObject allKeys] enumerateObjectsUsingBlock:^(id key, NSUInteger idx, BOOL *stop) {
@@ -897,34 +917,48 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             
             PFRelation* relation = (PFRelation*) value;
             PFQuery* queryForRelatedObjects = [relation query];
-            
             [queryForRelatedObjects selectKeys:@[APObjectUIDAttributeName]];
-            NSArray* results = [queryForRelatedObjects findObjects];
+            NSArray* results = [queryForRelatedObjects findObjects:&localError];
             
-            NSMutableArray* relatedObjects = [[NSMutableArray alloc]initWithCapacity:[results count]];
-            for (PFObject* relatedParseObject in results) {
-                [relatedObjects addObject:@{APObjectUIDAttributeName:[relatedParseObject valueForKey:APObjectUIDAttributeName]}];
+            if (localError) {
+                *stop = YES;
+                *error = localError;
+                ELog(@"Error getting objects from To-Many relationship %@from Parse: %@",key,localError);
+            
+            } else {
+                NSMutableArray* relatedObjects = [[NSMutableArray alloc]initWithCapacity:[results count]];
+                
+                for (PFObject* relatedParseObject in results) {
+                    [relatedObjects addObject:@{APObjectUIDAttributeName:[relatedParseObject valueForKey:APObjectUIDAttributeName]}];
+                }
+                
+                dictionaryRepresentation[key] = relatedObjects;
             }
-            
-            dictionaryRepresentation[key] = relatedObjects;
             
         } else if ([value isKindOfClass:[PFFile class]]) {
             PFFile* file = (PFFile*) value;
-            NSError* error;
-            NSData* fileData = [file getData:&error];
-            if (error) {
+            NSData* fileData = [file getData:&localError];
+            if (localError) {
                 *stop = YES;
-                NSLog(@"Error getting file from Parse: %@",error);
+                *error = localError;
+                ELog(@"Error getting file from Parse: %@",localError);
+            } else {
+                dictionaryRepresentation[key] = fileData;
             }
-            dictionaryRepresentation[key] = fileData;
             
         } else if ([value isKindOfClass:[PFObject class]]) {
             
             // To-One relationship
             
             PFObject* relatedParseObject = (PFObject*) value;
-            [relatedParseObject fetchIfNeeded];
-            dictionaryRepresentation[key] = @{APObjectUIDAttributeName:[relatedParseObject valueForKey:APObjectUIDAttributeName]};
+            [relatedParseObject fetchIfNeeded:&localError];
+            if (localError) {
+                *stop = YES;
+                *error = localError;
+                ELog(@"Error getting parse object for To-One relationship %@ from Parse: %@",key,localError);
+            } else {
+                dictionaryRepresentation[key] = @{APObjectUIDAttributeName:[relatedParseObject valueForKey:APObjectUIDAttributeName]};
+            }
             
         } else if ([value isKindOfClass:[PFACL class]]) {
             
