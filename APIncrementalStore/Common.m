@@ -20,6 +20,7 @@
 
 NSString* const APObjectUIDAttributeName = @"apObjectUID";
 NSString* const APObjectIsDeletedAttributeName = @"apObjectIsDeleted";
+NSString* const APObjectEntityNameAttributeName = @"apObjectEntityName";
 
 NSString* const APObjectLastModifiedAttributeName = @"apObjectLastModified";
 NSString* const APObjectIsDirtyAttributeName = @"apObjectIsDirty";

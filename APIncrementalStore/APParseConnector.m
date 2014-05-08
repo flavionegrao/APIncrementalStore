@@ -28,17 +28,17 @@ BOOL AP_DEBUG_ERRORS = NO;
 BOOL AP_DEBUG_INFO = NO;
 
 /*
- NSUserDefaults entry to reference the earliest object date synced from Parse.
- We use this Dictionary to keep a "pointer" to a reference date per entity that for the last updated object synced from Parse
+ NSUserDefaults entry to track the earliest object date synced from Parse.
+ We use this Dictionary to keep a "pointer" to a reference date per entity for the last updated object synced from Parse
  There will be one dictionary per logged user.
  @see -[APParseConnector latestObjectSyncedKey]
  */
 static NSString* const APLatestObjectSyncedKey = @"com.apetis.apincrementalstore.parseconnector.request.latestobjectsynced.key";
 
 /*
- It specifies the maximum number of objects that a sinble parse query should return when executed.
+ It specifies the maximum number of objects that a single parse query should return when executed.
  If there are more objects than this limit it will be fetched in batches.
- Parse specifies that 100 is the default but can be increased to maximum 1000.
+ Parse specifies that 100 is the default but it can be increased to maximum 1000.
  */
 static NSUInteger const APParseQueryFetchLimit = 100;
 
@@ -88,7 +88,9 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     _mergePolicy = mergePolicy;
 }
 
+
 - (NSString*) authenticatedUserID {
+    
     if (self.authenticatedUser) {
         return self.authenticatedUser.objectId;
     } else {
@@ -116,7 +118,14 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     NSArray* sortedEntities = [[model entities]sortedArrayUsingDescriptors:@[[NSSortDescriptor sortDescriptorWithKey:@"name" ascending:YES]]];
     
     for (NSEntityDescription* entityDescription in sortedEntities) {
-        PFQuery *query = [PFQuery queryWithClassName:entityDescription.name];
+        
+        /* 
+         This covers the case when the model has entity inheritance.
+         At Parse only the root class will be created and we filter based on APObjectEntityNameAttributeName column
+         */
+        NSEntityDescription* rootEntity = [self rootEntityFromEntity:entityDescription];
+        PFQuery *query = [PFQuery queryWithClassName:rootEntity.name];
+        [query whereKey:APObjectEntityNameAttributeName equalTo:entityDescription.name];
         
         if (!fullSync) {
             NSDate* lastSync = self.latestObjectSyncedDates[entityDescription.name];
@@ -132,7 +141,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         //            return nil;
         //        }
         
-        NSMutableArray* parseObjects = [[NSMutableArray alloc]init];
+        NSMutableArray* parseObjects = [NSMutableArray array];
         NSUInteger skip = 0;
         BOOL thereAreObjectsToBeFetched = YES;
         
@@ -325,7 +334,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             }
             
         } else {
-            PFObject* parseObject = [self parseObjectFromClassName:managedObject.entity.name objectUID:objectUID];
+            
+            PFObject* parseObject = [self parseObjectFromEntity:managedObject.entity objectUID:objectUID];
             
             if (!parseObject) {
                 
@@ -543,11 +553,14 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                         
                         for (NSDictionary* dictParseObject in relatedParseObjets) {
                             NSString* relatedObjectUID = [dictParseObject valueForKey:APObjectUIDAttributeName];
+                            NSString* relatedObjectEntityName = [dictParseObject valueForKey:APObjectEntityNameAttributeName];
+                            NSEntityDescription* relatedObjectEntity = [NSEntityDescription entityForName:relatedObjectEntityName inManagedObjectContext:managedObject.managedObjectContext];
+                            
                             NSManagedObject* relatedManagedObject;
-                            relatedManagedObject = [self managedObjectForObjectUID:relatedObjectUID entity:relationshipDescription.destinationEntity inContext:managedObject.managedObjectContext createIfNecessary:NO];
+                            relatedManagedObject = [self managedObjectForObjectUID:relatedObjectUID entity:relatedObjectEntity inContext:managedObject.managedObjectContext createIfNecessary:NO];
                             
                             if (!relatedManagedObject) {
-                                relatedManagedObject = [self managedObjectForObjectUID:relatedObjectUID entity:relationshipDescription.destinationEntity inContext:managedObject.managedObjectContext createIfNecessary:YES];
+                                relatedManagedObject = [self managedObjectForObjectUID:relatedObjectUID entity:relatedObjectEntity inContext:managedObject.managedObjectContext createIfNecessary:YES];
                                 [relatedManagedObject setValue:@YES forKeyPath:APObjectIsCreatedRemotelyAttributeName];
                                 if (block) block(relatedManagedObject);
                             }
@@ -560,11 +573,13 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                         // To-One relationship
                         
                         NSString* relatedObjectUID = [parseObjectValue valueForKey:APObjectUIDAttributeName];
+                        NSString* relatedObjectEntityName = [parseObjectValue valueForKey:APObjectEntityNameAttributeName];
+                        NSEntityDescription* relatedObjectEntity = [NSEntityDescription entityForName:relatedObjectEntityName inManagedObjectContext:managedObject.managedObjectContext];
                         
                         NSManagedObject* relatedManagedObject;
-                        relatedManagedObject = [self managedObjectForObjectUID:relatedObjectUID entity:relationshipDescription.destinationEntity inContext:managedObject.managedObjectContext createIfNecessary:NO];
+                        relatedManagedObject = [self managedObjectForObjectUID:relatedObjectUID entity:relatedObjectEntity inContext:managedObject.managedObjectContext createIfNecessary:NO];
                         if (!relatedManagedObject) {
-                            relatedManagedObject = [self managedObjectForObjectUID:relatedObjectUID entity:relationshipDescription.destinationEntity inContext:managedObject.managedObjectContext createIfNecessary:YES];
+                            relatedManagedObject = [self managedObjectForObjectUID:relatedObjectUID entity:relatedObjectEntity inContext:managedObject.managedObjectContext createIfNecessary:YES];
                             [relatedManagedObject setValue:@YES forKeyPath:APObjectIsCreatedRemotelyAttributeName];
                             if (block) block(relatedManagedObject);
                         }
@@ -595,6 +610,9 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     [mutableProperties removeObjectForKey:APObjectLastModifiedAttributeName];
     [mutableProperties removeObjectForKey:APObjectIsDirtyAttributeName];
     [mutableProperties removeObjectForKey:APObjectIsCreatedRemotelyAttributeName];
+    
+    // Track the original entity from Core Data model, we use it when entity inheritance is being used.
+    parseObject[APObjectEntityNameAttributeName] = managedObject.entity.name;
     
     [mutableProperties enumerateKeysAndObjectsUsingBlock:^(NSString* propertyName, NSPropertyDescription* propertyDesctiption, BOOL *stop) {
         [managedObject willAccessValueForKey:propertyName];
@@ -750,7 +768,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     
     NSError* localError;
     
-    PFObject* parseObject = [[PFObject alloc]initWithClassName:managedObject.entity.name];
+    NSEntityDescription* rootEntity = [self rootEntityFromEntity:managedObject.entity];
+    PFObject* parseObject = [[PFObject alloc]initWithClassName:rootEntity.name];
     [self populateParseObject:parseObject withManagedObject:managedObject error:&localError];
     
     if (!localError) {
@@ -778,10 +797,12 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     NSError* localError;
     
     NSString* relatedObjectUID = [managedObject valueForKey:APObjectUIDAttributeName];
+    NSEntityDescription* rootEntity = [self rootEntityFromEntity:managedObject.entity];
     
     if ([[managedObject valueForKey:APObjectIsCreatedRemotelyAttributeName]isEqualToNumber:@NO]) {
-        parseObject = [PFObject objectWithClassName:managedObject.entity.name];
+        parseObject = [PFObject objectWithClassName:rootEntity.name];
         [parseObject setValue:relatedObjectUID forKey:APObjectUIDAttributeName];
+        [parseObject setValue:managedObject.entity.name forKey:APObjectEntityNameAttributeName];
         
         [parseObject save:&localError];
         if (localError) {
@@ -792,20 +813,21 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         [managedObject setValue:@YES forKey:APObjectIsCreatedRemotelyAttributeName];
         
     } else {
-        parseObject = [self parseObjectFromClassName:managedObject.entity.name objectUID:relatedObjectUID];
+        parseObject = [self parseObjectFromEntity:rootEntity objectUID:relatedObjectUID];
     }
     
     return parseObject;
 }
 
-- (PFObject*) parseObjectFromClassName:(NSString*) className objectUID: (NSString*) objectUID {
+- (PFObject*) parseObjectFromEntity:(NSEntityDescription*) entity objectUID: (NSString*) objectUID {
     
-    if (AP_DEBUG_METHODS) {MLog(@"Class:%@ - ObjectUID: %@",className,objectUID)}
+    if (AP_DEBUG_METHODS) {MLog(@"Class:%@ - ObjectUID: %@",entity.name,objectUID)}
     
     PFObject* parseObject;
-    
-    PFQuery* query = [PFQuery queryWithClassName:className];
+    NSEntityDescription* rootEntity = [self rootEntityFromEntity:entity];
+    PFQuery* query = [PFQuery queryWithClassName:rootEntity.name];
     [query whereKey:APObjectUIDAttributeName equalTo:objectUID];
+    [query whereKey:APObjectEntityNameAttributeName equalTo:entity.name];
     
     NSError* error;
     NSArray* results = [query findObjects:&error];
@@ -917,7 +939,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             
             PFRelation* relation = (PFRelation*) value;
             PFQuery* queryForRelatedObjects = [relation query];
-            [queryForRelatedObjects selectKeys:@[APObjectUIDAttributeName]];
+            [queryForRelatedObjects selectKeys:@[APObjectUIDAttributeName,APObjectEntityNameAttributeName]];
             NSArray* results = [queryForRelatedObjects findObjects:&localError];
             
             if (localError) {
@@ -929,7 +951,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 NSMutableArray* relatedObjects = [[NSMutableArray alloc]initWithCapacity:[results count]];
                 
                 for (PFObject* relatedParseObject in results) {
-                    [relatedObjects addObject:@{APObjectUIDAttributeName:[relatedParseObject valueForKey:APObjectUIDAttributeName]}];
+                    [relatedObjects addObject:@{APObjectUIDAttributeName:         relatedParseObject[APObjectUIDAttributeName],
+                                                APObjectEntityNameAttributeName:  relatedParseObject[APObjectEntityNameAttributeName]}];
                 }
                 
                 dictionaryRepresentation[key] = relatedObjects;
@@ -957,7 +980,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 *error = localError;
                 ELog(@"Error getting parse object for To-One relationship %@ from Parse: %@",key,localError);
             } else {
-                dictionaryRepresentation[key] = @{APObjectUIDAttributeName:[relatedParseObject valueForKey:APObjectUIDAttributeName]};
+                dictionaryRepresentation[key] = @{APObjectUIDAttributeName:         relatedParseObject[APObjectUIDAttributeName],
+                                                  APObjectEntityNameAttributeName:  relatedParseObject[APObjectEntityNameAttributeName]};
             }
             
         } else if ([value isKindOfClass:[PFACL class]]) {
@@ -988,6 +1012,19 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 
 
 #pragma mark - Util Methods
+
+- (NSEntityDescription*) rootEntityFromEntity: (NSEntityDescription*) entity {
+    
+    NSEntityDescription* rootEntity;
+    
+    if ([entity superentity]) {
+        rootEntity = [self rootEntityFromEntity:[entity superentity]];
+    } else {
+        rootEntity = entity;
+    }
+    return rootEntity;
+}
+
 
 - (BOOL) isUserAuthenticated:(NSError**) error {
     

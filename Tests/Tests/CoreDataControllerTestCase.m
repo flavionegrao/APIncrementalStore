@@ -26,6 +26,7 @@
 #import "Author+Transformable.h"
 #import "Book.h"
 #import "Page.h"
+#import "EBook.h" // SubEntity of Book
 
 #import "UnitTestingCommon.h"
 
@@ -98,15 +99,17 @@ static NSString* const kBookName2 = @"A Clash of Kings";
         
         NSError* saveError = nil;
         PFObject* book = [PFObject objectWithClassName:@"Book"];
-        [book setValue:kBookName1 forKey:@"name"];
-        [book setValue:@NO forKey:APObjectIsDeletedAttributeName];
-        [book setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
+        book[@"name"] = kBookName1;
+        book[APObjectIsDeletedAttributeName] = @NO;
+        book[APObjectEntityNameAttributeName] = @"Book";
+        book[APObjectUIDAttributeName] = [self createObjectUID];
         [book save:&saveError];
         
         PFObject* author = [PFObject objectWithClassName:@"Author"];
-        [author setValue:kAuthorName forKey:@"name"];
-        [author setValue:@NO forKey:APObjectIsDeletedAttributeName];
-        [author setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
+        author[@"name"] = kAuthorName;
+        author[APObjectIsDeletedAttributeName] = @NO;
+        author[APObjectEntityNameAttributeName] = @"Author";
+        author[APObjectUIDAttributeName] = [self createObjectUID];
         [author save:&saveError];
         
         // Relation (To-Many)
@@ -650,6 +653,86 @@ Expected Results:
          XCTAssertTrue([[fetchedAuthors[i] valueForKey:@"name"] isEqualToString:sortedNames[[sortedNames count] - i - 1]]);
      }
 }
+
+- (void) testInheritanceMergeLocalToRemote {
+    
+    EBook* newEBook = [NSEntityDescription insertNewObjectForEntityForName:@"EBook" inManagedObjectContext:self.coreDataController.mainContext];
+    newEBook.name = @"eBook#1";
+    newEBook.format = @"PDF";
+    
+    // Create a local Author, mark is as "dirty" and set the objectUID with the predefined prefix
+    Author* author = [self fetchAuthor];
+    [author addBooksObject:newEBook];
+    
+    __block NSError* error = nil;
+    [self.coreDataController.mainContext save:&error];
+    XCTAssertNil(error);
+    
+    [self.coreDataController requestSyncCache];
+    while (self.coreDataController.isSyncingTheCache &&
+           [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
+    
+    PFQuery* queryForEBook = [PFQuery queryWithClassName:@"Book"];
+    [queryForEBook whereKey:@"name" equalTo:@"eBook#1"];
+    [queryForEBook whereKey:@"format" equalTo:@"PDF"];
+    
+    __block PFObject* parseEBook;
+    __block PFObject* parseAuthor;
+    dispatch_group_async(self.group, self.queue, ^{
+        parseEBook = [queryForEBook getFirstObject:&error];
+        parseAuthor = parseEBook[@"author"];
+        [parseAuthor fetchIfNeeded:&error];
+    });
+    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    
+    XCTAssertNil(error);
+    XCTAssertTrue([parseEBook[APObjectEntityNameAttributeName]isEqualToString:@"EBook"]);
+    XCTAssertTrue([parseAuthor[APObjectEntityNameAttributeName]isEqualToString:@"Author"]);
+    
+}
+
+
+- (void) testInheritanceRemoteToLocal {
+    
+    __block NSError* error;
+    NSString* ebookName = @"eBook#1";
+    NSString* ebookFormat = @"PDF";
+    
+    dispatch_group_async(self.group, self.queue, ^{
+        
+        PFObject* newEBook = [PFObject objectWithClassName:@"Book"];
+        newEBook[@"name"] = ebookName;
+        newEBook[@"format"] = ebookFormat;
+        newEBook[APObjectEntityNameAttributeName] = @"EBook";
+        newEBook[APObjectIsDeletedAttributeName] = @NO;
+        newEBook[APObjectUIDAttributeName] = [self createObjectUID];
+        [newEBook save:&error];
+        
+        PFObject* author = [[PFQuery queryWithClassName:@"Author"]getFirstObject];
+        [[author relationForKey:@"books"] addObject:newEBook];
+        [author save:&error];
+        
+        newEBook[@"author"] = author;
+        [newEBook save:&error];
+        
+    });
+    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    
+    [self.coreDataController requestSyncCache];
+    while (self.coreDataController.isSyncingTheCache &&
+           [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
+    
+    NSFetchRequest* eBookFr = [NSFetchRequest fetchRequestWithEntityName:@"EBook"];
+    eBookFr.predicate = [NSPredicate predicateWithFormat:@"name == %@ AND format == %@",ebookName,ebookFormat];
+    NSArray* results = [self.coreDataController.mainContext executeFetchRequest:eBookFr error:&error];
+    EBook* eBook = [results lastObject];
+    XCTAssertNil(error);
+    XCTAssertNotNil(eBook);
+    XCTAssertTrue([eBook.name isEqualToString:ebookName]);
+    XCTAssertTrue([eBook.format isEqualToString:ebookFormat]);
+    
+}
+
 
 
 #pragma mark - Support Methods

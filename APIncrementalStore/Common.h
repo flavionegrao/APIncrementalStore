@@ -21,16 +21,19 @@
 /// Cached objects will be uniquely identified by this attribute. It won't be propageted to the user's context.
 extern NSString* const APObjectUIDAttributeName;
 
-/// Cached objects will have this attribute to enable conflict identification when merging objects from the BaaS provider.
+/// Cached objects will have this attribute to enable conflict identification when merging objects from the webservice provider.
 extern NSString* const APObjectLastModifiedAttributeName;
 
 /// Cached objects set with YES for this attribute will be merged with the BaaS provider objects.
 extern NSString* const APObjectIsDirtyAttributeName;
 
-/// When the user context requests that an object has to be deleted, when the user context is saved the equivalent cache object is marked as deleted via this attribute. We have this approach to allow for the other devices merging the same object be able to indentify that this object was deleted.
+/// When the user context requests that an object has to be deleted, when the user context is saved the equivalent cache object is marked as deleted via this attribute. We have this approach to allow for the other devices merging the same object be able to indentify that this object has been deleted.
 extern NSString* const APObjectIsDeletedAttributeName;
 
-/// Wether or not a object is created remotely.
+/// Through this attribute the APParseConnector is able to identify which class it should insert a new object comming from the webservice provider. This is the case when a entity inheritance is enployed in the model. At the webservice database only the root entities will be create and subentities will be identified by this attribute.
+extern NSString* const APObjectEntityNameAttributeName;
+
+/// Whether or not an object is created remotely.
 extern NSString* const APObjectIsCreatedRemotelyAttributeName;
 
 /** 

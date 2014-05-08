@@ -28,6 +28,7 @@
 #import "Author.h"
 #import "Book.h"
 #import "Page.h"
+#import "EBook.h" //SubEntity of Book
 
 #import "UnitTestingCommon.h"
 
@@ -116,21 +117,24 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         PFObject* book1 = [PFObject objectWithClassName:@"Book"];
         [book1 setValue:kBookNameParse1 forKey:@"name"];
         [book1 setValue:@NO forKey:APObjectIsDeletedAttributeName];
-        [book1 setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
+        [book1 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+        [book1 setValue:@"Book" forKeyPath:APObjectEntityNameAttributeName];
         [book1 save:&saveError];
         DLog(@"Book %@ has been created",kBookNameParse1);
         
         PFObject* book2 = [PFObject objectWithClassName:@"Book"];
         [book2 setValue:kBookNameParse2 forKey:@"name"];
         [book2 setValue:@NO forKey:APObjectIsDeletedAttributeName];
-        [book2 setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
+        [book2 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+        [book2 setValue:@"Book" forKeyPath:APObjectEntityNameAttributeName];
         [book2 save:&saveError];
         DLog(@"Book %@ has been created",kBookNameParse2);
         
         PFObject* author = [PFObject objectWithClassName:@"Author"];
         [author setValue:kAuthorNameParse forKey:@"name"];
         [author setValue:@NO forKey:APObjectIsDeletedAttributeName];
-        [author setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
+        [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+        [author setValue:@"Author" forKeyPath:APObjectEntityNameAttributeName];
         [author save:&saveError];
         DLog(@"Author %@ has been created",kAuthorNameParse);
         
@@ -258,6 +262,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         PFObject* book3 = [PFObject objectWithClassName:@"Book"];
         [book3 setValue:kBookNameParse3 forKey:@"name"];
         [book3 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+        [book3 setValue:@"Book" forKey:APObjectEntityNameAttributeName];
         [book3 save:&error];
         
         PFObject* author = [[PFQuery queryWithClassName:@"Author"]getFirstObject];
@@ -830,6 +835,7 @@ Expected Results:
         PFObject* book = [[PFObject alloc]initWithClassName:@"Book"];
         [book setValue:@"some name" forKeyPath:@"name"];
         [book setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
+        [book setValue:@"Book" forKey:APObjectEntityNameAttributeName];
         [book save:nil];
         NSDate* updatedAtAfterSave = book.updatedAt;
         
@@ -934,6 +940,93 @@ Expected Results:
 //    NSFetchRequest* booksFr2= [NSFetchRequest fetchRequestWithEntityName:@"Book"];
 //    booksFr2.predicate = [NSPredicate predicateWithFormat:@"name == %@",@"another book"];
 //    XCTAssertTrue([[self.testContext executeFetchRequest:booksFr2 error:nil] count] == 1);
+}
+
+- (void) testInheritanceMergeLocalCreatedSubEntityObject {
+    
+    dispatch_group_async(self.group, self.queue, ^{
+        EBook* newEBook = [NSEntityDescription insertNewObjectForEntityForName:@"EBook" inManagedObjectContext:self.testContext];
+        newEBook.name = @"eBook#1";
+        newEBook.format = @"PDF";
+        [newEBook setValue:@YES forKey:APObjectIsDirtyAttributeName];
+        [newEBook setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
+        
+        // Create a local Author, mark is as "dirty" and set the objectUID with the predefined prefix
+        Author* author = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.testContext];
+        [author setValue:@YES forKey:APObjectIsDirtyAttributeName];
+        [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+        author.name =kAuthorNameLocal;
+        
+        // Create the relationship locally and merge the context with Parse
+        newEBook.author = author;
+        
+        NSError* error;
+        [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&error];
+        
+        PFQuery* eBookQuery = [PFQuery queryWithClassName:@"Book"];
+        [eBookQuery whereKey:@"name" containsString:@"eBook#1"];
+        PFObject* parseEBook = [eBookQuery getFirstObject:&error];
+        XCTAssertNil(error);
+        XCTAssertTrue([[parseEBook valueForKey:@"format"]isEqualToString:@"PDF"]);
+        
+        PFObject* relatedAuthor = parseEBook[@"author"];
+        [relatedAuthor fetch:&error];
+        XCTAssertNil(error);
+        XCTAssertNotNil(relatedAuthor);
+        XCTAssertEqualObjects([relatedAuthor valueForKey:@"name"],kAuthorNameLocal);
+    });
+    
+    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+}
+
+
+- (void) testInheritanceRemoteCreatedSubEntityObject {
+    
+    __block NSError* error;
+    
+    dispatch_group_async(self.group, self.queue, ^{
+        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:nil error:&error];
+        
+        PFObject* newEBook = [PFObject objectWithClassName:@"Book"];
+        newEBook[@"name"] = @"eBook#1";
+        newEBook[@"format"] = @"PDF";
+        newEBook[APObjectEntityNameAttributeName] = @"EBook";
+        newEBook[APObjectIsDeletedAttributeName] = @NO;
+        newEBook[APObjectUIDAttributeName] = [self createObjectUID];
+        [newEBook save:&error];
+        
+        PFObject* author = [[PFQuery queryWithClassName:@"Author"]getFirstObject];
+        [[author relationForKey:@"books"] addObject:newEBook];
+        [author save:&error];
+        
+        newEBook[@"author"] = author;
+        [newEBook save:&error];
+        
+        NSDictionary* results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:nil error:&error];
+        XCTAssertNil(error);
+        
+        NSArray* updatedAuthors = results[@"Author"][NSUpdatedObjectsKey];
+        XCTAssertTrue([[updatedAuthors lastObject]isEqualToString:[author valueForKey:APObjectUIDAttributeName] ]);
+        
+        NSArray* insertedBook = results[@"EBook"][NSInsertedObjectsKey];
+        XCTAssertTrue([[insertedBook lastObject]isEqualToString:[newEBook valueForKey:APObjectUIDAttributeName]]);
+        
+    });
+    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    
+    NSFetchRequest* eBooksFr = [NSFetchRequest fetchRequestWithEntityName:@"EBook"];
+    [eBooksFr setPredicate:[NSPredicate predicateWithFormat:@"name == %@",@"eBook#1"]];
+    NSArray* ebooks = [self.testContext executeFetchRequest:eBooksFr error:&error];
+    EBook* ebook = [ebooks lastObject];
+    XCTAssertEqualObjects(ebook.author.name, kAuthorNameParse);
+    
+    NSFetchRequest* authorFr = [NSFetchRequest fetchRequestWithEntityName:@"Author"];
+    NSArray* authors = [self.testContext executeFetchRequest:authorFr error:&error];
+    Author* author = [authors lastObject];
+    XCTAssertTrue([author.books count] == 3);
+
 }
 
 
