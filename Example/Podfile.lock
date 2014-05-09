@@ -1,7 +1,9 @@
 PODS:
-  - APIncrementalStore (0.2.8):
+  - APIncrementalStore (0.2.9):
     - Parse-iOS-SDK
-  - Facebook-iOS-SDK (3.13.1)
+  - Bolts (1.1.0)
+  - Facebook-iOS-SDK (3.14.0):
+    - Bolts
   - Parse-iOS-SDK (1.2.19):
     - Facebook-iOS-SDK (~> 3.7)
 
@@ -13,8 +15,9 @@ EXTERNAL SOURCES:
     :path: ../
 
 SPEC CHECKSUMS:
-  APIncrementalStore: dea28cb21196deba836afba2a31c4e70bc491f77
-  Facebook-iOS-SDK: 47ae9e54684c84f93d75d4e6ab47cd031abdf406
+  APIncrementalStore: 5e8eecbfca7c716fb40aca648bec501769cfbf35
+  Bolts: dc620a31cf67c29bce3e3d14a07a12e797a1a154
+  Facebook-iOS-SDK: 63e19ff8d275d63b765819f492a4e71e445f9822
   Parse-iOS-SDK: 48e366fb9a8956c4e50d93cfd16243176938fae1
 
 COCOAPODS: 0.32.1

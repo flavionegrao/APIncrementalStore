@@ -22,8 +22,8 @@
 
 #import "Author+Transformable.h"
 #import "Book.h"
-#import <Parse/Parse.h>
-#import "Common.h"
+#import <Parse-iOS-SDK/Parse.h>
+#import "APCommon.h"
 #import "NSLogEmoji.h"
 
 /* Parse config */

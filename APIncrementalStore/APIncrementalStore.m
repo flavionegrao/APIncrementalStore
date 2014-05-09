@@ -22,7 +22,7 @@
 #import "APParseConnector.h"
 
 #import "NSArray+Enumerable.h"
-#import "Common.h"
+#import "APCommon.h"
 #import "APError.h"
 #import "NSLogEmoji.h"
 

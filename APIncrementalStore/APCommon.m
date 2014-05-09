@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+#import "APCommon.h"
 
 #pragma mark - Cache Support Attribute Key Names
 

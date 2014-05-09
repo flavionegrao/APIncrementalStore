@@ -19,7 +19,7 @@
 
 #import <Parse-iOS-SDK/Parse.h>
 #import "APError.h"
-#import "Common.h"
+#import "APCommon.h"
 #import "NSLogEmoji.h"
 
 /* Debugging */

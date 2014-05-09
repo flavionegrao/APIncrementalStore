@@ -18,7 +18,7 @@
 #import "CoreDataController.h"
 #import "APIncrementalStore.h"
 #import "NSLogEmoji.h"
-#import "Common.h"
+#import "APCommon.h"
 
 NSString* const CoreDataControllerNotificationDidSync = @"CoreDataControllerNotificationDidSync";
 NSString* const CoreDataControllerNotificationDidResetTheCache = @"CoreDataControllerNotificationDidResetTheCache";
