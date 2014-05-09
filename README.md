@@ -25,7 +25,7 @@ Two new columns are necessary on each Parse class that will sync with your Core 
 
 2) *apObjectIsDeleted*: the clients don't delete any object, the objects are "marked" as deleted using this property to allow others to sync the deleted objects and properly update their databases. You may want to implement a Parse Cloud Code to execute a "garbage" collector say every 60 days to clean it, you just need to ensure that all clients have synced before you clean it.
 
-3) *apObjectEntityName*: through this attribute the `APIncrementalStore` adds support to Core Data Entity Inheritance. Only the root entities will be created at Parse, all remaining subentieis will be identified by this attribute. Therefore all attributes and relationships from the root class and its subentities will share the same Parse Class.
+3) *apObjectEntityName*: through this attribute the `APIncrementalStore` adds support to Core Data Entity Inheritance. Only the root entities will be created at Parse, all remaining subentieis will be identified by this attribute. Therefore all attributes and relationships from the root class and its sub-entities will share the same Parse Class.
 
 ###Installation
 Easy, you may clone it locally or use CocoaPods:
@@ -33,6 +33,8 @@ Easy, you may clone it locally or use CocoaPods:
 ```
 platform :ios, '7.0'
 pod 'APIncrementalStore' , :git => 'https://github.com/flavionegrao/APIncrementalStore.git'
+#Develop branch
+#pod 'APIncrementalStore' , :git => 'https://github.com/flavionegrao/APIncrementalStore.git', :branch => 'development'
 ```
 
 ### Run the example app
