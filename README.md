@@ -61,9 +61,9 @@ pod 'APIncrementalStore' , :git => 'https://github.com/flavionegrao/APIncrementa
 - `APParseConnector` will sync all entities found on your model and use the exactly same entity names to find the classes from Parse.
 
 ###Parse ACLs
-`APIncrementalStore` tries to be as much agnostic as possible in regards to the backend webservice, thus pretty much only `APParseConnector` class deals with Parse. If you want to deal with ACLs I can see two ways you can achieve it:
+`APIncrementalStore` tries to be as much agnostic as possible in regards to the backend webservice, thus pretty much only `APParseConnector` class deals with Parse. If you want to deal with ACLs I can see two ways you may achieve it:
 
-1) Use a default ACL set perhaps when your user successfuly login at Parse:
+1) A default ACL that you set when your user successfuly login at Parse:
 ```
 PFACL *defaultACL = [PFACL ACL];
 // Everybody can read objects created by this user
@@ -75,7 +75,7 @@ PFACL *defaultACL = [PFACL ACL];
 ```
 See [Parse Documentation](https://www.parse.com/docs/ios_guide#roles/iOS) for more information
 
-2) If you want to set ACL individually to objects you have created localy add a property *__ACL* to your core data entity. `APIncrementalStore` will add ACL to a Parse Object when it finds a managed object that is being synced and
+2) If you want to set ACL individually to objects you have created localy add a property named *__ACL* to your core data entity. `APIncrementalStore` will add ACL to the equivalent Parse Object when it finds a managed object that is being synced and
  contains a binary (NSData) property called *__ACL*. The property must be set as Binary and his content should be a JSON object UTF-8 encoded Parse ACL. Follow the same Parse ACL structure found on the REST API methods:
  ```
  {
@@ -86,9 +86,9 @@ See [Parse Documentation](https://www.parse.com/docs/ios_guide#roles/iOS) for mo
  ```
  Use PFObject objectID to identify specific users or role:<Role Name> for roles.
  On the example project you will find a helper method that shows how to create and included it to a managed object.
- ```-[CoreDataController addWriteAccess:readAccess:isRole:forParseIdentifier:forManagedObject:managedObject:]```
+ ```-[CoreDataController addWriteAccess:readAccess:isRole:forParseIdentifier:forManagedObject:]```
  
- To adjust your model and avoid including the *__ACL* property by hand to each of your entities you may include a method to add it programatically to all of them.
+ To adjust your model and avoid including the *__ACL* property by hand to each one of your entities you may include a method to add it programatically:
  
  ```
  - (NSManagedObjectModel*) model {
