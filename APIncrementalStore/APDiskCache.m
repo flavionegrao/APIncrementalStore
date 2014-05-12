@@ -422,7 +422,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
                 // To-Many
                 
                 NSSet* relatedObjects = [cacheObject primitiveValueForKey:propertyName];
-                __block NSMutableArray* relatedObjectsRepresentation = [[NSMutableDictionary alloc] initWithCapacity:[relatedObjects count]];
+                __block NSMutableDictionary* relatedObjectsRepresentation = [[NSMutableDictionary alloc] initWithCapacity:[relatedObjects count]];
                 
                 [relatedObjects enumerateObjectsUsingBlock:^(NSManagedObject* relatedObject, BOOL *stop) {
                     [relatedObject willAccessValueForKey:propertyName];
