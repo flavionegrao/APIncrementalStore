@@ -813,11 +813,12 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         [managedObject setValue:@YES forKey:APObjectIsCreatedRemotelyAttributeName];
         
     } else {
-        parseObject = [self parseObjectFromEntity:rootEntity objectUID:relatedObjectUID];
+        parseObject = [self parseObjectFromEntity:managedObject.entity objectUID:relatedObjectUID];
     }
     
     return parseObject;
 }
+
 
 - (PFObject*) parseObjectFromEntity:(NSEntityDescription*) entity objectUID: (NSString*) objectUID {
     
