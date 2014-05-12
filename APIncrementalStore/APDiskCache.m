@@ -408,17 +408,27 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
                 
                 NSManagedObject* relatedObject = [cacheObject primitiveValueForKey:propertyName];
                 [relatedObject willAccessValueForKey:propertyName];
-                representation[propertyName] = [relatedObject valueForKey:APObjectUIDAttributeName] ?: [NSNull null];
+                
+                if ([relatedObject valueForKey:APObjectUIDAttributeName]) {
+                    representation[propertyName] = @{relatedObject.entity.name:[relatedObject valueForKey:APObjectUIDAttributeName]};
+                    
+                } else {
+                    representation[propertyName] =  [NSNull null];
+                }
                 [relatedObject didAccessValueForKey:propertyName];
+                
             } else {
                 
                 // To-Many
                 
                 NSSet* relatedObjects = [cacheObject primitiveValueForKey:propertyName];
-                __block NSMutableArray* relatedObjectsRepresentation = [[NSMutableArray alloc] initWithCapacity:[relatedObjects count]];
+                __block NSMutableArray* relatedObjectsRepresentation = [[NSMutableDictionary alloc] initWithCapacity:[relatedObjects count]];
+                
                 [relatedObjects enumerateObjectsUsingBlock:^(NSManagedObject* relatedObject, BOOL *stop) {
                     [relatedObject willAccessValueForKey:propertyName];
-                    [relatedObjectsRepresentation addObject:[relatedObject valueForKey:APObjectUIDAttributeName]];
+                        NSMutableArray* relatedObjectsUID = [[relatedObjectsRepresentation valueForKey:relatedObject.entity.name]mutableCopy] ?: [NSMutableArray arrayWithCapacity:1];
+                        [relatedObjectsUID addObject:[relatedObject valueForKey:APObjectUIDAttributeName]];
+                        [relatedObjectsRepresentation setValue:relatedObjectsUID forKey:relatedObject.entity.name];
                     [relatedObject didAccessValueForKey:propertyName];
                 }];
                 representation[propertyName] = relatedObjectsRepresentation ?: [NSNull null];
@@ -712,36 +722,43 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
             if (representation[propertyName] == [NSNull null]) {
                 [managedObject setPrimitiveValue:nil forKey:propertyName];
             } else {
-                if ([propertyName isEqualToString:APObjectUIDAttributeName]) {
+//                if ([propertyName isEqualToString:APObjectUIDAttributeName]) {
+//                    [managedObject setPrimitiveValue:representation[propertyName] forKey:propertyName];
+//                } else {
                     [managedObject setPrimitiveValue:representation[propertyName] forKey:propertyName];
-                } else {
-                    [managedObject setPrimitiveValue:representation[propertyName] forKey:propertyName];
-                }
+             //   }
             }
             
             // Relationships faulted in
         } else if (![managedObject hasFaultForRelationshipNamed:propertyName]) {
             NSRelationshipDescription *relationshipDescription = (NSRelationshipDescription *)propertyDescription;
             
-            //To-many
             if ([relationshipDescription isToMany]) {
                 NSMutableSet *relatedObjects = [[managedObject primitiveValueForKey:propertyName] mutableCopy];
                 if (relatedObjects != nil) {
                     [relatedObjects removeAllObjects];
-                    NSArray *relatedRepresentations = representation[propertyName];
-                    [relatedRepresentations enumerateObjectsUsingBlock:^(NSString* objectUID, NSUInteger idx, BOOL *stop) {
-                        NSManagedObjectID* relatedManagedObjectID = [self fetchManagedObjectIDForObjectUID:objectUID entityName:relationshipDescription.destinationEntity.name createIfNeeded:YES];
-                        [relatedObjects addObject:[self.mainContext objectWithID:relatedManagedObjectID]];
+                    NSDictionary *relatedRepresentations = representation[propertyName];
+                    
+                    [relatedRepresentations enumerateKeysAndObjectsUsingBlock:^(NSString* entityName, NSArray* relatedObjectUIDs, BOOL *stop) {
+                        
+                        [relatedObjectUIDs enumerateObjectsUsingBlock:^(NSString* objectUID, NSUInteger idx, BOOL *stop) {
+                            NSManagedObjectID* relatedManagedObjectID = [self fetchManagedObjectIDForObjectUID:objectUID entityName:entityName createIfNeeded:YES];
+                            [relatedObjects addObject:[self.mainContext objectWithID:relatedManagedObjectID]];
+                        }];
                     }];
                     [managedObject setPrimitiveValue:relatedObjects forKey:propertyName];
                 }
                 
-                //To-one
             } else {
+                
+                //To-one
+                
                 if (representation[propertyName] == [NSNull null]) {
                     [managedObject setValue:nil forKey:propertyName];
                 } else {
-                    NSManagedObjectID* relatedManagedObjectID = [self fetchManagedObjectIDForObjectUID:representation[propertyName] entityName:relationshipDescription.destinationEntity.name createIfNeeded:YES];
+                    NSString* relatedEntityName = [[representation[propertyName]allKeys]lastObject];
+                    NSString* relatedEntityObjectUID = [[representation[propertyName]allValues]lastObject];
+                    NSManagedObjectID* relatedManagedObjectID = [self fetchManagedObjectIDForObjectUID:relatedEntityObjectUID entityName:relatedEntityName createIfNeeded:YES];
                     NSManagedObject *relatedObject = [[managedObject managedObjectContext] objectWithID:relatedManagedObjectID];
                     [managedObject setPrimitiveValue:relatedObject forKey:propertyName];
                 }

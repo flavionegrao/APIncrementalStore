@@ -20,7 +20,7 @@
 #import "APDiskCache.h"
 #import "APParseConnector.h"
 
-#import "Common.h"
+#import "APCommon.h"
 #import "NSLogEmoji.h"
 #import "UnitTestingCommon.h"
 
@@ -153,7 +153,8 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
     XCTAssertTrue ([booksRelatedToAuthor count] == 1);
     
     // Inverse relationship To-One
-    XCTAssertTrue ([fetchedBook1Representation[@"author"] isEqualToString:kAuthorObjectUIDLocal]);
+    NSString* authorObjectUID = [[fetchedBook1Representation[@"author"]allValues]lastObject];
+    XCTAssertTrue ([authorObjectUID isEqualToString:kAuthorObjectUIDLocal]);
 }
 
 
@@ -187,12 +188,13 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
     XCTAssertTrue([fetchedAuthorRepresentation[APObjectUIDAttributeName] isEqualToString:kAuthorObjectUIDLocal]);
     
     // To-Many
-    NSArray* booksRelatedToAuthor = fetchedAuthorRepresentation[@"books"];
-    XCTAssertTrue ([booksRelatedToAuthor count] == 2);
+    NSDictionary* booksRelatedToAuthor = fetchedAuthorRepresentation[@"books"];
+    XCTAssertTrue ([[booksRelatedToAuthor allKeys]count] == 1);
+    XCTAssertTrue ([[[booksRelatedToAuthor allValues]lastObject]count] == 2);
     
     // Inverse relationship To-One
-    XCTAssertTrue ([fetchedBook1Representation[@"author"] isEqualToString:kAuthorObjectUIDLocal]);
-    XCTAssertTrue ([fetchedBook2Representation[@"author"] isEqualToString:kAuthorObjectUIDLocal]);
+    XCTAssertTrue ([[[fetchedBook1Representation[@"author"]allValues]lastObject] isEqualToString:kAuthorObjectUIDLocal]);
+    XCTAssertTrue ([[[fetchedBook2Representation[@"author"]allValues]lastObject] isEqualToString:kAuthorObjectUIDLocal]);
 }
 
 
@@ -385,6 +387,8 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
  */
 - (NSDictionary*) representationsFromManagedObjects: (NSArray*) managedObjects {
     
+    if (AP_DEBUG_METHODS) { MLog() }
+    
     NSMutableDictionary* representations = [[NSMutableDictionary alloc]init];
     
     [managedObjects enumerateObjectsUsingBlock:^(NSManagedObject* managedObject, NSUInteger idx, BOOL *stop) {
@@ -400,16 +404,19 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
 
 - (NSDictionary*) representationFromManagedObject: (NSManagedObject*) managedObject {
     
+    if (AP_DEBUG_METHODS) { MLog() }
+    
     NSMutableDictionary* representation = [[NSMutableDictionary alloc]init];
     NSDictionary* properties = [managedObject.entity propertiesByName];
     
     [properties enumerateKeysAndObjectsUsingBlock:^(NSString* propertyName, NSPropertyDescription* propertyDescription, BOOL *stop) {
-        
-        [representation setValue:self.mapManagedObjectIDToObjectUID[managedObject.objectID] forKey:APObjectUIDAttributeName];
+        [managedObject willAccessValueForKey:propertyName];
+       [representation setValue:self.mapManagedObjectIDToObjectUID[managedObject.objectID] forKey:APObjectUIDAttributeName];
         if ([propertyDescription isKindOfClass:[NSAttributeDescription class]]) {
             
             // Attribute
-            representation[propertyName] = [managedObject valueForKey:propertyName] ?: [NSNull null];
+            representation[propertyName] = [managedObject primitiveValueForKey:propertyName] ?: [NSNull null];
+            
             
         } else if ([propertyDescription isKindOfClass:[NSRelationshipDescription class]]) {
             NSRelationshipDescription* relationshipDescription = (NSRelationshipDescription*) propertyDescription;
@@ -418,11 +425,11 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
                 
                 // To-One
                 
-                NSManagedObject* relatedObject = [managedObject valueForKey:propertyName];
+                NSManagedObject* relatedObject = [managedObject primitiveValueForKey:propertyName];
                 
                 if (relatedObject) {
-                    NSString* objectUID = self.mapManagedObjectIDToObjectUID[relatedObject.objectID];
-                    representation[propertyName] = objectUID;
+                     NSString* objectUID = self.mapManagedObjectIDToObjectUID[relatedObject.objectID];
+                    representation[propertyName] = @{relationshipDescription.destinationEntity.name:objectUID};
                 } else {
                     representation[propertyName] = [NSNull null];
                 }
@@ -431,17 +438,20 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
                 
                 // To-Many
                 
-                NSSet* relatedObjects = [managedObject valueForKey:propertyName];
-                __block NSMutableArray* relatedObjectsRepresentation = [[NSMutableArray alloc] initWithCapacity:[relatedObjects count]];
+                NSSet* relatedObjects = [managedObject primitiveValueForKey:propertyName];
+                __block NSMutableDictionary* relatedObjectsRepresentation = [[NSMutableDictionary alloc] initWithCapacity:[relatedObjects count]];
+                
                 [relatedObjects enumerateObjectsUsingBlock:^(NSManagedObject* relatedObject, BOOL *stop) {
                     NSString* objectUID = self.mapManagedObjectIDToObjectUID[relatedObject.objectID];
-                    [relatedObjectsRepresentation addObject:objectUID];
+                    NSMutableArray* relatedObjectsUIDs = [relatedObjectsRepresentation objectForKey:relationshipDescription.destinationEntity.name] ?: [NSMutableArray array];
+                    [relatedObjectsUIDs addObject:objectUID];
+                    [relatedObjectsRepresentation setObject:relatedObjectsUIDs forKey:relationshipDescription.destinationEntity.name];
                 }];
                 representation[propertyName] = relatedObjectsRepresentation;
             }
         }
+        [managedObject didAccessValueForKey:propertyName];
     }];
-    
     return representation;
 }
 

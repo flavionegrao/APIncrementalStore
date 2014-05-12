@@ -22,7 +22,7 @@
 #import "APParseConnector.h"
 
 #import "NSLogEmoji.h"
-#import "Common.h"
+#import "APCommon.h"
 #import "APError.h"
 
 #import "Author.h"
@@ -152,13 +152,11 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         DLog(@"Relations have been set");
     });
     dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
-    DLog(@"------------Test environement ready!----------------");
 }
 
 
 - (void) tearDown {
     
-    DLog(@"-----------Removing Test environement-------------");
     self.testContext = nil;
     
     // Remove SQLite file
@@ -168,7 +166,6 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         [self removeAllEntriesFromParse];
     });
     dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
-    DLog(@"------Test environement has been decomissioned-----");
     [super tearDown];
 }
 
@@ -261,8 +258,10 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         
         PFObject* book3 = [PFObject objectWithClassName:@"Book"];
         [book3 setValue:kBookNameParse3 forKey:@"name"];
+        book3[APObjectEntityNameAttributeName] = @"Book";
         [book3 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
         [book3 setValue:@"Book" forKey:APObjectEntityNameAttributeName];
+        book3[APObjectIsDeletedAttributeName] = @NO;
         [book3 save:&error];
         
         PFObject* author = [[PFQuery queryWithClassName:@"Author"]getFirstObject];
@@ -914,7 +913,6 @@ Expected Results:
  You can find it at the end of the method -[APParseConnector mergeRemoteObjectsWithContext:fullSync:error:]
  
  */
-
 - (void) testMergingWithOtherClientMergingSimultaneously {
     
     // Sync server objects 1st time

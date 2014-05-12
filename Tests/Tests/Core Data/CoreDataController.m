@@ -18,7 +18,7 @@
 #import "CoreDataController.h"
 #import "APIncrementalStore.h"
 #import "NSLogEmoji.h"
-#import "Common.h"
+#import "APCommon.h"
 
 NSString* const CoreDataControllerNotificationDidSync = @"CoreDataControllerNotificationDidSync";
 NSString* const CoreDataControllerNotificationDidResetTheCache = @"CoreDataControllerNotificationDidResetTheCache";
@@ -111,7 +111,7 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
 - (void) configPersistantStoreCoordinator {
     
     /* Turn on/off to enable different levels of debugging */
-    AP_DEBUG_METHODS = NO;
+    AP_DEBUG_METHODS = YES;
     AP_DEBUG_ERRORS = YES;
     AP_DEBUG_INFO = YES;
     

@@ -21,7 +21,7 @@
 #import "CoreDataController.h"
 
 #import "NSLogEmoji.h"
-#import "Common.h"
+#import "APCommon.h"
 
 #import "Author+Transformable.h"
 #import "Book.h"
@@ -259,8 +259,16 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     
     Book* book2 = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.coreDataController.mainContext];
     book2.name = kBookName2;
-    book2.author = [self fetchAuthor];
-    XCTAssertTrue([self.coreDataController saveMainContextAndRequestCacheSync:nil]);
+    
+    Author* author = [self fetchAuthor];
+    DLog(@"Current books from author %@: %@",author.name,author.books);
+    book2.author = author;
+    DLog(@"Current books from author %@: %@",author.name,author.books);
+    
+    NSError* error;
+    BOOL success = [self.coreDataController saveMainContextAndRequestCacheSync:&error];
+    XCTAssertTrue(success);
+    XCTAssertNil(error);
     
     // Sync and wait untill it's finished
     while (self.coreDataController.isSyncingTheCache &&
@@ -286,9 +294,10 @@ static NSString* const kBookName2 = @"A Clash of Kings";
         
         NSError* error;
         PFObject* book2 = [PFObject objectWithClassName:@"Book"];
-        [book2 setValue:kBookName2 forKey:@"name"];
-        [book2 setValue:@NO forKey:APObjectIsDeletedAttributeName];
-        [book2 setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
+        book2[@"name"] = kBookName2;
+        book2[APObjectIsDeletedAttributeName] = @NO;
+        book2 [APObjectEntityNameAttributeName] = @"Book";
+        book2[APObjectUIDAttributeName] = [self createObjectUID];
         [book2 save:&error];
         
         PFObject* author = [[PFQuery queryWithClassName:@"Author"]getFirstObject];
@@ -347,9 +356,10 @@ static NSString* const kBookName2 = @"A Clash of Kings";
         
         NSError* error;
         PFObject* book1 = [PFObject objectWithClassName:@"Book"];
-        [book1 setValue:@"Book#1" forKey:@"name"];
-        [book1 setValue:@NO forKey:APObjectIsDeletedAttributeName];
-        [book1 setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
+        book1[@"name"] = @"Book#1";
+        book1[APObjectEntityNameAttributeName] = @"Book";
+        book1[APObjectIsDeletedAttributeName] = @NO;
+        book1[APObjectUIDAttributeName] = [self createObjectUID];
         [book1 save:&error];
         
         PFQuery* authorQuery = [PFQuery queryWithClassName:@"Author"];
@@ -622,13 +632,13 @@ Expected Results:
     NSArray* sortedNames = @[@"Author#10",@"Author#11",@"Author#12",@"Author#13"];
     
     dispatch_group_async(self.group, self.queue, ^{
-        
         NSError* saveError = nil;
         for (NSUInteger i = 0; i < [sortedNames count]; i++) {
             PFObject* author = [PFObject objectWithClassName:@"Author"];
             [author setValue:sortedNames[i] forKey:@"name"];
             [author setValue:@NO forKey:APObjectIsDeletedAttributeName];
             [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+            author[APObjectEntityNameAttributeName] = @"Author";
             [author save:&saveError];
             DLog(@"Author created: %@",[author valueForKeyPath:@"name"])
             XCTAssertNil(saveError);
@@ -653,6 +663,7 @@ Expected Results:
          XCTAssertTrue([[fetchedAuthors[i] valueForKey:@"name"] isEqualToString:sortedNames[[sortedNames count] - i - 1]]);
      }
 }
+
 
 - (void) testInheritanceMergeLocalToRemote {
     
@@ -688,7 +699,6 @@ Expected Results:
     XCTAssertNil(error);
     XCTAssertTrue([parseEBook[APObjectEntityNameAttributeName]isEqualToString:@"EBook"]);
     XCTAssertTrue([parseAuthor[APObjectEntityNameAttributeName]isEqualToString:@"Author"]);
-    
 }
 
 
@@ -731,8 +741,22 @@ Expected Results:
     XCTAssertTrue([eBook.name isEqualToString:ebookName]);
     XCTAssertTrue([eBook.format isEqualToString:ebookFormat]);
     
+    NSFetchRequest* AuthorFr = [NSFetchRequest fetchRequestWithEntityName:@"Author"];
+    eBookFr.predicate = [NSPredicate predicateWithFormat:@"name == %@",kAuthorName];
+    NSArray* authors = [self.coreDataController.mainContext executeFetchRequest:AuthorFr error:&error];
+    Author* author = [authors lastObject];
+    XCTAssertNil(error);
+    XCTAssertNotNil(author);
+    XCTAssertTrue([author.name isEqualToString:kAuthorName]);
+    [author.books enumerateObjectsUsingBlock:^(id obj, BOOL *stop) {
+        if ([[obj valueForKey:@"name"] isEqualToString:ebookName]) {
+            XCTAssertTrue([obj isKindOfClass:[EBook class]]);
+        } else {
+            XCTAssertTrue([obj isKindOfClass:[Book class]]);
+        }
+    }];
+    
 }
-
 
 
 #pragma mark - Support Methods
@@ -788,7 +812,6 @@ Expected Results:
     NSUInteger const step = 100;
     NSUInteger deleted = 0;
     while (deleted < numberOfObjectsToDelete) {
-        //[query setSkip:skip];
         [[query findObjects]enumerateObjectsUsingBlock:deleteAllObjects];
         deleted += step;
     }
@@ -800,7 +823,6 @@ Expected Results:
     CFUUIDRef uuid = CFUUIDCreate(CFAllocatorGetDefault());
     objectUID = (__bridge_transfer NSString *)CFUUIDCreateString(CFAllocatorGetDefault(), uuid);
     CFRelease(uuid);
-    
     return objectUID;
 }
 

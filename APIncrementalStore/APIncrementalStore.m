@@ -283,7 +283,8 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
                 
             } else {
                 NSRelationshipDescription* relationship = [[objectID entity] relationshipsByName][relationshipName];
-                NSManagedObjectID *relationshipObjectID = [self managedObjectIDForEntity:relationship.destinationEntity withObjectUID:relationshipValue];
+                NSString* relatedObjectID = [[relationshipValue allValues]lastObject];
+                NSManagedObjectID *relationshipObjectID = [self managedObjectIDForEntity:relationship.destinationEntity withObjectUID:relatedObjectID];
                 dictionaryRepresentationOfCacheObject[relationshipName] = relationshipObjectID;
             }
         }
@@ -323,7 +324,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         // TODO handle error
     }
     
-    NSManagedObject *objectFromCache = [results lastObject];
+    NSDictionary* objectFromCache = [results lastObject];
     
     if (!objectFromCache) {
        // [NSException raise:APIncrementalStoreExceptionIncompatibleRequest format:@"Cache object with managed objectUUID %@ not found.", objectUUID];
@@ -338,13 +339,15 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         
         __block NSMutableArray *arrayToReturn = [NSMutableArray array];
         
-        NSArray *relatedObjectCacheReferenceSet = [[objectFromCache valueForKey:[relationship name]] allObjects];
-        if ([relatedObjectCacheReferenceSet count] > 0) {
+        NSDictionary *relatedObjectCacheReferenceDict = objectFromCache[[relationship name]];
+        if ([relatedObjectCacheReferenceDict count] > 0) {
             
-            [relatedObjectCacheReferenceSet enumerateObjectsUsingBlock:^(id cacheManagedObjectReference, NSUInteger idx, BOOL *stop) {
-                
-                NSManagedObjectID *managedObjectID = [self managedObjectIDForEntity:[relationship destinationEntity] withObjectUID:cacheManagedObjectReference];
-                [arrayToReturn addObject:managedObjectID];
+            [relatedObjectCacheReferenceDict enumerateKeysAndObjectsUsingBlock:^(NSString* entityName, NSArray* cacheManagedObjectReferences, BOOL *stop) {
+                NSEntityDescription* destinationEntity = [NSEntityDescription entityForName:entityName inManagedObjectContext:context];
+                [cacheManagedObjectReferences enumerateObjectsUsingBlock:^(NSString* cacheManagedObjectReference, NSUInteger idx, BOOL *stop) {
+                    NSManagedObjectID *managedObjectID = [self managedObjectIDForEntity:destinationEntity withObjectUID:cacheManagedObjectReference];
+                    [arrayToReturn addObject:managedObjectID];
+                }];
             }];
         }
         
@@ -355,19 +358,19 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         // to-one: pull related object from cache
         // value should be the cache object reference for the related object, if the relationship value is not nil
         
-        NSManagedObject *relatedObjectCacheReferenceObject = [objectFromCache valueForKey:[relationship name]];
+        NSDictionary *relatedObjectCacheReferenceDict = objectFromCache[[relationship name]];
         
-        if (!relatedObjectCacheReferenceObject) {
-            
-            return [NSNull null];
+        if (!relatedObjectCacheReferenceDict) {
+            return nil; //[NSNull null];
             
         } else {
             
-            // If primary key includes the nil string, this was just a reference and we need to retreive online, if possible
-            NSString *relatedObjectUUID = [relatedObjectCacheReferenceObject valueForKey:APObjectUIDAttributeName];
+            NSString *entityName = [[relatedObjectCacheReferenceDict allValues]lastObject];
+            NSString *relatedObjectUID = [[relatedObjectCacheReferenceDict allKeys]lastObject];
+            NSEntityDescription* destinationEntity = [NSEntityDescription entityForName:entityName inManagedObjectContext:context];
             
             // Use primary key id to create in-memory context managed object ID equivalent
-            NSManagedObjectID *managedObjectID = [self managedObjectIDForEntity:[relationship destinationEntity] withObjectUID:relatedObjectUUID];
+            NSManagedObjectID *managedObjectID = [self managedObjectIDForEntity:destinationEntity withObjectUID:relatedObjectUID];
             
             return managedObjectID;
         }
@@ -464,8 +467,8 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
 
 // Returns NSArray of NSManagedObjects
 - (NSArray*) AP_fetchManagedObjects:(NSFetchRequest *)fetchRequest
-                  withContext:(NSManagedObjectContext *)context
-                        error:(NSError * __autoreleasing*)error {
+                        withContext:(NSManagedObjectContext *)context
+                              error:(NSError * __autoreleasing*)error {
     
     if (AP_DEBUG_METHODS) { MLog() }
     
@@ -484,7 +487,6 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     [cacheRepresentations enumerateObjectsUsingBlock:^(id cacheManagedObjectRep, NSUInteger idx, BOOL *stop) {
         NSString *objectUID = [cacheManagedObjectRep valueForKey:APObjectUIDAttributeName];
         NSManagedObjectID* managedObjectID = [self managedObjectIDForEntity:fetchRequest.entity withObjectUID:objectUID];
-       // NSManagedObjectID* managedObjectID = [self newObjectIDForEntity:fetchRequest.entity referenceObject:objectUID];
         
         // Allows us to always return object, faulted or not
         NSManagedObject* managedObject = [context objectWithID:managedObjectID];
@@ -849,12 +851,10 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     } else {
         /*
          After created it will call managedObjectContextDidRegisterObjectsWithIDs:
-         then we have the oportunity cache it in self.mapBetweenObjectIDsAndObjectUUIDByEntityName
+         then we have the oportunity cache it in self.mapBetweenObjectIDsAndObjectUIDByEntityName
          */
         managedObjectID = [self newObjectIDForEntity:entityDescription referenceObject:objectUID];
-        
     }
-    
     return managedObjectID;
 }
 
@@ -908,7 +908,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
                 
                 if (relatedObject) {
                     NSString* objectUID = [self referenceObjectForObjectID:relatedObject.objectID];
-                    representation[propertyName] = objectUID;
+                    representation[propertyName] = @{relationshipDescription.destinationEntity.name:objectUID};
                 } else {
                     representation[propertyName] = [NSNull null];
                 }
@@ -918,10 +918,13 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
                 // To-Many
                 
                 NSSet* relatedObjects = [managedObject primitiveValueForKey:propertyName];
-                __block NSMutableArray* relatedObjectsRepresentation = [[NSMutableArray alloc] initWithCapacity:[relatedObjects count]];
+                __block NSMutableDictionary* relatedObjectsRepresentation = [NSMutableDictionary dictionary];
+                
                 [relatedObjects enumerateObjectsUsingBlock:^(NSManagedObject* relatedObject, BOOL *stop) {
                     NSString* objectUID = [self referenceObjectForObjectID:relatedObject.objectID];
-                    [relatedObjectsRepresentation addObject:objectUID];
+                    NSMutableArray* relatedObjectsUIDs = [relatedObjectsRepresentation objectForKey:relationshipDescription.destinationEntity.name] ?: [NSMutableArray array];
+                    [relatedObjectsUIDs addObject:objectUID];
+                    [relatedObjectsRepresentation setObject:relatedObjectsUIDs forKey:relationshipDescription.destinationEntity.name];
                 }];
                 representation[propertyName] = relatedObjectsRepresentation;
             }
@@ -961,33 +964,42 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
             } else if (![managedObject hasFaultForRelationshipNamed:propertyName]) {
                 NSRelationshipDescription *relationshipDescription = (NSRelationshipDescription *)propertyDescription;
                 
-                // To-many
                 if ([relationshipDescription isToMany]) {
                     NSMutableSet *relatedObjects = [[managedObject primitiveValueForKey:propertyName] mutableCopy];
                     if (relatedObjects != nil) {
                         [relatedObjects removeAllObjects];
-                        NSArray *serializedDictSet = dictionary[propertyName];
+                        NSDictionary *serializedDictSet = dictionary[propertyName];
                         
-                        [serializedDictSet enumerateObjectsUsingBlock:^(NSString* objectUUID, NSUInteger idx, BOOL *stop) {
-                            NSManagedObjectID* relatedManagedObjectID = [self managedObjectIDForEntity:relationshipDescription.destinationEntity withObjectUID:objectUUID];
-                            [relatedObjects addObject:[[managedObject managedObjectContext] objectWithID:relatedManagedObjectID]];
+                        [serializedDictSet enumerateKeysAndObjectsUsingBlock:^(NSString* entityName, NSArray* objectUIDs, BOOL *stop) {
+                            
+                            [objectUIDs enumerateObjectsUsingBlock:^(NSString* objectUID, NSUInteger idx, BOOL *stop) {
+                                NSEntityDescription* relatedEntity = [NSEntityDescription entityForName:entityName inManagedObjectContext:context];
+                                NSManagedObjectID* relatedManagedObjectID = [self managedObjectIDForEntity:relatedEntity withObjectUID:objectUID];
+                                [relatedObjects addObject:[[managedObject managedObjectContext] objectWithID:relatedManagedObjectID]];
+                            }];
                         }];
                         [managedObject setPrimitiveValue:relatedObjects forKey:propertyName];
                     }
                     
-                // To-one
                 } else {
+                    
+                     // To-one
+                    
                     if (dictionary[propertyName] == [NSNull null]) {
                         [managedObject setPrimitiveValue:nil forKey:propertyName];
+                    
                     } else {
-                        NSManagedObjectID* relatedManagedObjectID = [self managedObjectIDForEntity:relationshipDescription.destinationEntity withObjectUID:dictionary[propertyName]];
-                        NSManagedObject *toOneObject = [[managedObject managedObjectContext] objectWithID:relatedManagedObjectID];
-                        [managedObject setPrimitiveValue:toOneObject forKey:propertyName];
+                        NSString* relatedObjectUID = [[dictionary[propertyName]allValues]lastObject];
+                        NSString* relatedEntityName = [[dictionary[propertyName]allKeys]lastObject];
+                        NSEntityDescription* relatedEntity = [NSEntityDescription entityForName:relatedEntityName inManagedObjectContext:context];
+                        NSManagedObjectID* relatedManagedObjectID = [self managedObjectIDForEntity:relatedEntity withObjectUID:relatedObjectUID];
+                        NSManagedObject *relatedManagedObject = [[managedObject managedObjectContext] objectWithID:relatedManagedObjectID];
+                        [managedObject setPrimitiveValue:relatedManagedObject forKey:propertyName];
                     }
                 }
             }
         }
-         [managedObject didChangeValueForKey:propertyName];
+        [managedObject didChangeValueForKey:propertyName];
     }];
 }
 

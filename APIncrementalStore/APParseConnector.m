@@ -951,6 +951,12 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 NSMutableArray* relatedObjects = [[NSMutableArray alloc]initWithCapacity:[results count]];
                 
                 for (PFObject* relatedParseObject in results) {
+                    if (!relatedParseObject[APObjectUIDAttributeName]) {
+                        [NSException raise:APIncrementalStoreExceptionInconsistency format:@"%@ is missing APObjectUIDAttributeName", parseObject];
+                    }
+                    if (!relatedParseObject[APObjectEntityNameAttributeName]) {
+                        [NSException raise:APIncrementalStoreExceptionInconsistency format:@"%@ is missing APObjectEntityNameAttributeName",parseObject];
+                    }
                     [relatedObjects addObject:@{APObjectUIDAttributeName:         relatedParseObject[APObjectUIDAttributeName],
                                                 APObjectEntityNameAttributeName:  relatedParseObject[APObjectEntityNameAttributeName]}];
                 }
@@ -1005,7 +1011,14 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     }];
     
     dictionaryRepresentation[APObjectLastModifiedAttributeName] = parseObject.updatedAt;
-    dictionaryRepresentation[APObjectUIDAttributeName] = [parseObject valueForKey:APObjectUIDAttributeName];
+    
+    if (dictionaryRepresentation[APObjectUIDAttributeName] == nil ||
+        dictionaryRepresentation[APObjectEntityNameAttributeName] == nil ||
+        dictionaryRepresentation[APObjectLastModifiedAttributeName] == nil ||
+        dictionaryRepresentation[APObjectIsDeletedAttributeName] == nil) {
+        
+        [NSException raise:APIncrementalStoreExceptionInconsistency format:@"%@ is an incompatible object, please ensure all objects imported have the mandatory APIncrementalStore attributes set",parseObject];
+        }
     
     return dictionaryRepresentation;
 }
