@@ -196,6 +196,11 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         
         __weak  typeof(self) weakSelf = self;
         NSString* (^translateBlock)(NSManagedObjectID*) = ^NSString* (NSManagedObjectID* objectID) {
+            
+            if ([objectID isTemporaryID]) {
+                //[NSException raise:APIncrementalStoreExceptionIncompatibleRequest format:@"Can't fetch based on unsaved managed object id (temporary objectID: %@",objectID];
+                return nil;
+            }
             return [weakSelf referenceObjectForObjectID:objectID];
         };
         

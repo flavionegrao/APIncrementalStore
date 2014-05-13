@@ -19,8 +19,9 @@
 
 #pragma mark - Exceptions
 
-NSString* const APIncrementalStoreExceptionIncompatibleRequest = @"APLocalCacheConnectorExceptionInconsistency";
-NSString* const APIncrementalStoreExceptionInconsistency = @"APIncrementalStoreExceptionInconsistency";
-NSString* const APIncrementalStoreExceptionLocalCacheStore = @"APIncrementalStoreExceptionLocalCacheStore";
-NSString* const APIncrementalStoreErrorDomain = @"APIncrementalStoreErrorDomain";
+NSString* const APIncrementalStoreExceptionIncompatibleRequest = @"com.apetis.apincrementalstore.exception.incompatiblerequest";
+NSString* const APIncrementalStoreExceptionInconsistency = @"com.apetis.apincrementalstore.exception.inconsistency";
+NSString* const APIncrementalStoreExceptionLocalCacheStore = @"com.apetis.apincrementalstore.exception.localcachestore";
+
+NSString* const APIncrementalStoreErrorDomain = @"com.apetis.apincrementalstore.errordomain";
 
