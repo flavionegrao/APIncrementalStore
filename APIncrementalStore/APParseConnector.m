@@ -106,7 +106,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     
     if (AP_DEBUG_METHODS) {MLog()}
     
-    NSError* localError;
+    NSError* localError = nil;
     
     if (![self isUserAuthenticated:&localError]) {
         *error = localError;
@@ -290,7 +290,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     
     __block BOOL success = YES;
     
-    NSError* localError;
+    NSError* localError = nil;
     if (![self isUserAuthenticated:&localError]) {
         *error = localError;
         return NO;
@@ -325,7 +325,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 [context deleteObject:managedObject];
                 
             } else {
-                NSError* localError;
+                NSError* localError = nil;
                 [self insertOnParseManagedObject:managedObject error:&localError];
                 if (localError) {
                     reportErrorStopEnumerating();
@@ -357,7 +357,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                  */
                 
                 if ([parseObject.updatedAt isEqualToDate:localObjectUpdatedAt] || localObjectUpdatedAt == nil) {
-                    NSError* localError;
+                    NSError* localError = nil;
                     [self populateParseObject:parseObject withManagedObject:managedObject error:&localError];
                     if (AP_DEBUG_INFO) { DLog(@"Object remains the same, we are good to merge it")}
                     
@@ -385,7 +385,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                         
                         if (AP_DEBUG_INFO) {DLog(@"APMergePolicyClientWins")}
                         
-                        NSError* localError;
+                        NSError* localError = nil;
                         [self populateParseObject:parseObject withManagedObject:managedObject error:&localError];
                         
                         if (![parseObject save:&localError]) {
@@ -401,7 +401,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                         
                     } else if (self.mergePolicy == APMergePolicyServerWins) {
                         if (AP_DEBUG_INFO) { DLog(@"APMergePolicyServerWins")}
-                        NSError* localError;
+                        NSError* localError = nil;
                         NSDictionary* serializeParseObject = [self serializeParseObject:parseObject error:&localError];
                         if (localError) {
                             reportErrorStopEnumerating();
@@ -630,7 +630,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 // Managed Object has an ACL attribute
                 
                 if (propertyValue) {
-                    NSError* localError;
+                    NSError* localError = nil;
                     if (![self addACLData:propertyValue toParseObject:parseObject error:&localError]) {
                         if (AP_DEBUG_ERRORS) {ELog(@"Error saving file to Parse: %@",localError)}
                         *error = localError;
@@ -654,7 +654,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                         // Binary
                         
                         PFFile* file = [PFFile fileWithData:propertyValue];
-                        NSError* localError;
+                        NSError* localError = nil;
                         
                         if (![file save:&localError]) {
                             if (AP_DEBUG_ERRORS) {ELog(@"Error saving file to Parse: %@",localError)}
@@ -689,7 +689,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 
                 // First check if this object has been created remotely
                 if (parseObject.objectId) {
-                    NSError* localError;
+                    NSError* localError = nil;
                     NSArray* currentObjectsInParseRelation = [[relation query]findObjects:&localError];
                     if (localError) { *error = localError; return;}
                     [currentObjectsInParseRelation enumerateObjectsUsingBlock:^(PFObject* currentRelatedParseObject, NSUInteger idx, BOOL *stop) {
@@ -702,7 +702,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                  and add them all to the parse relation
                  */
                 for (NSManagedObject* relatedManagedObject in relatedManagedObjects) {
-                    NSError* localError;
+                    NSError* localError = nil;
                     PFObject* relatedParseObject = [self parseObjectFromManagedObject:relatedManagedObject error:&localError];
                     if (localError) {
                         *error = localError;
@@ -721,7 +721,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                     [parseObject setValue:[NSNull null] forKey:propertyName];
                     
                 } else {
-                    NSError* localError;
+                    NSError* localError = nil;
                     PFObject* relatedParseObject = [self parseObjectFromManagedObject:relatedManagedObject error:&localError];
                     if (localError){
                         *error = localError;
@@ -741,7 +741,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
               error:(NSError *__autoreleasing*)error {
     
     BOOL success = YES;
-    NSError* localError;
+    NSError* localError = nil;
     
     NSDictionary* dictACL = [NSJSONSerialization JSONObjectWithData:ACLData options:0 error:&localError];
     if (localError) {
@@ -776,7 +776,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     
     if (AP_DEBUG_METHODS) { MLog(@"Managed Object:%@",managedObject)}
     
-    NSError* localError;
+    NSError* localError = nil;
     
     NSEntityDescription* rootEntity = [self rootEntityFromEntity:managedObject.entity];
     PFObject* parseObject = [[PFObject alloc]initWithClassName:rootEntity.name];
@@ -804,7 +804,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                                      error:(NSError *__autoreleasing*)error {
     
     PFObject* parseObject;
-    NSError* localError;
+    NSError* localError = nil;
     
     NSString* relatedObjectUID = [managedObject valueForKey:APObjectUIDAttributeName];
     NSEntityDescription* rootEntity = [self rootEntityFromEntity:managedObject.entity];
@@ -840,7 +840,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     [query whereKey:APObjectUIDAttributeName equalTo:objectUID];
     [query whereKey:APObjectEntityNameAttributeName equalTo:entity.name];
     
-    NSError* error;
+    NSError* error = nil;
     NSArray* results = [query findObjects:&error];
     
     if (error) {
@@ -867,7 +867,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     
     if (AP_DEBUG_METHODS) { MLog()}
     
-    __block NSError* error;
+    __block NSError* error = nil;
     
     NSMutableArray* dirtyManagedObjects = [NSMutableArray array];
     NSArray* allEntities = context.persistentStoreCoordinator.managedObjectModel.entities;
@@ -899,7 +899,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     NSFetchRequest* fr = [NSFetchRequest fetchRequestWithEntityName:entity.name];
     fr.predicate = [NSPredicate predicateWithFormat:@"%K == %@",APObjectUIDAttributeName,objectUID];
     
-    NSError* fetchError;
+    NSError* fetchError = nil;
     NSArray* fetchResults = [context executeFetchRequest:fr error:&fetchError];
     
     if (!fetchError) {
@@ -914,7 +914,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 if (AP_DEBUG_INFO) { DLog(@"New object created: %@",managedObject.objectID)}
                 [managedObject setValue:objectUID forKey:APObjectUIDAttributeName];
                 
-                NSError* permanentIdError;
+                NSError* permanentIdError = nil;
                 [context obtainPermanentIDsForObjects:@[managedObject] error:&permanentIdError];
                 // Sanity check
                 if (permanentIdError) {
@@ -948,7 +948,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             PFQuery* queryForRelatedObjects = [relation query];
             [queryForRelatedObjects selectKeys:@[APObjectUIDAttributeName,APObjectEntityNameAttributeName]];
             
-            NSError* localError;
+            NSError* localError = nil;
             NSArray* results = [queryForRelatedObjects findObjects:&localError];
             
             if (localError) {
@@ -975,7 +975,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             
         } else if ([value isKindOfClass:[PFFile class]]) {
             PFFile* file = (PFFile*) value;
-            NSError* localError;
+            NSError* localError = nil;
             NSData* fileData = [file getData:&localError];
             if (localError) {
                 *stop = YES;
@@ -990,7 +990,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             // To-One relationship
             
             PFObject* relatedParseObject = (PFObject*) value;
-            NSError* localError;
+            NSError* localError = nil;
             [relatedParseObject fetchIfNeeded:&localError];
             if (localError) {
                 *stop = YES;
@@ -1050,7 +1050,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 }
 
 
-- (BOOL) isUserAuthenticated:(NSError**) error {
+- (BOOL) isUserAuthenticated:(NSError*__autoreleasing*) error {
     
     if (AP_DEBUG_METHODS) {MLog()}
     

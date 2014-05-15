@@ -204,7 +204,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     
     if (self.shouldResetCacheFile) {
         if ([[NSFileManager defaultManager] fileExistsAtPath:[storeURL path] isDirectory:nil]){
-            NSError* deleteError;
+            NSError* deleteError = nil;
             if (![[NSFileManager defaultManager] removeItemAtURL:storeURL error:&deleteError]){
                 if (AP_DEBUG_ERRORS) { ELog(@"Error deleting cachefile:%@",deleteError)}
             } else {
@@ -247,7 +247,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     
     [self.syncContext performBlock:^ {
         
-        __block NSError* error;
+        __block NSError* error = nil;
         __block NSMutableDictionary* mutableObjectUIDsNestedByEntityName = [NSMutableDictionary dictionary];
         
         void(^failureBlock)(void) = ^{
@@ -304,7 +304,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         
         // Save all contexts
         
-        NSError* savingError;
+        NSError* savingError = nil;
         if (![self saveSyncContext:&savingError]) {
             [self.connector syncProcessDidFinish:NO];
             [[NSOperationQueue mainQueue]addOperationWithBlock:failureBlock];
@@ -592,7 +592,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
             cacheObject = [NSEntityDescription insertNewObjectForEntityForName:entityName inManagedObjectContext:self.mainContext];
             [cacheObject setValue:objectUID forKey:APObjectUIDAttributeName];
             
-            NSError* permanentIdError;
+            NSError* permanentIdError = nil;
             [self.mainContext obtainPermanentIDsForObjects:@[cacheObject] error:&permanentIdError];
             // Sanity check
             if (permanentIdError) {
@@ -639,7 +639,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         } else {
             managedObject = [NSEntityDescription insertNewObjectForEntityForName:entityName inManagedObjectContext:self.mainContext];
             
-            NSError* permanentIdError;
+            NSError* permanentIdError = nil;
             [self.mainContext obtainPermanentIDsForObjects:@[managedObject] error:&permanentIdError];
             // Sanity check
             if (permanentIdError) {
@@ -653,7 +653,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         [managedObject setValue:@NO forKey:APObjectIsDeletedAttributeName];
     }];
     
-    NSError* saveError;
+    NSError* saveError = nil;
     if (![self saveMainContext:&saveError]) {
         success = NO;
         *error = saveError;
@@ -680,7 +680,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         [managedObject setValue:@YES forKey:APObjectIsDirtyAttributeName];
     }];
     
-    NSError* saveError;
+    NSError* saveError = nil;
     if (![self saveMainContext:&saveError]) {
         success = NO;
         *error = saveError;
