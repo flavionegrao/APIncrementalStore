@@ -72,7 +72,9 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         if (![user isAuthenticated]) {
             if (AP_DEBUG_ERRORS) {ELog(@"User is not authenticated")}
             self = nil;
+            
         } else {
+            if (AP_DEBUG_INFO) {DLog(@"Using authenticated user: %@",user)}
             _authenticatedUser = user;
             _mergePolicy = policy;
         }
@@ -161,7 +163,14 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             }
         }
         
+        if (AP_DEBUG_INFO) {
+            DLog(@"Number of entities %@(root entity: %@) to be merged: %lu",entityDescription.name,rootEntity.name,(long) [parseObjects count]);
+        }
+        
         for (PFObject* parseObject in parseObjects) {
+            
+            if (AP_DEBUG_INFO) {DLog(@"Merging object: %@",parseObject)}
+            
             NSManagedObject* managedObject = [self managedObjectForObjectUID:[parseObject valueForKey:APObjectUIDAttributeName] entity:entityDescription inContext:context createIfNecessary:NO];
             [self setLatestObjectSyncedDate:parseObject.updatedAt forEntityName:entityDescription.name];
             
@@ -175,6 +184,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             NSMutableDictionary* entityEntry =  mergedObjectsUIDsNestedByEntityName[entityDescription.name] ?: [NSMutableDictionary dictionary];
             
             if (!managedObject) {
+                
+                 if (AP_DEBUG_INFO) {DLog(@"Disk cache managed object doesn't exist for parse object: %@",parseObject)}
                 
                 // Disk cache managed object doesn't exist - create it localy if it isn't marked as deleted
                 
@@ -212,6 +223,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             } else {
                 
                 // Existing local object
+                
+                if (AP_DEBUG_INFO) {DLog(@"Disk cache managed object exists for parse object: %@",parseObject)}
                 
                 if (parseObjectIsDeleted) {
                     [context deleteObject:managedObject];
@@ -278,6 +291,9 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         //            [page save:&saveError];
         //        }
     }
+    
+    if (AP_DEBUG_INFO) {DLog(@"Returning: %@",mergedObjectsUIDsNestedByEntityName)}
+    
     return  mergedObjectsUIDsNestedByEntityName;
 }
 
@@ -297,6 +313,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     }
     
     NSArray* dirtyManagedObjects = [self managedObjectsMarkedAsDirtyInContext:context];
+    
+    if (AP_DEBUG_INFO) {DLog(@"Local managed objects to be merged: %@",dirtyManagedObjects)}
     
     [dirtyManagedObjects enumerateObjectsUsingBlock:^(NSManagedObject* managedObject, NSUInteger idx, BOOL *stop) {
         if (AP_DEBUG_INFO) { DLog(@"Merging: %@", managedObject)}
@@ -871,10 +889,24 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     
     NSMutableArray* dirtyManagedObjects = [NSMutableArray array];
     NSArray* allEntities = context.persistentStoreCoordinator.managedObjectModel.entities;
+    
     [allEntities enumerateObjectsUsingBlock:^(NSEntityDescription* entity, NSUInteger idx, BOOL *stop) {
         NSFetchRequest* request = [NSFetchRequest fetchRequestWithEntityName:entity.name];
         request.predicate = [NSPredicate predicateWithFormat:@"%K == YES",APObjectIsDirtyAttributeName];
-        [dirtyManagedObjects addObjectsFromArray:[context executeFetchRequest:request error:&error]];
+        NSArray* entityDirtyObjects = [context executeFetchRequest:request error:&error];
+        
+        [entityDirtyObjects enumerateObjectsUsingBlock:^(NSManagedObject* obj, NSUInteger idx, BOOL *stop) {
+            
+            /* 
+             For each object we need to check if it belongs to the entity we are fetching or
+             it's a subclass of it and therefore will be included in the dirtyManagedObjects when
+             the enumeration reaches that class.
+             */
+            
+            if ([obj.entity.name isEqualToString:entity.name]) {
+                [dirtyManagedObjects addObjectsFromArray:[context executeFetchRequest:request error:&error]];
+            }
+        }];
     }];
     
     if (!error) {

@@ -78,6 +78,8 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
             _connector = connector;
             self.model = model;
             
+            if (AP_DEBUG_INFO) {DLog(@"Disk cache using local store name: %@",localStoreFileName)}
+            
         } else {
             if (AP_DEBUG_ERRORS) { ELog(@"Can't init")}
             self = nil;
@@ -203,10 +205,13 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     NSURL *storeURL = [NSURL fileURLWithPath:[self pathToLocalStore]];
     
     if (self.shouldResetCacheFile) {
+        
         if ([[NSFileManager defaultManager] fileExistsAtPath:[storeURL path] isDirectory:nil]){
             NSError* deleteError = nil;
+            
             if (![[NSFileManager defaultManager] removeItemAtURL:storeURL error:&deleteError]){
                 if (AP_DEBUG_ERRORS) { ELog(@"Error deleting cachefile:%@",deleteError)}
+           
             } else {
                 if (AP_DEBUG_INFO) { DLog(@"Cache file deleted")};
             }
@@ -250,12 +255,12 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         __block NSError* error = nil;
         __block NSMutableDictionary* mutableObjectUIDsNestedByEntityName = [NSMutableDictionary dictionary];
         
-        void(^failureBlock)(void) = ^{
+        void (^failureBlock)(void) = ^{
             [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
             if (conpletionBlock) conpletionBlock(nil,error);
         };
         
-        void(^successBlock)(void) = ^{
+        void (^successBlock)(void) = ^{
             [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
             if (conpletionBlock) conpletionBlock(mutableObjectUIDsNestedByEntityName,error);
         };
@@ -308,11 +313,11 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         if (![self saveSyncContext:&savingError]) {
             [self.connector syncProcessDidFinish:NO];
             [[NSOperationQueue mainQueue]addOperationWithBlock:failureBlock];
+            
         } else {
             [self.connector syncProcessDidFinish:YES];
             [[NSOperationQueue mainQueue]addOperationWithBlock:successBlock];
         }
-        
         self.syncContext = nil;
     }];
 }

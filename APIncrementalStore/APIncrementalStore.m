@@ -139,6 +139,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         }
         APMergePolicy mergePolicy = [[options valueForKey:APOptionMergePolicyKey] integerValue];
         _webServiceConnector = [[APParseConnector alloc]initWithAuthenticatedUser:authenticatedUser mergePolicy:mergePolicy];
+        
         if (![_webServiceConnector conformsToProtocol:@protocol(APWebServiceConnector)]) {
             [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Object not complatible with APIncrementalStoreConnector protocol"];
         }
@@ -255,9 +256,9 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
                                                error:(NSError **)error {
     if (AP_DEBUG_METHODS) { MLog()}
     
-    if (AP_DEBUG_INFO) {DLog(@"new values for object with id %@", [context objectWithID:objectID])}
-    
     NSString* objectUID = [self referenceObjectForObjectID:objectID];
+    if (AP_DEBUG_INFO) {DLog(@"New values for entity: %@ with id %@", objectID.entity.name, objectUID)}
+    
     NSDictionary *objectFromCache = [self.diskCache fetchObjectRepresentationForObjectUID:objectUID entityName:objectID.entity.name];
     
     if (!objectFromCache) {
@@ -318,6 +319,8 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     if (AP_DEBUG_METHODS) { MLog() }
     
     NSString* objectUID = [self referenceObjectForObjectID:objectID];
+    
+    if (AP_DEBUG_INFO) {DLog(@"New values for relationship: %@ for entity: %@ with id %@", relationship, objectID.entity.name, objectUID)}
     
     NSFetchRequest *fr = [[NSFetchRequest alloc] initWithEntityName:objectID.entity.name];
     fr.predicate = [NSPredicate predicateWithFormat:@"%K == %@", APObjectUIDAttributeName, objectUID];
@@ -401,10 +404,10 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
             [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Error obtaining permanent objectID for object:%@", managedObject];
         }
         
-        NSManagedObjectID *returnId = [self managedObjectIDForEntity: managedObject.entity withObjectUID:tempObjectUID];
-        if (AP_DEBUG_INFO) { DLog(@"Permanent ID assigned is %@", tempObjectUID) }
+        NSManagedObjectID *permanentID = [self managedObjectIDForEntity: managedObject.entity withObjectUID:tempObjectUID];
+        if (AP_DEBUG_INFO) { DLog(@"Entity: %@ had its temporary ID: %@ replaced by a permanent ID: %@", managedObject.entity.name, tempObjectUID, permanentID) }
         
-        return returnId;
+        return permanentID;
     }];
 }
 
@@ -501,6 +504,9 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         }
         [results addObject:managedObject];
     }];
+    
+    if (AP_DEBUG_INFO) {DLog(@"Return objects requested: %@",results)}
+    
     return results;
 }
 
@@ -913,7 +919,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
                 
                 if (relatedObject) {
                     NSString* objectUID = [self referenceObjectForObjectID:relatedObject.objectID];
-                    representation[propertyName] = @{relationshipDescription.destinationEntity.name:objectUID};
+                    representation[propertyName] = @{relatedObject.entity.name:objectUID};
                 } else {
                     representation[propertyName] = [NSNull null];
                 }
@@ -929,7 +935,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
                     NSString* objectUID = [self referenceObjectForObjectID:relatedObject.objectID];
                     NSMutableArray* relatedObjectsUIDs = [relatedObjectsRepresentation objectForKey:relationshipDescription.destinationEntity.name] ?: [NSMutableArray array];
                     [relatedObjectsUIDs addObject:objectUID];
-                    [relatedObjectsRepresentation setObject:relatedObjectsUIDs forKey:relationshipDescription.destinationEntity.name];
+                    relatedObjectsRepresentation[relatedObject.entity.name] = relatedObjectsUIDs;
                 }];
                 representation[propertyName] = relatedObjectsRepresentation;
             }
