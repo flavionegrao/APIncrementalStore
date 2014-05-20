@@ -904,7 +904,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
              */
             
             if ([obj.entity.name isEqualToString:entity.name]) {
-                [dirtyManagedObjects addObjectsFromArray:[context executeFetchRequest:request error:&error]];
+                [dirtyManagedObjects addObject:obj];
             }
         }];
     }];
@@ -958,7 +958,6 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             managedObject = [fetchResults lastObject];
         }
     }
-    
     return managedObject;
 }
 

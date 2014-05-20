@@ -933,7 +933,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
                 
                 [relatedObjects enumerateObjectsUsingBlock:^(NSManagedObject* relatedObject, BOOL *stop) {
                     NSString* objectUID = [self referenceObjectForObjectID:relatedObject.objectID];
-                    NSMutableArray* relatedObjectsUIDs = [relatedObjectsRepresentation objectForKey:relationshipDescription.destinationEntity.name] ?: [NSMutableArray array];
+                    NSMutableArray* relatedObjectsUIDs = [relatedObjectsRepresentation objectForKey:relatedObject.entity.name] ?: [NSMutableArray array];
                     [relatedObjectsUIDs addObject:objectUID];
                     relatedObjectsRepresentation[relatedObject.entity.name] = relatedObjectsUIDs;
                 }];
