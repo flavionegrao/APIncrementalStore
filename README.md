@@ -123,6 +123,10 @@ On `UnitTestingCommon.m` config a valid Parse User/Password.
 Use a test Parse App as it will include few additional classes needed for testing.
 
 ###Version history
+
+####v.0.3.0
+Lots of bug fixes mainly related to inheritance
+
 ####v.0.2.9
 Added support to [Core Data Entity Inheritance](https://developer.apple.com/library/mac/documentation/Cocoa/Conceptual/CoreData/Articles/cdMOM.html#//apple_ref/doc/uid/TP40002328-SW11) 
 
