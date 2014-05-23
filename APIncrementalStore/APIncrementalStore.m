@@ -494,13 +494,15 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     
     [cacheRepresentations enumerateObjectsUsingBlock:^(id cacheManagedObjectRep, NSUInteger idx, BOOL *stop) {
         NSString *objectUID = [cacheManagedObjectRep valueForKey:APObjectUIDAttributeName];
-        NSManagedObjectID* managedObjectID = [self managedObjectIDForEntity:fetchRequest.entity withObjectUID:objectUID];
+        NSString* entityName = [cacheManagedObjectRep valueForKey:APObjectEntityNameAttributeName];
+        NSEntityDescription* entityDescription = [NSEntityDescription entityForName:entityName inManagedObjectContext:context];
+        NSManagedObjectID* managedObjectID = [self managedObjectIDForEntity:entityDescription withObjectUID:objectUID];
         
         // Allows us to always return object, faulted or not
         NSManagedObject* managedObject = [context objectWithID:managedObjectID];
         
         if (![managedObject isFault]) {
-            [self populateManagedObject:managedObject withRepresentation:cacheManagedObjectRep callingContext:context entity:fetchRequest.entity];
+            [self populateManagedObject:managedObject withRepresentation:cacheManagedObjectRep callingContext:context];
         }
         [results addObject:managedObject];
     }];
@@ -587,7 +589,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         
         [insertedObjectRepresentations enumerateKeysAndObjectsUsingBlock:^(NSString* entityName, NSArray* representations, BOOL *stop) {
             
-            if (![self.diskCache inserteObjectRepresentations:representations entityName:entityName error:&localError]) {
+            if (![self.diskCache inserteObjectRepresentations:representations error:&localError]) {
                 *stop = YES;
                 *error = localError;
             }
@@ -600,7 +602,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         
         [updatedObjectRepresentations enumerateKeysAndObjectsUsingBlock:^(NSString* entityName, NSArray* representations, BOOL *stop) {
             
-            if (![self.diskCache updateObjectRepresentations:representations entityName:entityName error:&localError]){
+            if (![self.diskCache updateObjectRepresentations:representations error:&localError]){
                 *stop = YES;
                 *error = localError;
             }
@@ -613,7 +615,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         
         [deletedObjectRepresentations enumerateKeysAndObjectsUsingBlock:^(NSString* entityName, NSArray* representations, BOOL *stop) {
             
-            if (![self.diskCache deleteObjectRepresentations:representations entityName:entityName error:&localError]) {
+            if (![self.diskCache deleteObjectRepresentations:representations error:&localError]) {
                 *stop = YES;
                 *error = localError;
             }
@@ -896,7 +898,9 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     
     if (AP_DEBUG_METHODS) { MLog() }
     
-    NSMutableDictionary* representation = [[NSMutableDictionary alloc]init];
+    NSMutableDictionary* representation = [NSMutableDictionary dictionary];
+    representation[APObjectEntityNameAttributeName] = managedObject.entity.name;
+    
     NSDictionary* properties = [managedObject.entity propertiesByName];
     
     [properties enumerateKeysAndObjectsUsingBlock:^(NSString* propertyName, NSPropertyDescription* propertyDescription, BOOL *stop) {
@@ -950,15 +954,15 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
 
 - (void) populateManagedObject:(NSManagedObject*) managedObject
             withRepresentation:(NSDictionary *)dictionary
-                callingContext:(NSManagedObjectContext*)context
-                        entity:(NSEntityDescription *)entity {
+                callingContext:(NSManagedObjectContext*)context {
+                        //entity:(NSEntityDescription *)entity {
     
     if (AP_DEBUG_METHODS) {MLog(@"%@",[NSThread isMainThread] ? @"" : @" - [BG Thread]")}
     
     // Enumerate through properties and set internal storage
     [dictionary enumerateKeysAndObjectsUsingBlock:^(id propertyName, id propertyValue, BOOL *stop) {
         [managedObject willChangeValueForKey:propertyName];
-        NSPropertyDescription *propertyDescription = [entity propertiesByName][propertyName];
+        NSPropertyDescription *propertyDescription = [managedObject.entity propertiesByName][propertyName];
         
         // Ignore keys that don't belong to our model
         if (propertyDescription) {

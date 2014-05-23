@@ -371,7 +371,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     __block NSMutableArray* representations = [[NSMutableArray alloc]initWithCapacity:[cachedManagedObjects count]];
     
     [cachedManagedObjects enumerateObjectsUsingBlock:^(NSManagedObject* cacheObject, NSUInteger idx, BOOL *stop) {
-        [representations addObject:[self representationFromManagedObject:cacheObject forEntity:cacheFetchRequest.entity]];
+        [representations addObject:[self representationFromManagedObject:cacheObject]];
     }];
     return representations;
 }
@@ -387,13 +387,14 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 }
 
 
-- (NSDictionary*) representationFromManagedObject: (NSManagedObject*) cacheObject
-                                        forEntity: (NSEntityDescription*) entity {
+- (NSDictionary*) representationFromManagedObject: (NSManagedObject*) cacheObject {
+                                       // forEntity: (NSEntityDescription*) entity {
     
     if (AP_DEBUG_METHODS) { MLog()}
     
     NSMutableDictionary* representation = [[NSMutableDictionary alloc]init];
-    NSDictionary* properties = [entity propertiesByName];
+    representation[APObjectEntityNameAttributeName] = cacheObject.entity.name;
+    NSDictionary* properties = [cacheObject.entity propertiesByName];
     
     [properties enumerateKeysAndObjectsUsingBlock:^(NSString* propertyName, NSPropertyDescription* propertyDescription, BOOL *stop) {
         [cacheObject willAccessValueForKey:propertyName];
@@ -558,7 +559,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         [NSException raise:APIncrementalStoreExceptionInconsistency format:@"It was supposed to fetch only one objects based on the objectUID: %@",objectUID];
         
     } else if ([results count] == 1) {
-        managedObjectRep = [self representationFromManagedObject:[results lastObject] forEntity:fetchRequest.entity];
+        managedObjectRep = [self representationFromManagedObject:[results lastObject]];
     }
     
     return managedObjectRep;
@@ -621,7 +622,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 #pragma mark - Inserting/Creating/Updating
 
 - (BOOL)inserteObjectRepresentations:(NSArray*) representations
-                          entityName:(NSString*) entityName
+                         // entityName:(NSString*) entityName
                                error:(NSError *__autoreleasing *)error {
     
     if (AP_DEBUG_METHODS) { MLog()}
@@ -634,7 +635,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         if (!objectUID) {
             [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Representation must have objectUID set"];
         }
-        
+        NSString* entityName = representation[APObjectEntityNameAttributeName];
         NSManagedObjectID* managedObjectID = [self fetchManagedObjectIDForObjectUID:objectUID entityName:entityName createIfNeeded:NO];
         
         NSManagedObject* managedObject;
@@ -669,7 +670,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 
 
 - (BOOL)updateObjectRepresentations:(NSArray*) updateObjects
-                         entityName:(NSString*) entityName
+                        // entityName:(NSString*) entityName
                               error:(NSError *__autoreleasing *) error {
     
     if (AP_DEBUG_METHODS) {MLog()}
@@ -679,6 +680,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     // Update local context with received representations
     [updateObjects enumerateObjectsUsingBlock:^(NSDictionary* representation, NSUInteger idx, BOOL *stop) {
         NSString* objectUID = [representation valueForKey:APObjectUIDAttributeName];
+        NSString* entityName = representation[APObjectEntityNameAttributeName];
         NSManagedObjectID* managedObjectID = [self fetchManagedObjectIDForObjectUID:objectUID entityName:entityName createIfNeeded:NO];
         NSManagedObject* managedObject = [self.mainContext objectWithID:managedObjectID];
         [self populateManagedObject:managedObject withRepresentation:representation];
@@ -696,7 +698,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 
 
 - (BOOL)deleteObjectRepresentations:(NSArray*) deleteObjects
-                         entityName:(NSString*) entityName
+                         //entityName:(NSString*) entityName
                               error:(NSError *__autoreleasing *)error {
     
     if (AP_DEBUG_METHODS) {MLog()}
@@ -706,6 +708,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     // Update local context with received representations
     [deleteObjects enumerateObjectsUsingBlock:^(NSDictionary* representation, NSUInteger idx, BOOL *stop) {
         NSString* objectUID = [representation valueForKey:APObjectUIDAttributeName];
+        NSString* entityName = representation[APObjectEntityNameAttributeName];
         NSManagedObjectID* managedObjectID = [self fetchManagedObjectIDForObjectUID:objectUID entityName:entityName createIfNeeded:NO];
         NSManagedObject* managedObject = [self.mainContext objectWithID:managedObjectID];
         [managedObject setValue:@YES forKey:APObjectIsDeletedAttributeName];
@@ -728,21 +731,18 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     if (AP_DEBUG_METHODS) {MLog()}
     
     // Enumerate through properties and set internal storage
-    [representation enumerateKeysAndObjectsUsingBlock:^(id propertyName, id propertyValue, BOOL *stop) {
+    [[managedObject.entity propertiesByName] enumerateKeysAndObjectsUsingBlock:^(NSString* propertyName, NSPropertyDescription *propertyDescription, BOOL *stop) {
         [managedObject willChangeValueForKey:propertyName];
-        
-        NSPropertyDescription *propertyDescription = [managedObject.entity propertiesByName][propertyName];
         
         // Attributes
         if ([propertyDescription isKindOfClass:[NSAttributeDescription class]]) {
             if (representation[propertyName] == [NSNull null]) {
                 [managedObject setPrimitiveValue:nil forKey:propertyName];
             } else {
-//                if ([propertyName isEqualToString:APObjectUIDAttributeName]) {
-//                    [managedObject setPrimitiveValue:representation[propertyName] forKey:propertyName];
-//                } else {
+
+                if (representation[propertyName]) {
                     [managedObject setPrimitiveValue:representation[propertyName] forKey:propertyName];
-             //   }
+                }
             }
             
             // Relationships faulted in

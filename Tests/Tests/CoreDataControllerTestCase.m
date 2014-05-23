@@ -759,6 +759,69 @@ Expected Results:
 }
 
 
+- (void) testInheritanceRemoteToLocalFeetchingParentEntity {
+    
+    __block NSError* error;
+    NSString* ebookName = @"eBook#1";
+    NSString* ebookFormat = @"PDF";
+    
+    dispatch_group_async(self.group, self.queue, ^{
+        
+        PFObject* newEBook = [PFObject objectWithClassName:@"Book"];
+        newEBook[@"name"] = ebookName;
+        newEBook[@"format"] = ebookFormat;
+        newEBook[APObjectEntityNameAttributeName] = @"EBook";
+        newEBook[APObjectIsDeletedAttributeName] = @NO;
+        newEBook[APObjectUIDAttributeName] = [self createObjectUID];
+        [newEBook save:&error];
+        
+        PFObject* author = [[PFQuery queryWithClassName:@"Author"]getFirstObject];
+        [[author relationForKey:@"books"] addObject:newEBook];
+        [author save:&error];
+        
+        newEBook[@"author"] = author;
+        [newEBook save:&error];
+        
+    });
+    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    
+    [self.coreDataController requestSyncCache];
+    while (self.coreDataController.isSyncingTheCache &&
+           [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
+    
+    NSFetchRequest* eBookFr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
+    eBookFr.predicate = [NSPredicate predicateWithFormat:@"name == %@",ebookName,ebookFormat];
+    NSArray* results = [self.coreDataController.mainContext executeFetchRequest:eBookFr error:&error];
+    XCTAssertNil(error);
+   
+    NSManagedObject* object = [results lastObject];
+    
+    XCTAssertNotNil(object);
+    XCTAssertTrue ([object isKindOfClass:[EBook class]]);
+    
+    EBook* eBook = (EBook*) object;
+    XCTAssertTrue([eBook.name isEqualToString:ebookName]);
+    XCTAssertTrue([eBook.format isEqualToString:ebookFormat]);
+    
+    NSFetchRequest* AuthorFr = [NSFetchRequest fetchRequestWithEntityName:@"Author"];
+    eBookFr.predicate = [NSPredicate predicateWithFormat:@"name == %@",kAuthorName];
+    NSArray* authors = [self.coreDataController.mainContext executeFetchRequest:AuthorFr error:&error];
+    Author* author = [authors lastObject];
+    XCTAssertNil(error);
+    XCTAssertNotNil(author);
+    XCTAssertTrue([author.name isEqualToString:kAuthorName]);
+    [author.books enumerateObjectsUsingBlock:^(id obj, BOOL *stop) {
+        if ([[obj valueForKey:@"name"] isEqualToString:ebookName]) {
+            XCTAssertTrue([obj isKindOfClass:[EBook class]]);
+        } else {
+            XCTAssertTrue([obj isKindOfClass:[Book class]]);
+        }
+    }];
+    
+}
+
+
+
 #pragma mark - Support Methods
 
 - (Book*) fetchBook {

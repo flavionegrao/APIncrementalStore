@@ -26,6 +26,8 @@
 
 #import "Author.h"
 #import "Book.h"
+#import "EBook.h"
+#import "Page.h"
 
 
 /* Local objects strings */
@@ -33,6 +35,7 @@ static NSString* const kAuthorNameLocal = @"J. R. R. Tolkien";
 static NSString* const kBookNameLocal1 = @"The Fellowship of the Ring";
 static NSString* const kBookNameLocal2 = @"The Two Towers";
 static NSString* const kBookNameLocal3 = @"The Return of the King";
+static NSString* const kEBookNameLocal1 = @"The Return of the King";
 
 
 /* Including prefix __temp, that identifies that the objects have been crated locally and 
@@ -41,6 +44,7 @@ static NSString* const kAuthorObjectUIDLocal = @"__tempkAuthorObjectUIDLocal";
 static NSString* const kBookObjectUIDLocal1 = @"__tempkBookObjectUIDLocal1";
 static NSString* const kBookObjectUIDLocal2 = @"__tempkBookObjectUIDLocal2";
 static NSString* const kBookObjectUIDLocal3 = @"__tempkBookObjectUIDLocal3";
+static NSString* const kEBookObjectUIDLocal1 = @"__tempkEBookObjectUIDLocal1";
 
 static NSString* const APNSManagedObjectIDKey = @"kAPNSManagedObjectIDKey";
 
@@ -110,7 +114,7 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
     NSDictionary* sampleRepresentationOfBook2 = [self representationFromManagedObject:[self managedObjectBook2]];
     
     NSArray* representations = @[sampleRepresentationOfBook1,sampleRepresentationOfBook2];
-    [self.localCache inserteObjectRepresentations:representations entityName:@"Book" error:&insertError];
+    [self.localCache inserteObjectRepresentations:representations error:&insertError];
     XCTAssertNil(insertError);
     
     NSDictionary* book1Representation = [self.localCache fetchObjectRepresentationForObjectUID:kBookObjectUIDLocal1 entityName:@"Book"];
@@ -118,6 +122,35 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
     
     NSDictionary* book2Representation = [self.localCache fetchObjectRepresentationForObjectUID:kBookObjectUIDLocal2 entityName:@"Book"];
     XCTAssertTrue([book2Representation[APObjectUIDAttributeName] isEqualToString:kBookObjectUIDLocal2]);
+}
+
+
+- (void) testCreateNewObjectFromInheritance {
+
+    NSError* insertError;
+    NSDictionary* sampleRepresentationOfEBook = [self representationFromManagedObject:[self managedObjectEBook]];
+    
+    NSArray* representations = @[sampleRepresentationOfEBook];
+    [self.localCache inserteObjectRepresentations:representations error:&insertError];
+    XCTAssertNil(insertError);
+    
+    NSDictionary* ebookRepresentation = [self.localCache fetchObjectRepresentationForObjectUID:kEBookObjectUIDLocal1 entityName:@"EBook"];
+    XCTAssertTrue([ebookRepresentation[APObjectUIDAttributeName] isEqualToString:kEBookObjectUIDLocal1]);
+     XCTAssertTrue([ebookRepresentation[APObjectEntityNameAttributeName] isEqualToString:@"EBook"]);
+}
+
+
+- (void) testFetchParentEntityForEntities {
+    
+    NSError* insertError;
+    NSDictionary* sampleRepresentationOfEBook = [self representationFromManagedObject:[self managedObjectEBook]];
+    
+    NSArray* representations = @[sampleRepresentationOfEBook];
+    [self.localCache inserteObjectRepresentations:representations error:&insertError];
+    XCTAssertNil(insertError);
+    
+    NSDictionary* ebookRepresentation = [self.localCache fetchObjectRepresentationForObjectUID:kEBookObjectUIDLocal1 entityName:@"Book"];
+    XCTAssertTrue([ebookRepresentation[@"format"] isEqualToString:@"PDF"]);
 }
 
 
@@ -137,10 +170,10 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
     NSDictionary* representationOfBook1 = [self representationFromManagedObject:book1];
     NSDictionary* representationOfAuthor = [self representationFromManagedObject:author];
     
-    [self.localCache inserteObjectRepresentations:@[representationOfBook1] entityName:@"Book" error:&insertError];
+    [self.localCache inserteObjectRepresentations:@[representationOfBook1] error:&insertError];
     XCTAssertNil(insertError);
     
-    [self.localCache inserteObjectRepresentations:@[representationOfAuthor] entityName:@"Author" error:&insertError];
+    [self.localCache inserteObjectRepresentations:@[representationOfAuthor] error:&insertError];
     XCTAssertNil(insertError);
     
     NSDictionary* fetchedBook1Representation = [self.localCache fetchObjectRepresentationForObjectUID:kBookObjectUIDLocal1 entityName:@"Book"];
@@ -172,10 +205,10 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
     NSDictionary* representationOfAuthor = [self representationFromManagedObject:author];
     
     NSArray* booksRepresentations = @[representationOfBook1,representationOfBook2];
-    [self.localCache inserteObjectRepresentations:booksRepresentations entityName:@"Book" error:&insertError];
+    [self.localCache inserteObjectRepresentations:booksRepresentations error:&insertError];
     XCTAssertNil(insertError);
     
-    [self.localCache inserteObjectRepresentations:@[representationOfAuthor] entityName:@"Author" error:&insertError];
+    [self.localCache inserteObjectRepresentations:@[representationOfAuthor] error:&insertError];
     XCTAssertNil(insertError);
     
     NSDictionary* fetchedBook1Representation = [self.localCache fetchObjectRepresentationForObjectUID:kBookObjectUIDLocal1 entityName:@"Book"];
@@ -203,7 +236,7 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
     // Insert a new book
     NSError* error;
     NSDictionary* book1Representation = [self representationFromManagedObject:[self managedObjectBook1]];
-    [self.localCache inserteObjectRepresentations:@[book1Representation] entityName:@"Book" error:&error];
+    [self.localCache inserteObjectRepresentations:@[book1Representation] error:&error];
     XCTAssertNil(error);
     
     // Fetch it again
@@ -212,7 +245,7 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
     
     // Change an attribute
     fetchedBook1Representation[@"name"] = kBookNameLocal2;
-    [self.localCache updateObjectRepresentations:@[fetchedBook1Representation] entityName:@"Book" error:&error];
+    [self.localCache updateObjectRepresentations:@[fetchedBook1Representation] error:&error];
     XCTAssertNil(error);
     
     // Fetch the updated representation
@@ -226,7 +259,7 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
     // Insert a new book
     NSError* error;
     NSDictionary* book1Representation = [self representationFromManagedObject:[self managedObjectBook1]];
-    [self.localCache inserteObjectRepresentations:@[book1Representation] entityName:@"Book" error:&error];
+    [self.localCache inserteObjectRepresentations:@[book1Representation] error:&error];
     XCTAssertNil(error);
     
     // Fetch it again
@@ -234,7 +267,7 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
     XCTAssertTrue([fetchedBook1Representation[APObjectUIDAttributeName] isEqualToString:kBookObjectUIDLocal1]);
     
     // Change an attribute
-    [self.localCache deleteObjectRepresentations:@[fetchedBook1Representation] entityName:@"Book" error:&error];
+    [self.localCache deleteObjectRepresentations:@[fetchedBook1Representation] error:&error];
     XCTAssertNil(error);
     
     // Fetch the updated representation
@@ -250,7 +283,7 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
     NSDictionary* sampleRepresentationOfBook2 = [self representationFromManagedObject:[self managedObjectBook2]];
     
     NSArray* representations = @[sampleRepresentationOfBook1,sampleRepresentationOfBook2];
-    [self.localCache inserteObjectRepresentations:representations entityName:@"Book" error:&error];
+    [self.localCache inserteObjectRepresentations:representations error:&error];
     XCTAssertNil(error);
     
     Book* book1 = [self managedObjectBook1];
@@ -269,7 +302,7 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
     NSDictionary* sampleRepresentationOfBook2 = [self representationFromManagedObject:[self managedObjectBook2]];
     
     NSArray* representations = @[sampleRepresentationOfBook1,sampleRepresentationOfBook2];
-    [self.localCache inserteObjectRepresentations:representations entityName:@"Book" error:&error];
+    [self.localCache inserteObjectRepresentations:representations error:&error];
     XCTAssertNil(error);
     
     NSFetchRequest* fr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
@@ -305,6 +338,17 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
     [self.mapManagedObjectIDToObjectUID setObject:kBookObjectUIDLocal2 forKey:book.objectID];
     return book;
 }
+
+
+- (Book*) managedObjectEBook {
+    
+    EBook* ebook = [NSEntityDescription insertNewObjectForEntityForName:@"EBook" inManagedObjectContext:self.testContext];
+    ebook.name = kEBookNameLocal1;
+    ebook.format = @"PDF";
+    [self.mapManagedObjectIDToObjectUID setObject:kEBookObjectUIDLocal1 forKey:ebook.objectID];
+    return ebook;
+}
+
 
 - (Author*) managedObjectAuthor {
     
@@ -407,6 +451,8 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
     if (AP_DEBUG_METHODS) { MLog() }
     
     NSMutableDictionary* representation = [[NSMutableDictionary alloc]init];
+    representation[APObjectEntityNameAttributeName] = managedObject.entity.name;
+    
     NSDictionary* properties = [managedObject.entity propertiesByName];
     
     [properties enumerateKeysAndObjectsUsingBlock:^(NSString* propertyName, NSPropertyDescription* propertyDescription, BOOL *stop) {

@@ -52,18 +52,20 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
 /**
  Retrieve cached objects representations using the following format:
  [
- {
- "kAPLocalCacheObjectUIDAttributeName": objectUID,
- "AttributeName1": provertyValue1,
- "AttributeName2": provertyValue2,
- "AttributeData1": NSData,
- "RelationshipToOneName": obectUIDValue,
- "RelationshipToMany": [
- obectUID,
- obectUID,
- obectUID,
- ]
- },
+     {
+         "APObjectUIDAttributeName": objectUID,
+         "APObjectEntityNameAttributeName": entityName,
+          "AttributeName1": provertyValue1,
+          "AttributeName2": provertyValue2,
+          "AttributeData1": NSData,
+          "RelationshipToOneName": obectUIDValue,
+          "RelationshipToMany": 
+          [
+              obectUID,
+              obectUID,
+              obectUID,
+          ]
+     },
  ...
  ]
  
@@ -85,15 +87,15 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
                                              entityName:(NSString*) entityName;
 
 - (BOOL)inserteObjectRepresentations:(NSArray*) insertedObjects
-                          entityName:(NSString*) entityName
+                         // entityName:(NSString*) entityName
                                error:(NSError *__autoreleasing *)error;
 
 - (BOOL)updateObjectRepresentations:(NSArray*) updateObjects
-                         entityName:(NSString*) entityName
+                        // entityName:(NSString*) entityName
                               error:(NSError *__autoreleasing *)error;
 
 - (BOOL)deleteObjectRepresentations:(NSArray*) deleteObjects
-                         entityName:(NSString*) entityName
+                        // entityName:(NSString*) entityName
                               error:(NSError *__autoreleasing *)error;
 /**
  Permanent objectIDs are only allocated when the objects are syncronized with the remote webservice. Before that
@@ -127,8 +129,7 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
  */
 @protocol APWebServiceConnector <NSObject>
 
-- (instancetype)initWithAuthenticatedUser:(id) user
-                              mergePolicy:(APMergePolicy) policy;
+- (instancetype)initWithAuthenticatedUser:(id) user mergePolicy:(APMergePolicy) policy;
 
 - (NSString*) authenticatedUserID;
 
