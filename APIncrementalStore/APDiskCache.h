@@ -129,9 +129,24 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
  */
 @protocol APWebServiceConnector <NSObject>
 
+/**
+ @param user A already authenticated user
+ @param policy one of defined APMergePolicy options
+ */
 - (instancetype)initWithAuthenticatedUser:(id) user mergePolicy:(APMergePolicy) policy;
 
+
+/**
+ Any string to enable changind environements without loosing the already populated cache file. 
+ For example you may use it to change from development to production cache file without having to rebuild the app.
+ */
+- (void) setEnvID: (NSString*) string;
+
+/**
+ @returns Returns an uniqueID for the authenticated user
+ */
 - (NSString*) authenticatedUserID;
+
 
 - (void) setMergePolicy:(APMergePolicy) policy;
 

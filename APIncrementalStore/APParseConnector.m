@@ -46,8 +46,10 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 @interface APParseConnector()
 
 @property (strong,nonatomic) PFUser* authenticatedUser;
+@property (strong,nonatomic) NSString* envID;
 @property (assign,nonatomic) APMergePolicy mergePolicy;
 @property (strong,nonatomic) NSMutableDictionary* latestObjectSyncedDates;
+@property (strong,nonatomic) NSString* latestObjectSyncedKey;
 
 @end
 
@@ -77,6 +79,35 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             if (AP_DEBUG_INFO) {DLog(@"Using authenticated user: %@",user)}
             _authenticatedUser = user;
             _mergePolicy = policy;
+        }
+    }
+    return self;
+}
+
+- (instancetype)initWithAuthenticatedUser:(id) user mergePolicy:(APMergePolicy) policy webServiceEnvironementID:(NSString*) envID {
+    
+    if (AP_DEBUG_METHODS) { MLog()}
+    
+    self = [super init];
+    if (self) {
+        
+        if (!user) {
+            [NSException raise:APIncrementalStoreExceptionInconsistency format:@"can't init, user is nil"];
+        }
+        
+        if (![user isKindOfClass:[PFUser class]]) {
+            [NSException raise:APIncrementalStoreExceptionInconsistency format:@"user should be a PFUser kind of object"];
+        }
+        
+        if (![user isAuthenticated]) {
+            if (AP_DEBUG_ERRORS) {ELog(@"User is not authenticated")}
+            self = nil;
+            
+        } else {
+            if (AP_DEBUG_INFO) {DLog(@"Using authenticated user: %@",user)}
+            _authenticatedUser = user;
+            _mergePolicy = policy;
+            _envID = [envID copy];
         }
     }
     return self;
@@ -505,15 +536,19 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 }
 
 
-#pragma mark - Util Methods
+#pragma mark - Track Last Object Sync Date Methods
+
+- (void) setEnvID:(NSString *)envID {
+    _envID = envID;
+    self.latestObjectSyncedKey = nil;
+}
 
 - (NSString*) latestObjectSyncedKey {
     
-    NSString* key;
-    if (self.authenticatedUserID) {
-        key = [self.authenticatedUserID stringByAppendingString:APLatestObjectSyncedKey];
+    if (!_latestObjectSyncedKey) {
+    _latestObjectSyncedKey = [NSString stringWithFormat:@"%@.%@",APLatestObjectSyncedKey,self.envID ?:self.authenticatedUserID];
     }
-    return key;
+    return _latestObjectSyncedKey;
 }
 
 
@@ -530,7 +565,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 - (NSMutableDictionary*) latestObjectSyncedDates {
     
     if (!_latestObjectSyncedDates) {
-        _latestObjectSyncedDates = [[[NSUserDefaults standardUserDefaults] objectForKey:[self latestObjectSyncedKey]]mutableCopy] ?: [NSMutableDictionary dictionary];
+        _latestObjectSyncedDates = [[[NSUserDefaults standardUserDefaults] objectForKey:self.latestObjectSyncedKey]mutableCopy] ?: [NSMutableDictionary dictionary];
     }
     return _latestObjectSyncedDates;
 }
@@ -538,7 +573,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 
 - (void) saveLatestObjectSyncedDate {
     
-    [[NSUserDefaults standardUserDefaults]setObject:self.latestObjectSyncedDates forKey:[self latestObjectSyncedKey]];
+    [[NSUserDefaults standardUserDefaults]setObject:self.latestObjectSyncedDates forKey:self.latestObjectSyncedKey];
 }
 
 

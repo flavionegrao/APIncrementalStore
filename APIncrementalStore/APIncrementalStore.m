@@ -140,6 +140,9 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         APMergePolicy mergePolicy = [[options valueForKey:APOptionMergePolicyKey] integerValue];
         _webServiceConnector = [[APParseConnector alloc]initWithAuthenticatedUser:authenticatedUser mergePolicy:mergePolicy];
         
+        NSString* envID = [NSString stringWithFormat:@"%@-%@",[options valueForKey:APOptionCacheFileNameKey],[_webServiceConnector authenticatedUserID]];
+        [_webServiceConnector setEnvID:envID];
+        
         if (![_webServiceConnector conformsToProtocol:@protocol(APWebServiceConnector)]) {
             [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Object not complatible with APIncrementalStoreConnector protocol"];
         }
@@ -149,7 +152,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         // There will be one sqlite store file for each user. The file name will be <username>-<APOptionCacheFileNameKey>
         // ie: flavio-apincrementalstorediskcache.sqlite
         NSString* diskCacheFileNameSuffix = [@"-" stringByAppendingString:[options valueForKey:APOptionCacheFileNameKey] ?: APDefaultLocalCacheFileName];
-        _diskCacheFileName = [[self.webServiceConnector authenticatedUserID]stringByAppendingString: diskCacheFileNameSuffix];
+        _diskCacheFileName = [[_webServiceConnector authenticatedUserID]stringByAppendingString: diskCacheFileNameSuffix];
         _shouldResetCacheFile = [options[APOptionCacheFileResetKey] boolValue];
         
         [self registerForNotifications];
@@ -161,9 +164,20 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
 - (void)dealloc {
     
     if (AP_DEBUG_METHODS) { MLog()}
-    [self unregisterForNotifications];
+    //[self unregisterForNotifications];
 }
 
+
+/* 
+ The default implementation does nothing.
+ You can override this method in a subclass in order to perform any clean-up
+ before the store is removed from the coordinator (and deallocated)
+ */
+- (void) willRemoveFromPersistentStoreCoordinator:(NSPersistentStoreCoordinator *)coordinator {
+    if (AP_DEBUG_METHODS) { MLog()}
+    
+    [self unregisterForNotifications];
+}
 
 #pragma mark - Notification Observation
 
