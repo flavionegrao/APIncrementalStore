@@ -137,7 +137,10 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
 
 
 /**
- Any string to enable changind environements without loosing the already populated cache file. 
+ Any string to enable changing environements without loosing the already populated cache file.
+ This class use it to keep disticts NSDictionaries that contains the last objects updated dates for each entity synced.
+ Therefore is it possible to keep multiple caches one of each means a user and optitionaly a different environement.
+ The way I use is is to enable the app to change the Parse App (keys) without having to rebuild and distribute a new ios app.
  For example you may use it to change from development to production cache file without having to rebuild the app.
  */
 - (void) setEnvID: (NSString*) string;
