@@ -29,6 +29,7 @@
 #import "Book.h"
 #import "Page.h"
 #import "EBook.h" //SubEntity of Book
+#import "Magazine.h" //Has relationship to Author as a Array at Parse
 
 #import "UnitTestingCommon.h"
 
@@ -41,9 +42,11 @@ static NSString* const kBookNameParse4 = @"A Feast for Crows";
 
 /* Local objects strings */
 static NSString* const kAuthorNameLocal = @"J. R. R. Tolkien";
+static NSString* const kAuthorNameLocal2 = @"J. R. R. Tolkien Brother";
 static NSString* const kBookNameLocal1 = @"The Fellowship of the Ring";
 static NSString* const kBookNameLocal2 = @"The Two Towers";
 static NSString* const kBookNameLocal3 = @"The Return of the King";
+static NSString* const kMagazineNameLocal1 = @"Playboy";
 
 /* Test core data persistant store file name */
 static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
@@ -512,6 +515,86 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     
     dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
 }
+
+/*
+ Scenario:
+ - Create 2x Authors locally
+ - Create 1x magazine locally and associate both authors to it. That's the Array relationship
+ - Next we merge with our managed context
+ 
+ Expected Results:
+ - We fetch from Parse the created author and its relationship to books
+ - Both books should be related to the author
+ - All support attibutes set properly
+ */
+- (void) testMergeLocalCreatedRelationshipToManyUsingParseArray {
+    
+    dispatch_group_async(self.group, self.queue, ^{
+        __block NSError* mergeError;
+        
+        // Create a local Book, mark is as "dirty" and set the objectUID with the predefined prefix
+        Author* author1 = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.testContext];
+        [author1 setValue:@YES forKey:APObjectIsDirtyAttributeName];
+        [author1 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+        author1.name = kAuthorNameLocal;
+        
+        // Create a local Book, mark is as "dirty" and set the objectUID with the predefined prefix
+        Author* author2 = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.testContext];
+        [author2 setValue:@YES forKey:APObjectIsDirtyAttributeName];
+        [author2 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+        author2.name = kAuthorNameLocal2;
+        
+        // Create a local Author, mark is as "dirty" and set the objectUID with the predefined prefix
+        Magazine* magazine = [NSEntityDescription insertNewObjectForEntityForName:@"Magazine" inManagedObjectContext:self.testContext];
+        [magazine setValue:@YES forKey:APObjectIsDirtyAttributeName];
+        [magazine setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+        magazine.name =kMagazineNameLocal1;
+        
+        // Create the relationship locally and merge the context with Parse
+        [magazine addAuthorsObject:author1];
+        [magazine addAuthorsObject:author2];
+        [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
+            DLog(@"Object has been synced");
+        } error:&mergeError];
+        
+        /*
+         After the objects get merged with Parse, they should have the following attributes set:
+         - APObjectLastModifiedAttributeName
+         - APObjectUIDAttributeName
+         - APObjectIsDirtyAttributeName
+         */
+        XCTAssertNotNil([magazine valueForKey:APObjectLastModifiedAttributeName]);
+        XCTAssertNotNil([magazine valueForKey:APObjectUIDAttributeName]);
+        XCTAssertTrue([[magazine valueForKey:APObjectIsDirtyAttributeName] isEqualToNumber:@NO]);
+        
+        XCTAssertNotNil([author1 valueForKey:APObjectLastModifiedAttributeName]);
+        XCTAssertNotNil([author1 valueForKey:APObjectUIDAttributeName]);
+        XCTAssertTrue([[author1 valueForKey:APObjectIsDirtyAttributeName] isEqualToNumber:@NO]);
+        
+        XCTAssertNotNil([author2 valueForKey:APObjectLastModifiedAttributeName]);
+        XCTAssertNotNil([author2 valueForKey:APObjectUIDAttributeName]);
+        XCTAssertTrue([[author2 valueForKey:APObjectIsDirtyAttributeName] isEqualToNumber:@NO]);
+        
+        
+        // Fetch the book from Parse and verify the related To-One author
+        PFQuery* magazineQuery = [PFQuery queryWithClassName:@"Magazine"];
+        [magazineQuery whereKey:@"name" containsString:kMagazineNameLocal1];
+        [magazineQuery includeKey:@"authors"];
+        PFObject* fetchedMagazine = [[magazineQuery findObjects]lastObject];
+        
+        NSArray* authors = [fetchedMagazine valueForKey:@"authors"];
+        XCTAssertTrue([authors count] == 2);
+        
+        Author* relatedAuthor1 = [[authors filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"name == %@",kAuthorNameLocal]]lastObject];
+        XCTAssertNotNil(relatedAuthor1);
+        
+        Author* relatedAuthor2 = [[authors filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"name == %@",kAuthorNameLocal2]]lastObject];
+        XCTAssertNotNil(relatedAuthor2);
+    });
+    
+    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+}
+
 
 
 #pragma mark - Tests - Counting objects to sync
@@ -1047,6 +1130,7 @@ Expected Results:
     [self removeAllObjectsFromParseQuery:[PFQuery queryWithClassName:@"Author"]];
     [self removeAllObjectsFromParseQuery:[PFQuery queryWithClassName:@"Book"]];
     [self removeAllObjectsFromParseQuery:[PFQuery queryWithClassName:@"Page"]];
+    [self removeAllObjectsFromParseQuery:[PFQuery queryWithClassName:@"Magazine"]];
 }
 
 

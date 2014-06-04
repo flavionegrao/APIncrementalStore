@@ -1,6 +1,6 @@
 //
 //  EBook.h
-//  Tests
+//  Example
 //
 //  Created by Flavio Negrão Torres on 6/4/14.
 //

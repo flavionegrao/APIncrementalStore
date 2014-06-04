@@ -7,13 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		7245F14119083491004D1304 /* Author.m in Sources */ = {isa = PBXBuildFile; fileRef = 7245F13C19083491004D1304 /* Author.m */; };
-		7245F14219083491004D1304 /* Book.m in Sources */ = {isa = PBXBuildFile; fileRef = 7245F13E19083491004D1304 /* Book.m */; };
-		7245F14319083491004D1304 /* Page.m in Sources */ = {isa = PBXBuildFile; fileRef = 7245F14019083491004D1304 /* Page.m */; };
 		7245F148190834A0004D1304 /* Author+Transformable.m in Sources */ = {isa = PBXBuildFile; fileRef = 7245F145190834A0004D1304 /* Author+Transformable.m */; };
 		7245F149190834A0004D1304 /* CoreDataController.m in Sources */ = {isa = PBXBuildFile; fileRef = 7245F147190834A0004D1304 /* CoreDataController.m */; };
-		7245F15319084188004D1304 /* Model.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 7245F15019084188004D1304 /* Model.xcdatamodeld */; };
-		7258F991191BC8C500DFE503 /* EBook.m in Sources */ = {isa = PBXBuildFile; fileRef = 7258F990191BC8C500DFE503 /* EBook.m */; };
 		72A541B319082E13004C11A7 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72A541B219082E13004C11A7 /* XCTest.framework */; };
 		72A541B519082E13004C11A7 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72A541B419082E13004C11A7 /* Foundation.framework */; };
 		72A541B719082E13004C11A7 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72A541B619082E13004C11A7 /* UIKit.framework */; };
@@ -24,24 +19,20 @@
 		72A541D9190831FC004C11A7 /* UnitTestingCommon.m in Sources */ = {isa = PBXBuildFile; fileRef = 72A541D8190831FC004C11A7 /* UnitTestingCommon.m */; };
 		72A541DC19083209004C11A7 /* JRR_Tolkien.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 72A541DA19083209004C11A7 /* JRR_Tolkien.jpg */; };
 		72A541DD19083209004C11A7 /* Sample_495KB.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 72A541DB19083209004C11A7 /* Sample_495KB.jpg */; };
+		72C7476F193F615B001C072F /* Model.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 72C7476C193F615B001C072F /* Model.xcdatamodeld */; };
+		72C74772193F61DF001C072F /* Magazine.m in Sources */ = {isa = PBXBuildFile; fileRef = 72C74771193F61DF001C072F /* Magazine.m */; };
+		72C74775193F61E0001C072F /* Book.m in Sources */ = {isa = PBXBuildFile; fileRef = 72C74774193F61E0001C072F /* Book.m */; };
+		72C74778193F61E0001C072F /* Page.m in Sources */ = {isa = PBXBuildFile; fileRef = 72C74777193F61E0001C072F /* Page.m */; };
+		72C7477B193F61E0001C072F /* Author.m in Sources */ = {isa = PBXBuildFile; fileRef = 72C7477A193F61E0001C072F /* Author.m */; };
+		72C7477E193F61E0001C072F /* EBook.m in Sources */ = {isa = PBXBuildFile; fileRef = 72C7477D193F61E0001C072F /* EBook.m */; };
 		AD9302F55D25471BA10139E3 /* libPods-Tests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CD473713D4864E27AA702B74 /* libPods-Tests.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		7245F13B19083491004D1304 /* Author.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Author.h; sourceTree = "<group>"; };
-		7245F13C19083491004D1304 /* Author.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Author.m; sourceTree = "<group>"; };
-		7245F13D19083491004D1304 /* Book.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Book.h; sourceTree = "<group>"; };
-		7245F13E19083491004D1304 /* Book.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Book.m; sourceTree = "<group>"; };
-		7245F13F19083491004D1304 /* Page.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Page.h; sourceTree = "<group>"; };
-		7245F14019083491004D1304 /* Page.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Page.m; sourceTree = "<group>"; };
 		7245F144190834A0004D1304 /* Author+Transformable.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "Author+Transformable.h"; sourceTree = "<group>"; };
 		7245F145190834A0004D1304 /* Author+Transformable.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "Author+Transformable.m"; sourceTree = "<group>"; };
 		7245F146190834A0004D1304 /* CoreDataController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CoreDataController.h; sourceTree = "<group>"; };
 		7245F147190834A0004D1304 /* CoreDataController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CoreDataController.m; sourceTree = "<group>"; };
-		7245F15119084188004D1304 /* Model 2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "Model 2.xcdatamodel"; sourceTree = "<group>"; };
-		7245F15219084188004D1304 /* Model.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Model.xcdatamodel; sourceTree = "<group>"; };
-		7258F98F191BC8C500DFE503 /* EBook.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EBook.h; sourceTree = "<group>"; };
-		7258F990191BC8C500DFE503 /* EBook.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = EBook.m; sourceTree = "<group>"; };
 		72A541AF19082E13004C11A7 /* Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		72A541B219082E13004C11A7 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = Library/Frameworks/XCTest.framework; sourceTree = DEVELOPER_DIR; };
 		72A541B419082E13004C11A7 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
@@ -56,6 +47,18 @@
 		72A541D8190831FC004C11A7 /* UnitTestingCommon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = UnitTestingCommon.m; sourceTree = "<group>"; };
 		72A541DA19083209004C11A7 /* JRR_Tolkien.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = JRR_Tolkien.jpg; sourceTree = "<group>"; };
 		72A541DB19083209004C11A7 /* Sample_495KB.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = Sample_495KB.jpg; sourceTree = "<group>"; };
+		72C7476D193F615B001C072F /* Model 2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "Model 2.xcdatamodel"; sourceTree = "<group>"; };
+		72C7476E193F615B001C072F /* Model.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Model.xcdatamodel; sourceTree = "<group>"; };
+		72C74770193F61DF001C072F /* Magazine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Magazine.h; sourceTree = "<group>"; };
+		72C74771193F61DF001C072F /* Magazine.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Magazine.m; sourceTree = "<group>"; };
+		72C74773193F61E0001C072F /* Book.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Book.h; sourceTree = "<group>"; };
+		72C74774193F61E0001C072F /* Book.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Book.m; sourceTree = "<group>"; };
+		72C74776193F61E0001C072F /* Page.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Page.h; sourceTree = "<group>"; };
+		72C74777193F61E0001C072F /* Page.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Page.m; sourceTree = "<group>"; };
+		72C74779193F61E0001C072F /* Author.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Author.h; sourceTree = "<group>"; };
+		72C7477A193F61E0001C072F /* Author.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Author.m; sourceTree = "<group>"; };
+		72C7477C193F61E0001C072F /* EBook.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EBook.h; sourceTree = "<group>"; };
+		72C7477D193F61E0001C072F /* EBook.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = EBook.m; sourceTree = "<group>"; };
 		CD473713D4864E27AA702B74 /* libPods-Tests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Tests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D16402A91FEF49BA9F08F855 /* Pods-Tests.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Tests.xcconfig"; path = "Pods/Pods-Tests.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -78,15 +81,17 @@
 		7245F15419084797004D1304 /* Core Data */ = {
 			isa = PBXGroup;
 			children = (
-				7245F15019084188004D1304 /* Model.xcdatamodeld */,
-				7258F98F191BC8C500DFE503 /* EBook.h */,
-				7258F990191BC8C500DFE503 /* EBook.m */,
-				7245F13B19083491004D1304 /* Author.h */,
-				7245F13C19083491004D1304 /* Author.m */,
-				7245F13D19083491004D1304 /* Book.h */,
-				7245F13E19083491004D1304 /* Book.m */,
-				7245F13F19083491004D1304 /* Page.h */,
-				7245F14019083491004D1304 /* Page.m */,
+				72C7476C193F615B001C072F /* Model.xcdatamodeld */,
+				72C7477C193F61E0001C072F /* EBook.h */,
+				72C7477D193F61E0001C072F /* EBook.m */,
+				72C74779193F61E0001C072F /* Author.h */,
+				72C7477A193F61E0001C072F /* Author.m */,
+				72C74776193F61E0001C072F /* Page.h */,
+				72C74777193F61E0001C072F /* Page.m */,
+				72C74773193F61E0001C072F /* Book.h */,
+				72C74774193F61E0001C072F /* Book.m */,
+				72C74770193F61DF001C072F /* Magazine.h */,
+				72C74771193F61DF001C072F /* Magazine.m */,
 				7245F144190834A0004D1304 /* Author+Transformable.h */,
 				7245F145190834A0004D1304 /* Author+Transformable.m */,
 				7245F146190834A0004D1304 /* CoreDataController.h */,
@@ -250,14 +255,15 @@
 			files = (
 				72A541D4190831F1004C11A7 /* APDiskCacheTestCase.m in Sources */,
 				7245F149190834A0004D1304 /* CoreDataController.m in Sources */,
-				7245F14119083491004D1304 /* Author.m in Sources */,
-				7245F14319083491004D1304 /* Page.m in Sources */,
+				72C7477B193F61E0001C072F /* Author.m in Sources */,
+				72C74775193F61E0001C072F /* Book.m in Sources */,
 				72A541D9190831FC004C11A7 /* UnitTestingCommon.m in Sources */,
-				7245F14219083491004D1304 /* Book.m in Sources */,
+				72C74772193F61DF001C072F /* Magazine.m in Sources */,
+				72C7477E193F61E0001C072F /* EBook.m in Sources */,
+				72C74778193F61E0001C072F /* Page.m in Sources */,
 				72A541D6190831F1004C11A7 /* CoreDataControllerTestCase.m in Sources */,
 				72A541D5190831F1004C11A7 /* APParseConnectorTestCase.m in Sources */,
-				7245F15319084188004D1304 /* Model.xcdatamodeld in Sources */,
-				7258F991191BC8C500DFE503 /* EBook.m in Sources */,
+				72C7476F193F615B001C072F /* Model.xcdatamodeld in Sources */,
 				7245F148190834A0004D1304 /* Author+Transformable.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -402,13 +408,13 @@
 /* End XCConfigurationList section */
 
 /* Begin XCVersionGroup section */
-		7245F15019084188004D1304 /* Model.xcdatamodeld */ = {
+		72C7476C193F615B001C072F /* Model.xcdatamodeld */ = {
 			isa = XCVersionGroup;
 			children = (
-				7245F15119084188004D1304 /* Model 2.xcdatamodel */,
-				7245F15219084188004D1304 /* Model.xcdatamodel */,
+				72C7476D193F615B001C072F /* Model 2.xcdatamodel */,
+				72C7476E193F615B001C072F /* Model.xcdatamodel */,
 			);
-			currentVersion = 7245F15119084188004D1304 /* Model 2.xcdatamodel */;
+			currentVersion = 72C7476D193F615B001C072F /* Model 2.xcdatamodel */;
 			path = Model.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;

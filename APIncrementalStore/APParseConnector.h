@@ -18,6 +18,13 @@
 #import <Foundation/Foundation.h>
 #import "APDiskCache.h"
 
+extern NSString* const APParseRelationshipTypeUserInfoKey;
+
+typedef NS_ENUM(NSUInteger, APParseRelationshipType) {
+    APParseRelationshipTypePFRelation = 0, //Default
+    APParseRelationshipTypeArray = 1,
+};
+
 @interface APParseConnector : NSObject <APWebServiceConnector>
 
 @end

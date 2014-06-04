@@ -58,7 +58,7 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     }
     
     [Parse setApplicationId:APParseApplicationID clientKey:APParseClientKey];
-    
+
     self.coreDataController = [[CoreDataController alloc]init];
     
     // All tests will be conducted in background to supress the annoying Parse SDK warnings
@@ -530,6 +530,7 @@ Expected Results:
                 [author setValue:[NSString stringWithFormat:@"Author#%lu",(unsigned long) thread * skip + i] forKey:@"name"];
                 [author setValue:@NO forKey:APObjectIsDeletedAttributeName];
                 [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+                author[APObjectEntityNameAttributeName] = @"Author";
                 [author save:&saveError];
                 DLog(@"Author created: %@",[author valueForKeyPath:@"name"])
                 XCTAssertNil(saveError);
@@ -565,6 +566,121 @@ Expected Results:
     NSUInteger numberOfAuthorsFetched = [self.coreDataController.mainContext countForFetchRequest:fr error:&fetchError];
     XCTAssertNil(fetchError);
     XCTAssertTrue(numberOfAuthorsFetched == numberOfAuthorsCreated);
+}
+
+/*
+ There's a huge bottleneck when syncing a considerable amount of objects with to-many relationships.
+ The reason is that in order to keep consistency at all costs for each object fetched from the webservice (ie. Parse)
+ it is necessary to create and execute another query for every relationship that it contains. That means we are able to
+ fetch in batchs of up to 1000 objects (ie. Parse) but then multiples queries subsequentely are necessary for each object.
+ That's how PFRelation (Parse) works, perhaps another baas provider might have a better solution but for now we need to put up
+ with that. 
+ There's an alternative for PFRelation, wich is the Array, we may read more about the differences at: https://www.parse.com/docs/relations_guide
+ 
+ The intention of this test is to compare the two alternatives in terms of bandwidth, requests and time to finish.
+ See the test testStressTestForToManyRelationshipsUsingParseArray for the counterpart of this test.
+ 
+ ATTENTION: This test is disabled by default as it took a considerable amount of time to be completed, turn it on when necessary
+ */
+- (void) testStressTestForToManyRelationshipsUsingParseRelation {
+
+}
+
+- (void) testStressTestForToManyRelationshipsUsingParseArray {
+    
+    NSUInteger const numberOfMagazinescostsToBeCreated = 100;
+    
+    __block NSUInteger numberOfMagazinesCreated;
+    
+    PFObject* author1 = [PFObject objectWithClassName:@"Author"];
+    [author1 setValue:@"author1" forKey:@"name"];
+    [author1 setValue:@NO forKey:APObjectIsDeletedAttributeName];
+    [author1 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+    author1[APObjectEntityNameAttributeName] = @"Author";
+    
+    PFObject* author2 = [PFObject objectWithClassName:@"Author"];
+    [author2 setValue:@"author2" forKey:@"name"];
+    [author2 setValue:@NO forKey:APObjectIsDeletedAttributeName];
+    [author2 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+    author2[APObjectEntityNameAttributeName] = @"Author";
+    
+    dispatch_group_async(self.group, self.queue, ^{
+        NSError* authorSaveError = nil;
+        [author1 save:&authorSaveError];
+        [author2 save:&authorSaveError];
+    });
+    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    
+    PFRelation* magazines1 = [author2 relationForKey:@"magazines"];
+    PFRelation* magazines2 = [author2 relationForKey:@"magazines"];
+    
+    dispatch_group_async(self.group, self.queue, ^{
+        
+        for (NSUInteger i = 0; i < numberOfMagazinescostsToBeCreated; i++) {
+            PFObject* magazine = [PFObject objectWithClassName:@"Magazine"];
+            [magazine setValue:[NSString stringWithFormat:@"Magaznine#%lu",(unsigned long) i] forKey:@"name"];
+            [magazine setValue:@NO forKey:APObjectIsDeletedAttributeName];
+            [magazine setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+            magazine[APObjectEntityNameAttributeName] = @"Magazine";
+            [magazine addObject:author1 forKey:@"authors"];
+            [magazine addObject:author2 forKey:@"authors"];
+            
+            NSError* saveError = nil;
+            [magazine save:&saveError];
+            XCTAssertNil(saveError);
+            DLog(@"Magazine created: %@",[magazine valueForKeyPath:@"name"])
+            
+            [magazines1 addObject:magazine];
+            [magazines2 addObject:magazine];
+        }
+    });
+    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    
+    dispatch_group_async(self.group, self.queue, ^{
+        NSError* authorSaveError = nil;
+        [author1 save:&authorSaveError];
+        [author2 save:&authorSaveError];
+    });
+    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    
+    __block NSError* countError;
+    dispatch_group_async(self.group, self.queue, ^{
+        PFQuery* query = [PFQuery queryWithClassName:@"Magazine"];
+        numberOfMagazinesCreated = [query countObjects:&countError];
+    });
+    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    
+    ALog(@"Start Syncing");
+    NSDate* startSync = [NSDate date];
+    [self.coreDataController requestSyncCache];
+    while (self.coreDataController.isSyncingTheCache &&
+           [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
+    
+    ALog(@"Seconds to sync all objects: %f",[[NSDate date]timeIntervalSince1970] - [startSync timeIntervalSince1970]);
+    
+    //Check what has been created on the local core data store
+    
+    NSError* fetchError;
+    NSFetchRequest* frForMagzine = [NSFetchRequest fetchRequestWithEntityName:@"Magazine"];
+    NSUInteger numberOfMagazinesFetched = [self.coreDataController.mainContext countForFetchRequest:frForMagzine error:&fetchError];
+    XCTAssertNil(fetchError);
+    XCTAssertTrue(numberOfMagazinesFetched == numberOfMagazinesCreated);
+    
+    NSFetchRequest* frForAuthor1 = [NSFetchRequest fetchRequestWithEntityName:@"Author"];
+    frForAuthor1.predicate = [NSPredicate predicateWithFormat:@"name == %@",@"author1"];
+    NSArray* authors1 = [self.coreDataController.mainContext executeFetchRequest:frForAuthor1 error:&fetchError];
+    XCTAssertNil(fetchError);
+    XCTAssertTrue([authors1 count] == 1);
+    Author* fetchedAuthor1 = [authors1 lastObject];
+    XCTAssertTrue([fetchedAuthor1.magazines count] == numberOfMagazinesCreated);
+    
+    NSFetchRequest* frForAuthor2 = [NSFetchRequest fetchRequestWithEntityName:@"Author"];
+    frForAuthor2.predicate = [NSPredicate predicateWithFormat:@"name == %@",@"author2"];
+    NSArray* authors2 = [self.coreDataController.mainContext executeFetchRequest:frForAuthor2 error:&fetchError];
+    XCTAssertNil(fetchError);
+    XCTAssertTrue([authors2 count] == 1);
+    Author* fetchedAuthor2 = [authors2 lastObject];
+    XCTAssertTrue([fetchedAuthor2.magazines count] == numberOfMagazinesCreated);
 }
 
 
@@ -846,6 +962,7 @@ Expected Results:
     [self removeAllObjectsFromParseQuery:[PFQuery queryWithClassName:@"Author"]];
     [self removeAllObjectsFromParseQuery:[PFQuery queryWithClassName:@"Book"]];
     [self removeAllObjectsFromParseQuery:[PFQuery queryWithClassName:@"Page"]];
+    [self removeAllObjectsFromParseQuery:[PFQuery queryWithClassName:@"Magazine"]];
 }
 
 

@@ -1,13 +1,14 @@
 //
 //  Author.m
-//  APIncrementalStore
+//  Tests
 //
-//  Created by Flavio Negrão Torres on 4/15/14.
-//  Copyright (c) 2014 Flavio Negrão Torres. All rights reserved.
+//  Created by Flavio Negrão Torres on 6/4/14.
+//
 //
 
 #import "Author.h"
 #import "Book.h"
+#import "Magazine.h"
 
 
 @implementation Author
@@ -15,5 +16,6 @@
 @dynamic name;
 @dynamic photo;
 @dynamic books;
+@dynamic magazines;
 
 @end

@@ -1,21 +1,22 @@
 //
 //  Author.h
-//  APIncrementalStore
+//  Example
 //
-//  Created by Flavio Negrão Torres on 4/15/14.
-//  Copyright (c) 2014 Flavio Negrão Torres. All rights reserved.
+//  Created by Flavio Negrão Torres on 6/4/14.
+//
 //
 
 #import <Foundation/Foundation.h>
 #import <CoreData/CoreData.h>
 
-@class Book;
+@class Book, Magazine;
 
 @interface Author : NSManagedObject
 
 @property (nonatomic, retain) NSString * name;
 @property (nonatomic, retain) id photo;
 @property (nonatomic, retain) NSSet *books;
+@property (nonatomic, retain) Magazine *magazines;
 @end
 
 @interface Author (CoreDataGeneratedAccessors)

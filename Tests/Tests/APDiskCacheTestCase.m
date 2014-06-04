@@ -26,6 +26,7 @@
 
 #import "Author.h"
 #import "Book.h"
+#import "Magazine.h"
 #import "EBook.h"
 #import "Page.h"
 
@@ -45,6 +46,7 @@ static NSString* const kBookObjectUIDLocal1 = @"__tempkBookObjectUIDLocal1";
 static NSString* const kBookObjectUIDLocal2 = @"__tempkBookObjectUIDLocal2";
 static NSString* const kBookObjectUIDLocal3 = @"__tempkBookObjectUIDLocal3";
 static NSString* const kEBookObjectUIDLocal1 = @"__tempkEBookObjectUIDLocal1";
+static NSString* const kMagazineObjectUIDLocal1 = @"__tempkMagazineObjectUIDLocal1";
 
 static NSString* const APNSManagedObjectIDKey = @"kAPNSManagedObjectIDKey";
 
@@ -230,7 +232,6 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
     XCTAssertTrue ([[[fetchedBook2Representation[@"author"]allValues]lastObject] isEqualToString:kAuthorObjectUIDLocal]);
 }
 
-
 - (void) testUpdateExistingObject {
     
     // Insert a new book
@@ -391,16 +392,23 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
     
     if (!_testContext) {
         NSPersistentStoreCoordinator* psc = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:[self testModel]];
-//        NSDictionary *options = @{NSMigratePersistentStoresAutomaticallyOption: @YES,
-//                                  NSInferMappingModelAutomaticallyOption: @YES,
-//                                  NSSQLitePragmasOption:@{@"journal_mode":@"DELETE"}};
+        NSDictionary *options = @{NSMigratePersistentStoresAutomaticallyOption: @YES,
+                                  NSInferMappingModelAutomaticallyOption: @YES,
+                                  NSSQLitePragmasOption:@{@"journal_mode":@"DELETE"}};
         NSURL *storeURL = [NSURL fileURLWithPath:[self pathToLocalStore]];
         
         NSError *error = nil;
-        [psc addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:storeURL options:nil error:&error];
+        [psc addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:storeURL options:options error:&error];
         
         if (error) {
             ELog(@"Error adding store to PSC:%@",error);
+            if (error.code == 134100 || error.code == 134130) {
+                NSError* removeFileError = nil;
+                if ([[NSFileManager defaultManager]removeItemAtPath:[self pathToLocalStore] error:&removeFileError]) {
+                    DLog(@"Existing Store has been removed successfuly, adding new one...");
+                    [psc addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:storeURL options:options error:&error];
+                }
+            }
         }
         
         _testContext = [[NSManagedObjectContext alloc]initWithConcurrencyType:NSPrivateQueueConcurrencyType];

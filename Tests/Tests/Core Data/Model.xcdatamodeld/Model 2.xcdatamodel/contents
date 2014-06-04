@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<model userDefinedModelVersionIdentifier="2" type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="5064" systemVersion="13C1021" minimumToolsVersion="Xcode 4.3" macOSVersion="Automatic" iOSVersion="Automatic">
+<model userDefinedModelVersionIdentifier="2" type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="5064" systemVersion="13D65" minimumToolsVersion="Xcode 4.3" macOSVersion="Automatic" iOSVersion="Automatic">
     <entity name="Author" representedClassName="Author" syncable="YES">
         <attribute name="name" optional="YES" attributeType="String" syncable="YES"/>
         <attribute name="photo" optional="YES" attributeType="Transformable" syncable="YES"/>
         <relationship name="books" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Book" inverseName="author" inverseEntity="Book" syncable="YES"/>
+        <relationship name="magazines" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Magazine" inverseName="authors" inverseEntity="Magazine" syncable="YES"/>
     </entity>
     <entity name="Book" representedClassName="Book" syncable="YES">
         <attribute name="name" optional="YES" attributeType="String" syncable="YES"/>
@@ -14,13 +15,24 @@
     <entity name="EBook" representedClassName="EBook" parentEntity="Book" syncable="YES">
         <attribute name="format" optional="YES" attributeType="String" syncable="YES"/>
     </entity>
+    <entity name="Magazine" representedClassName="Magazine" syncable="YES">
+        <attribute name="name" optional="YES" attributeType="String" syncable="YES"/>
+        <relationship name="authors" optional="YES" toMany="YES" deletionRule="No Action" destinationEntity="Author" inverseName="magazines" inverseEntity="Author" syncable="YES">
+            <userInfo>
+                <entry key="APParseRelationshipType" value="1"/>
+            </userInfo>
+        </relationship>
+        <relationship name="pages" optional="YES" toMany="YES" deletionRule="No Action" destinationEntity="Page" inverseName="magazine" inverseEntity="Page" syncable="YES"/>
+    </entity>
     <entity name="Page" representedClassName="Page" syncable="YES">
         <relationship name="book" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Book" inverseName="pages" inverseEntity="Book" syncable="YES"/>
+        <relationship name="magazine" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Magazine" inverseName="pages" inverseEntity="Magazine" syncable="YES"/>
     </entity>
     <elements>
-        <element name="Author" positionX="0" positionY="0" width="128" height="90"/>
+        <element name="Author" positionX="0" positionY="0" width="128" height="103"/>
         <element name="Book" positionX="0" positionY="0" width="128" height="105"/>
-        <element name="Page" positionX="0" positionY="0" width="128" height="60"/>
         <element name="EBook" positionX="45" positionY="72" width="128" height="58"/>
+        <element name="Page" positionX="0" positionY="0" width="128" height="75"/>
+        <element name="Magazine" positionX="54" positionY="72" width="128" height="88"/>
     </elements>
 </model>

@@ -1,6 +1,6 @@
 //
-//  Book.h
-//  Tests
+//  Magazine.h
+//  Example
 //
 //  Created by Flavio Negrão Torres on 6/4/14.
 //
@@ -11,15 +11,14 @@
 
 @class Author, Page;
 
-@interface Book : NSManagedObject
+@interface Magazine : NSManagedObject
 
 @property (nonatomic, retain) NSString * name;
-@property (nonatomic, retain) NSData * picture;
-@property (nonatomic, retain) Author *author;
 @property (nonatomic, retain) NSSet *pages;
+@property (nonatomic, retain) Author *authors;
 @end
 
-@interface Book (CoreDataGeneratedAccessors)
+@interface Magazine (CoreDataGeneratedAccessors)
 
 - (void)addPagesObject:(Page *)value;
 - (void)removePagesObject:(Page *)value;

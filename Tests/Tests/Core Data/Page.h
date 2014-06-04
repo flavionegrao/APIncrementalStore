@@ -1,27 +1,19 @@
-/*
- *
- * Copyright 2014 Flavio Negrão Torres
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+//
+//  Page.h
+//  Tests
+//
+//  Created by Flavio Negrão Torres on 6/4/14.
+//
+//
 
 #import <Foundation/Foundation.h>
 #import <CoreData/CoreData.h>
 
-@class Book;
+@class Book, Magazine;
 
 @interface Page : NSManagedObject
 
 @property (nonatomic, retain) Book *book;
+@property (nonatomic, retain) Magazine *magazine;
 
 @end

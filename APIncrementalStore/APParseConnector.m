@@ -22,6 +22,8 @@
 #import "APCommon.h"
 #import "NSLogEmoji.h"
 
+NSString* const APParseRelationshipTypeUserInfoKey = @"APParseRelationshipType";
+
 /* Debugging */
 BOOL AP_DEBUG_METHODS = NO;
 BOOL AP_DEBUG_ERRORS = NO;
@@ -167,6 +169,14 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             }
         }
         
+        // Fetch related objects when the relation is flagged as a Array via core data model metadata.
+        [entityDescription.relationshipsByName enumerateKeysAndObjectsUsingBlock:^(NSString* relationName, NSRelationshipDescription* relationDescription, BOOL *stop) {
+            NSString* inverseRelationshipType = relationDescription.userInfo[APParseRelationshipTypeUserInfoKey];
+            if (inverseRelationshipType && [inverseRelationshipType integerValue] == APParseRelationshipTypeArray) {
+                [query includeKey:relationName];
+            }
+        }];
+        
         // We count the object before fetching (see APParseQueryFetchLimit explanation)
         //        NSUInteger numberOfObjectsToBeFetched = [query countObjects:&localError];
         //        if (localError) {
@@ -231,7 +241,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                         [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Could not obtain permanent IDs for objects %@ with error %@", managedObject, localError];
                     }
                     
-                    NSDictionary* serializeParseObject = [self serializeParseObject:parseObject error:&localError];
+                    NSDictionary* serializeParseObject = [self serializeParseObject:parseObject forEntity:managedObject.entity error:&localError];
                     if (localError) {
                         *error = localError;
                         return nil;
@@ -262,7 +272,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                     objectStatus = NSDeletedObjectsKey;
                     
                 } else {
-                    NSDictionary* serializeParseObject = [self serializeParseObject:parseObject error:&localError];
+                    NSDictionary* serializeParseObject = [self serializeParseObject:parseObject forEntity:managedObject.entity error:&localError];
                     if (localError) {
                         *error = localError;
                         return nil;
@@ -451,7 +461,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                     } else if (self.mergePolicy == APMergePolicyServerWins) {
                         if (AP_DEBUG_INFO) { DLog(@"APMergePolicyServerWins")}
                         NSError* localError = nil;
-                        NSDictionary* serializeParseObject = [self serializeParseObject:parseObject error:&localError];
+                        NSDictionary* serializeParseObject = [self serializeParseObject:parseObject forEntity:managedObject.entity error:&localError];
                         if (localError) {
                             reportErrorStopEnumerating();
                         
@@ -731,37 +741,60 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             if (relationshipDescription.isToMany) {
                 NSSet* relatedManagedObjects = (NSSet*) propertyValue;
                 
-                /*
-                 Would be nice if there was a method to empty a relationship easiser or check
-                 what objects are in the relation without querying Parse.
-                 The only way I was able to make it work was to query all objects and
-                 remove them one by one... awesome!
-                 */
+                NSString* relationshipType = relationshipDescription.userInfo[APParseRelationshipTypeUserInfoKey];
                 
-                PFRelation* relation = [parseObject relationForKey:propertyName];
-                
-                // First check if this object has been created remotely
-                if (parseObject.objectId) {
-                    NSError* localError = nil;
-                    NSArray* currentObjectsInParseRelation = [[relation query]findObjects:&localError];
-                    if (localError) { *error = localError; return;}
-                    [currentObjectsInParseRelation enumerateObjectsUsingBlock:^(PFObject* currentRelatedParseObject, NSUInteger idx, BOOL *stop) {
-                        [relation removeObject:currentRelatedParseObject];
-                    }];
-                }
-                
-                /*
-                 Now fetch the equivalent Parse object from the local related managed object
-                 and add them all to the parse relation
-                 */
-                for (NSManagedObject* relatedManagedObject in relatedManagedObjects) {
-                    NSError* localError = nil;
-                    PFObject* relatedParseObject = [self parseObjectFromManagedObject:relatedManagedObject error:&localError];
-                    if (localError) {
-                        *error = localError;
-                        return;
+                if (relationshipType && [relationshipType integerValue] == APParseRelationshipTypeArray) {
+                    
+                    // Parse Relationship should be a Array
+                    
+                    NSMutableArray* relation = [[NSMutableArray alloc]initWithCapacity:[relatedManagedObjects count]];
+                    
+                    for (NSManagedObject* relatedManagedObject in relatedManagedObjects) {
+                        NSError* localError = nil;
+                        PFObject* relatedParseObject = [self parseObjectFromManagedObject:relatedManagedObject error:&localError];
+                        if (localError) {
+                            *error = localError;
+                            return;
+                        }
+                        [relation addObject:relatedParseObject];
                     }
-                    [relation addObject:relatedParseObject];
+                    [parseObject setObject:relation forKey:propertyName];
+                    
+                } else {
+                    
+                     // Parse Relationship should be a PFRelation
+                    
+                    /*
+                     Would be nice if there was a method to empty a relationship easiser or check
+                     what objects are in the relation without querying Parse.
+                     The only way I was able to make it work was to query all objects and
+                     remove them one by one... awesome!
+                     */
+                    
+                    PFRelation* relation = [parseObject relationForKey:propertyName];
+                    
+                    if (parseObject.objectId) {
+                        NSError* localError = nil;
+                        NSArray* currentObjectsInParseRelation = [[relation query]findObjects:&localError];
+                        if (localError) { *error = localError; return;}
+                        [currentObjectsInParseRelation enumerateObjectsUsingBlock:^(PFObject* currentRelatedParseObject, NSUInteger idx, BOOL *stop) {
+                            [relation removeObject:currentRelatedParseObject];
+                        }];
+                    }
+                    
+                    /*
+                     Now fetch the equivalent Parse object from the local related managed object
+                     and add them all to the parse relation
+                     */
+                    for (NSManagedObject* relatedManagedObject in relatedManagedObjects) {
+                        NSError* localError = nil;
+                        PFObject* relatedParseObject = [self parseObjectFromManagedObject:relatedManagedObject error:&localError];
+                        if (localError) {
+                            *error = localError;
+                            return;
+                        }
+                        [relation addObject:relatedParseObject];
+                    }
                 }
                 
             } else {
@@ -972,7 +1005,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     if (!fetchError) {
         
         if ([fetchResults count] > 1) {
-            @throw [NSException exceptionWithName:APIncrementalStoreExceptionInconsistency reason:@"More than one cached result for parse object" userInfo:nil];
+            [NSException raise:APIncrementalStoreExceptionInconsistency format:@"More than one cached result for parse object"];
             
         } else if ([fetchResults count] == 0) {
             
@@ -998,46 +1031,94 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 
 
 - (NSDictionary*) serializeParseObject:(PFObject*) parseObject
+                             forEntity:(NSEntityDescription*) entity
                                  error:(NSError* __autoreleasing*) error {
     
     if (AP_DEBUG_METHODS) { MLog()}
-    
+    if ([[parseObject valueForKey:@"apObjectUID"] isEqualToString:@"Just For Debug: Replace with the objectUID"]) {
+        NSLog(@"Stop");
+    }
     NSMutableDictionary* dictionaryRepresentation = [NSMutableDictionary dictionary];
     [[parseObject allKeys] enumerateObjectsUsingBlock:^(id key, NSUInteger idx, BOOL *stop) {
         id value = [parseObject valueForKey:key];
         
         if ([value isKindOfClass:[PFRelation class]]) {
             
-            // To-Many relationsship (need to create an Array of Dictionaries including only the ObjectId
+            /* In order to optimize the sync processm there are two scenarios where we don't need 
+             to populate this relation:
+             
+             1) When the inverse relation is To-One
+             
+             2) When the inverse is a Array. Here we can't differentiate solely evaluating our core data model and tell
+             if the inverse relation is a Array or a PFRelation. For that reason if the core data 
+             model has a key APParseRelationshipTypeUserInfoKey set with APParseRelationshipTypeArray
+             we assume that Parse has a relation as the inverse relationship, therefore we can skip
+             populating this relation.
+             */
+            BOOL needToPopulateRelation = YES;
             
-            PFRelation* relation = (PFRelation*) value;
-            PFQuery* queryForRelatedObjects = [relation query];
-            [queryForRelatedObjects selectKeys:@[APObjectUIDAttributeName,APObjectEntityNameAttributeName]];
+            NSAssert([entity.propertiesByName[key] isKindOfClass:[NSRelationshipDescription class]],@"Core Data model not matching Parse object");
+            NSRelationshipDescription* relationshipDescription = entity.propertiesByName[key];
             
-            NSError* localError = nil;
-            NSArray* results = [queryForRelatedObjects findObjects:&localError];
-            
-            if (localError) {
-                *stop = YES;
-                *error = localError;
-                ELog(@"Error getting objects from To-Many relationship %@from Parse: %@",key,localError);
-            
-            } else {
-                NSMutableArray* relatedObjects = [[NSMutableArray alloc]initWithCapacity:[results count]];
-                
-                for (PFObject* relatedParseObject in results) {
-                    if (!relatedParseObject[APObjectUIDAttributeName]) {
-                        [NSException raise:APIncrementalStoreExceptionInconsistency format:@"%@ is missing APObjectUIDAttributeName", parseObject];
-                    }
-                    if (!relatedParseObject[APObjectEntityNameAttributeName]) {
-                        [NSException raise:APIncrementalStoreExceptionInconsistency format:@"%@ is missing APObjectEntityNameAttributeName",parseObject];
-                    }
-                    [relatedObjects addObject:@{APObjectUIDAttributeName:         relatedParseObject[APObjectUIDAttributeName],
-                                                APObjectEntityNameAttributeName:  relatedParseObject[APObjectEntityNameAttributeName]}];
-                }
-                
-                dictionaryRepresentation[key] = relatedObjects;
+            if (![relationshipDescription.inverseRelationship isToMany]) {
+                needToPopulateRelation = NO;
             }
+            
+            NSString* inverseRelationshipType = relationshipDescription.inverseRelationship.userInfo[APParseRelationshipTypeUserInfoKey];
+            if (inverseRelationshipType && [inverseRelationshipType integerValue] == APParseRelationshipTypeArray) {
+                needToPopulateRelation = NO;
+            }
+            
+            if (needToPopulateRelation) {
+                // To-Many relationsship (need to create an Array of Dictionaries including only the ObjectId
+                
+                PFRelation* relation = (PFRelation*) value;
+                PFQuery* queryForRelatedObjects = [relation query];
+                [queryForRelatedObjects selectKeys:@[APObjectUIDAttributeName,APObjectEntityNameAttributeName]];
+                
+                NSError* localError = nil;
+                NSArray* results = [queryForRelatedObjects findObjects:&localError];
+                
+                if (localError) {
+                    *stop = YES;
+                    *error = localError;
+                    ELog(@"Error getting objects from To-Many relationship %@from Parse: %@",key,localError);
+                    
+                } else {
+                    NSMutableArray* relatedObjects = [[NSMutableArray alloc]initWithCapacity:[results count]];
+                    
+                    for (PFObject* relatedParseObject in results) {
+                        if (!relatedParseObject[APObjectUIDAttributeName]) {
+                            [NSException raise:APIncrementalStoreExceptionInconsistency format:@"%@ is missing APObjectUIDAttributeName", parseObject];
+                        }
+                        if (!relatedParseObject[APObjectEntityNameAttributeName]) {
+                            [NSException raise:APIncrementalStoreExceptionInconsistency format:@"%@ is missing APObjectEntityNameAttributeName",parseObject];
+                        }
+                        [relatedObjects addObject:@{APObjectUIDAttributeName:         relatedParseObject[APObjectUIDAttributeName],
+                                                    APObjectEntityNameAttributeName:  relatedParseObject[APObjectEntityNameAttributeName]}];
+                    }
+                    
+                    dictionaryRepresentation[key] = relatedObjects;
+                }
+            }
+            
+        } else if ([value isKindOfClass:[NSArray class]]) {
+            // To-Many relationsship (need to create an Array of Dictionaries including only the ObjectId
+            NSMutableArray* relatedObjects = [[NSMutableArray alloc]initWithCapacity:[value count]];
+            
+            for (PFObject* relatedParseObject in value) {
+                if (!relatedParseObject[APObjectUIDAttributeName]) {
+                    [NSException raise:APIncrementalStoreExceptionInconsistency format:@"%@ is missing APObjectUIDAttributeName", parseObject];
+                }
+                if (!relatedParseObject[APObjectEntityNameAttributeName]) {
+                    [NSException raise:APIncrementalStoreExceptionInconsistency format:@"%@ is missing APObjectEntityNameAttributeName",parseObject];
+                }
+                [relatedObjects addObject:@{APObjectUIDAttributeName:         relatedParseObject[APObjectUIDAttributeName],
+                                            APObjectEntityNameAttributeName:  relatedParseObject[APObjectEntityNameAttributeName]}];
+            }
+            
+            dictionaryRepresentation[key] = relatedObjects;
+
             
         } else if ([value isKindOfClass:[PFFile class]]) {
             PFFile* file = (PFFile*) value;
