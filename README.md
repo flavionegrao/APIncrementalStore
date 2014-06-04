@@ -13,7 +13,7 @@ There are basically three main classes:
 
 2) `APDiskCache` - the APIncrementalStore uses this class as a local cache to respond to all the requests. This class exchanges NSDictionaries representations of the managed objects and uses a objectID to uniquely identify them across the managed contexts (`NSIncrementalStore` and Disk Cache). This class uses a complete core data stack to store the cached objects. There will be one sqlite store for each logged user, so that on distinct cache per user.
 
-3) `APParseConnector` - Responsible for merging the local cache context in background as requested by the cache. Please be mindful that relationships are being represented as Parse Pointers for Core Data To-One and Parse Relationships for Core Data To-Many relationships. All relationships have its inverse reflected at Parse as well for consistency sake. At the moment this class does not support Parse Array Relationships. 
+3) `APParseConnector` - Responsible for merging the local cache context in background as requested by the cache.  
 
 I will include descent documentation in the next weeks, for the time being take a look at the folder Example in the repository, you are going to find a very basic usage of this library.
 
@@ -26,6 +26,23 @@ Two new columns are necessary on each Parse class that will sync with your Core 
 2) *apObjectIsDeleted*: the clients don't delete any object, the objects are "marked" as deleted using this property to allow others to sync the deleted objects and properly update their databases. You may want to implement a Parse Cloud Code to execute a "garbage" collector say every 60 days to clean it, you just need to ensure that all clients have synced before you clean it.
 
 3) *apObjectEntityName*: through this attribute the `APIncrementalStore` adds support to Core Data Entity Inheritance. Only the root entities will be created at Parse, all remaining subentieis will be identified by this attribute. Therefore all attributes and relationships from the root class and its sub-entities will share the same Parse Class.
+
+###Parse Relationships
+Please be mindful that relationships are being represented as Parse Pointers for Core Data To-One and Parse Relationships for Core Data To-Many relationships by default. All relationships have its inverse reflected at Parse as well for consistency sake.
+
+#### Performance considerations
+To-Many with a To-One as inverse are fine as the APParseConnector uses only the To-One side of the relationship to populate the local cache and rely on Core Data to fulfil the inverse relation (To-Many).
+The problem surfaces when we are dealing with Many-To-Many, there's a huge bottleneck when syncing a large amount of objects, the reason is that in order to keep consistency fetched from the webservice (i.e. Parse) it is necessary to create and execute another query for every relationship that it contains. That means we are able to fetch in batches of say 1000 objects for Parse but then multiples queries subsequentely are necessary for each object fetched. That's how PFRelation (Parse) works, we can't ask for the related objects when executing the fetch, perhaps another baas provider might have a better solution but for now we need to put up with that. There's an alternative for PFRelation, wich is the Array, we may read more about the differences [Parse Relationship Documentation](https://www.parse.com/docs/relations_guide).
+With Array it is possible to ask for the related objects to come along with the fetched objects, therefore there's no need for the further queries as explained above. There's a significant performance enhancement when changing from PFRelation to Array, however the objects can become large enough to hit de Parse 128K limit per object. So when architecturing your Model take it into account. The recommendation is to use Array on the side where you have less objects and PFRelation on the inverse.
+The only way I was able to figure out to let the Core Data Model aware about when to use Array or PFRelation for the To-Many relations is to include some meta data directly into the model.
+
+Include the key `APParseRelationshipType` in the relationship user info with the values:
+```
+0 - PFRelation (default)
+1 - Array
+```
+If no key is provided the `APIncrementalStore` will assume PFRelation.
+
 
 ###Installation
 Easy, you may clone it locally or use CocoaPods:
@@ -123,6 +140,10 @@ On `UnitTestingCommon.m` config a valid Parse User/Password.
 Use a test Parse App as it will include few additional classes needed for testing.
 
 ###Version history
+
+####v.0.3.1
+Added support to Parse Arrays (1st version - please report any bug)
+Added support for multiple apps to coexist using distinct local caches. See @protocol APWebServiceConnector -setEnvID:
 
 ####v.0.3.0
 Lots of bug fixes mainly related to inheritance
