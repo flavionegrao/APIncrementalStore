@@ -19,15 +19,15 @@
 #define NSLog(FORMAT, ...) printf("%s\n", [[NSString stringWithFormat:FORMAT, ##__VA_ARGS__] UTF8String]);
 
 // Debug
-#define DLog(fmt, ...) NSLog((@"\n ℹ️ [L:%d] %s " fmt), __LINE__, __PRETTY_FUNCTION__, ##__VA_ARGS__);
+#define DLog(fmt, ...) NSLog((@"ℹ️ %@ [L:%d] - " fmt),NSStringFromClass([self class]), __LINE__, ##__VA_ARGS__);
 
 // Error
-#define ELog(fmt, ...) NSLog((@"\n ⚠️ [L:%d] %s " fmt), __LINE__, __PRETTY_FUNCTION__, ##__VA_ARGS__);
+#define ELog(fmt, ...) NSLog((@"⚠️ %@ [L:%d] - " fmt),NSStringFromClass([self class]), __LINE__, ##__VA_ARGS__);
 
 // Method call
-#define MLog(fmt, ...) NSLog((@"\n 🆔 [L:%d] %s " fmt), __LINE__, __PRETTY_FUNCTION__, ##__VA_ARGS__);
+#define MLog(fmt, ...) NSLog((@"🆔 %@ [L:%d] - " fmt),NSStringFromClass([self class]), __LINE__, ##__VA_ARGS__);
 
 // Atention call
-#define ALog(fmt, ...) NSLog((@"\n ‼️‼️‼️‼️ [L:%d] %s " fmt), __LINE__, __PRETTY_FUNCTION__, ##__VA_ARGS__);
+#define ALog(fmt, ...) NSLog((@"‼️ %@ [L:%d] %s - " fmt),NSStringFromClass([self class]), __LINE__, __PRETTY_FUNCTION__, ##__VA_ARGS__);
 
 // Use XCode Shortcut to jump to a specific line CMD+L :-)

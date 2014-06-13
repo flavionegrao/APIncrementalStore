@@ -184,7 +184,8 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     if (!_syncContext) {
         _syncContext = [[NSManagedObjectContext alloc]initWithConcurrencyType:NSPrivateQueueConcurrencyType];
         _syncContext.parentContext = self.mainContext;
-        _syncContext.retainsRegisteredObjects = YES;
+        _syncContext.undoManager = nil;
+       // _syncContext.retainsRegisteredObjects = YES;
     }
     return _syncContext;
 }
@@ -296,6 +297,12 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         // Remote Updates - all objects that have updated date earlier than our last successful sync
         NSDictionary* mergedFromServer;
         mergedFromServer = [self.connector mergeRemoteObjectsWithContext:self.syncContext fullSync:allObjects onSyncObject:^{
+             NSError* savingError = nil;
+            if (![self saveSyncContext:&savingError]) {
+                if (AP_DEBUG_ERRORS) { ELog(@"Error syncing local changes: %@",error)}
+#warning revisar
+            }
+            
             [[NSOperationQueue mainQueue]addOperationWithBlock:^{ if (syncObjectBlock) syncObjectBlock(YES); }];
         } error:&error];
         
@@ -335,6 +342,8 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
             
         } else {
             
+            [self.syncContext reset];
+            {ELog(@"Sync context saved")}
             [self.mainContext performBlockAndWait:^{
                 
                 if (![self.mainContext save:error]) {
@@ -342,13 +351,17 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
                     success = NO;
                     
                 } else {
-                    
+                    {ELog(@"Main context saved")}
+                    [self.mainContext reset];
                     [self.privateContext performBlock:^{
                         
                         // Save to disk
                         if (![self.privateContext save:error]) {
                             if (AP_DEBUG_ERRORS) {ELog(@"Error saving private context changes: %@",*error)}
                             success = NO;
+                        } else {
+                            {ELog(@"Private context saved")}
+                            [self.privateContext reset];
                         }
                     }];
                 }
