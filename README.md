@@ -45,6 +45,8 @@ If no key is provided the `APIncrementalStore` will assume PFRelation.
 
 
 ###Installation
+
+#### API
 Easy, you may clone it locally or use CocoaPods:
 
 ```
@@ -52,6 +54,23 @@ platform :ios, '7.0'
 pod 'APIncrementalStore' , :git => 'https://github.com/flavionegrao/APIncrementalStore.git'
 #Develop branch
 #pod 'APIncrementalStore' , :git => 'https://github.com/flavionegrao/APIncrementalStore.git', :branch => 'development'
+```
+
+#### Additional Parse Cloud Code
+Unfortunately Parse doesn't provide an out-of-box way to get its server time, and we need it to performe the sync process safely (see `[APParseConnector mergeRemoteObjectsWithContext:fullSync:onSyncObjecterror:]`).
+The way I found to overcome it is to include a small Parse Cloud Code named `getTime` and query it using Parse SDK.
+To get it working add to each of your apps the you are planing to sync the following cloud code:
+
+```
+Parse.Cloud.define("getTime", function(request, response) {
+    Parse.Cloud.useMasterKey();
+    var date = new Date();
+    if (!date){
+        response.error(date);
+    } else {
+        response.success(date);
+    }
+});
 ```
 
 ### Run the example app
