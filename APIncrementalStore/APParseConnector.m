@@ -154,17 +154,20 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
     /*
      The reason we fetch only the objects that have been updated up to now is to avoid the situation
      when say a class A has been synced then we start syncing class B, an object from class B holds a
-     reference to a object from class A that we have not brought earlier. That situation may happen
-     if a object in class B gets updated after we have synced class A and before we ask for the objects
-     in class B. Quite unlike but possible.
+     reference to a object from class A that we have not brought earlier.
+     Such situation may happen if a object in class B gets updated after we have synced class A and
+     before we ask for the objects in class B. Quite unlike but possible.
+     
      */
-    NSDate* now = [NSDate date];
+    NSDate* parseServerTime = [self getParseServerTime:&localError];
+    if (localError) {
+        if (error) *error = localError;
+        return nil;
+    }
     
     for (NSEntityDescription* entityDescription in sortedEntities) {
-
-        if (AP_DEBUG_INFO) {ALog(@"Syncing: %@", entityDescription.name)}
         
-        /* 
+        /*
          This covers the case when the model has entity inheritance.
          At Parse only the root class will be created and we filter based on APObjectEntityNameAttributeName column
          */
@@ -174,7 +177,7 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
         [query whereKey:APObjectEntityNameAttributeName equalTo:entityDescription.name];
         [query setLimit:APParseQueryFetchLimit];
         
-        [query whereKey:@"updatedAt" lessThan:now];
+        [query whereKey:@"updatedAt" lessThan:parseServerTime];
         
         if (!fullSync) {
             /* Fetch only what has been updated since we last sync */
@@ -201,6 +204,7 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
         BOOL thereAreObjectsToBeFetched = YES;
         
         while (thereAreObjectsToBeFetched) {
+            
             [query setSkip:skip];
             NSMutableArray* batchOfObjects = [[query findObjects:&localError]mutableCopy];
             if ([query hasCachedResult]) {[query clearCachedResult];}
@@ -215,10 +219,10 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
             while ([batchOfObjects count] > 0) {
                 
                 @autoreleasepool {
+                    
                     PFObject* parseObject = [batchOfObjects firstObject];
                     [batchOfObjects removeObjectAtIndex:0];
                     NSManagedObject* managedObject = [self managedObjectForObjectUID:[parseObject valueForKey:APObjectUIDAttributeName] entity:entityDescription inContext:context createIfNecessary:NO];
-                    [self setLatestObjectSyncedDate:parseObject.updatedAt forEntityName:entityDescription.name];
                     
                     if ([[managedObject valueForKey:APObjectLastModifiedAttributeName] isEqualToDate:parseObject.updatedAt]){
                         //Object was inserted/updated during -[ParseConnector mergeManagedContext:onSyncObject:onSyncObject:error:] and remains the same
@@ -296,6 +300,8 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
                         entityEntry[objectStatus] = [mergedObjectUIDs arrayByAddingObject:[parseObject valueForKey:APObjectUIDAttributeName]];
                         mergedObjectsUIDsNestedByEntityName[entityDescription.name] = entityEntry;
                     }
+                    
+                    [self setLatestObjectSyncedDate:parseObject.updatedAt forEntityName:entityDescription.name];
                     
                     if (onSyncObject) onSyncObject();
                     
@@ -505,9 +511,9 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
 
 - (void) syncProcessDidFinish:(BOOL)success {
     
-    if (success) {
-        [self saveLatestObjectSyncedDate];
-    }
+//    if (success) {
+//        [self saveLatestObjectSyncedDate];
+//    }
 }
 
 
@@ -534,6 +540,7 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
     if ([[self.latestObjectSyncedDates[entityName] laterDate:date] isEqualToDate:date] || self.latestObjectSyncedDates[entityName] == nil) {
         self.latestObjectSyncedDates[entityName] = date;
     }
+    [[NSUserDefaults standardUserDefaults]setObject:self.latestObjectSyncedDates forKey:self.latestObjectSyncedKey];
 }
 
 
@@ -544,13 +551,6 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
     }
     return _latestObjectSyncedDates;
 }
-
-
-- (void) saveLatestObjectSyncedDate {
-    
-    [[NSUserDefaults standardUserDefaults]setObject:self.latestObjectSyncedDates forKey:self.latestObjectSyncedKey];
-}
-
 
 #pragma mark - Populating Objects
 
@@ -995,7 +995,7 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
                              forEntity:(NSEntityDescription*) entity
                                  error:(NSError* __autoreleasing*) error {
     
-    if (AP_DEBUG_METHODS) { MLog()}
+    if (AP_DEBUG_METHODS) { MLog()};
     
 
     NSMutableDictionary* dictionaryRepresentation = [NSMutableDictionary dictionary];
@@ -1155,6 +1155,33 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
         rootEntity = entity;
     }
     return rootEntity;
+}
+
+
+- (NSDate*) getParseServerTime: (NSError*__autoreleasing*) error {
+    
+    NSError* localError = nil;
+    NSDate* parseServerTime = [PFCloud callFunction:@"getTime" withParameters:@{} error:&localError];
+    
+    if (localError) {
+        if ([localError.domain isEqualToString:@"Parse"] && localError.code == kPFScriptError) {
+            
+            if ([localError.userInfo[@"error"] isEqualToString:@"function not found"]) {
+                NSString* msg = @"You likely don't have Parse Cloud Code configured properly, add a method named \"getTime\" in order to enable APIncrementalStore to retrieve Parse time. Check https://github.com/flavionegrao/APIncrementalStore how to set it up correctly.";
+                [NSException raise:APIncrementalStoreExceptionInconsistency format:@"%@",msg];
+            
+            } else {
+                if (error) *error = localError;
+                return nil;
+            }
+            
+        } else {
+            if (error) *error = localError;
+            return nil;
+        }
+    }
+    
+    return parseServerTime;
 }
 
 

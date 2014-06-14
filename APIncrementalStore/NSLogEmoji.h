@@ -25,7 +25,7 @@
 #define ELog(fmt, ...) NSLog((@"⚠️ %@ [L:%d] - " fmt),NSStringFromClass([self class]), __LINE__, ##__VA_ARGS__);
 
 // Method call
-#define MLog(fmt, ...) NSLog((@"🆔 %@ [L:%d] - " fmt),NSStringFromClass([self class]), __LINE__, ##__VA_ARGS__);
+#define MLog(fmt, ...) NSLog((@"🆔 %@ [L:%d] %s" fmt),NSStringFromClass([self class]), __LINE__, __PRETTY_FUNCTION__, ##__VA_ARGS__);
 
 // Atention call
 #define ALog(fmt, ...) NSLog((@"‼️ %@ [L:%d] %s - " fmt),NSStringFromClass([self class]), __LINE__, __PRETTY_FUNCTION__, ##__VA_ARGS__);

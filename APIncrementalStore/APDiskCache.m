@@ -285,6 +285,18 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         
         // Local Updates - all objects marked as "dirty" and add entries from temporary to permanent objectsUID
         BOOL mergeSuccess = [self.connector mergeManagedContext:self.syncContext onSyncObject:^{
+            
+            /*
+             Save contexts after each object update
+             Even though we are saving local to webservice, we need to update the local APObjectLastModifiedAttributeName
+             as it will be updated by the webservice and we never trust on local time.
+             */
+
+            NSError* savingError = nil;
+            if (![self saveSyncContext:&savingError]) {
+                if (AP_DEBUG_ERRORS) { ELog(@"Error syncing local changes: %@",error)}
+#warning review all error handlig proccess
+            }
             [[NSOperationQueue mainQueue]addOperationWithBlock:^{if (syncObjectBlock) syncObjectBlock(YES); }];
         } error:&error];
         
@@ -297,10 +309,10 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         // Remote Updates - all objects that have updated date earlier than our last successful sync
         NSDictionary* mergedFromServer;
         mergedFromServer = [self.connector mergeRemoteObjectsWithContext:self.syncContext fullSync:allObjects onSyncObject:^{
-             NSError* savingError = nil;
+            NSError* savingError = nil;
             if (![self saveSyncContext:&savingError]) {
                 if (AP_DEBUG_ERRORS) { ELog(@"Error syncing local changes: %@",error)}
-#warning revisar
+#warning review all error handlig proccess
             }
             
             [[NSOperationQueue mainQueue]addOperationWithBlock:^{ if (syncObjectBlock) syncObjectBlock(YES); }];
@@ -317,58 +329,16 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         // Save all contexts
         
         NSError* savingError = nil;
-        if (![self saveSyncContext:&savingError]) {
-            [self.connector syncProcessDidFinish:NO];
-            [[NSOperationQueue mainQueue]addOperationWithBlock:failureBlock];
+        //if (![self saveSyncContext:&savingError]) {
+        //    [self.connector syncProcessDidFinish:NO];
+        //    [[NSOperationQueue mainQueue]addOperationWithBlock:failureBlock];
             
-        } else {
+        //} else {
             [self.connector syncProcessDidFinish:YES];
             [[NSOperationQueue mainQueue]addOperationWithBlock:successBlock];
-        }
+        //}
         self.syncContext = nil;
     }];
-}
-
-
-- (BOOL) saveSyncContext:(NSError *__autoreleasing*) error {
-    
-    __block BOOL success = YES;
-    
-    if ([self.syncContext hasChanges]) {
-        
-        if (![self.syncContext save:error]) {
-            if (AP_DEBUG_ERRORS) {ELog(@"Error saving sync context changes: %@",*error)}
-            success = NO;
-            
-        } else {
-            
-            [self.syncContext reset];
-            {ELog(@"Sync context saved")}
-            [self.mainContext performBlockAndWait:^{
-                
-                if (![self.mainContext save:error]) {
-                    if (AP_DEBUG_ERRORS) {ELog(@"Error saving main context changes: %@",*error)}
-                    success = NO;
-                    
-                } else {
-                    {ELog(@"Main context saved")}
-                    [self.mainContext reset];
-                    [self.privateContext performBlock:^{
-                        
-                        // Save to disk
-                        if (![self.privateContext save:error]) {
-                            if (AP_DEBUG_ERRORS) {ELog(@"Error saving private context changes: %@",*error)}
-                            success = NO;
-                        } else {
-                            {ELog(@"Private context saved")}
-                            [self.privateContext reset];
-                        }
-                    }];
-                }
-            }];
-        }
-    }
-    return success;
 }
 
 
@@ -797,36 +767,65 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     }];
 }
 
+- (BOOL) saveSyncContext:(NSError *__autoreleasing*) error {
+    
+    __block BOOL success = YES;
+    __block NSError* localError = nil;
+    
+    if ([self.syncContext hasChanges]) {
+        
+        [self.syncContext performBlockAndWait:^{
+            
+            if (![self.syncContext save:&localError]) {
+                if (AP_DEBUG_ERRORS) {ELog(@"Error saving sync context changes: %@",*error)}
+                success = NO;
+                if (error) *error = localError;
+                
+            } else {
+                if (![self saveMainContext:&localError]){
+                    success = NO;
+                    if (error) *error = localError;
+                }
+            }
+        }];
+    }
+    return success;
+}
+
 
 - (BOOL) saveMainContext: (NSError *__autoreleasing *)error {
     
     if (AP_DEBUG_METHODS) { MLog() }
     
     __block BOOL success = YES;
+    __block NSError* localError = nil;
     
     // Save all contexts
     [self.mainContext performBlockAndWait:^{
         
-        if (![self.mainContext save:error]) {
-            if (AP_DEBUG_ERRORS) { ELog(@"Error saving changes: %@",*error)}
+        if (![self.mainContext save:&localError]) {
+            if (AP_DEBUG_ERRORS) { ELog(@"Error saving changes: %@",localError)}
             success = NO;
+            if (error) *error = localError;
             
         } else {
-            [self.privateContext performBlockAndWait:^{
+            
+            [self.privateContext performBlock:^{
                 
-                if (![self.privateContext save:error]) {
-                    if (AP_DEBUG_ERRORS) { ELog(@"Error saving changes: %@",*error)}
+                if (![self.privateContext save:&localError]) {
+                    if (AP_DEBUG_ERRORS) { ELog(@"Error saving changes: %@",localError)}
                     success = NO;
+                    if (error) *error = localError;
                     
                 } else {
-                    if (AP_DEBUG_INFO) { DLog(@"Saved to disk") }
+                    if (AP_DEBUG_INFO) { DLog(@"Context Saved to disk") }
                 }
             }];
         }
     }];
-    
     return success;
 }
+
 
 - (void) resetCache {
     

@@ -296,7 +296,7 @@ static NSString* const kBookName2 = @"A Clash of Kings";
         PFObject* book2 = [PFObject objectWithClassName:@"Book"];
         book2[@"name"] = kBookName2;
         book2[APObjectIsDeletedAttributeName] = @NO;
-        book2 [APObjectEntityNameAttributeName] = @"Book";
+        book2[APObjectEntityNameAttributeName] = @"Book";
         book2[APObjectUIDAttributeName] = [self createObjectUID];
         [book2 save:&error];
         
@@ -435,28 +435,23 @@ Expected Results:
  */
 - (void) testRemoveObjectFromToManyRelationship {
     
-     MLog();
-    
     // Create the second Book and Sync
-    DLog(@"Creating new book");
     Book* book2 = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.coreDataController.mainContext];
     book2.name = kBookName2;
     book2.author = [self fetchAuthor];
     DLog(@"New book created: %@",book2);
     
+    // Save & sync
     NSError* error = nil;
     [self.coreDataController.mainContext save:&error];
     XCTAssertNil(error);
-    
     [self.coreDataController requestSyncCache];
-    while (self.coreDataController.isSyncingTheCache &&
-           [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]])
+    while (self.coreDataController.isSyncingTheCache && [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]])
     
+    // Delete object, Save & Sync
     [self.coreDataController.mainContext deleteObject: book2];
-    
     [self.coreDataController.mainContext save:&error];
     XCTAssertNil(error);
-    
     [self.coreDataController requestSyncCache];
     while (self.coreDataController.isSyncingTheCache && [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
     
