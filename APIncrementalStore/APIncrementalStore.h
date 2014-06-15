@@ -40,7 +40,7 @@ extern NSString *const APNotificationCacheWillStartSync;
 /// APIncrementalStore will post this message once it synced a single object. Also the NSNotification userinfo will be keyed with APNotificationCacheNumberOfLocalObjectsKey and APNotificationCacheNumberOfRemoteObjectsKey showing the number of objects that were synced.
 extern NSString *const APNotificationCacheDidSyncObject;
 
-/// APIncrementalStore will post this message once it finished the disk cache sync process
+/// APIncrementalStore will post this message once it finished the disk cache sync process.
 extern NSString *const APNotificationCacheDidFinishSync;
 
 
@@ -49,6 +49,9 @@ extern NSString *const APNotificationCacheNumberOfLocalObjectsKey;
 
 /// APIncrementalStore will include this key when the APNotificationCacheWillStartSync is sent showing how many remote objects will be synced. The value will be -1 if couting is not supported.
 extern NSString *const APNotificationCacheNumberOfRemoteObjectsKey;
+
+/// If any error happen during sync process the Notifications sent by APIncrementalStore will contain this key with the related NSError.
+extern NSString *const APNotificationErrorKey;
 
 
 /**************************

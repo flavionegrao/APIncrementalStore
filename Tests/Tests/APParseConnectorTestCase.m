@@ -119,7 +119,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         
         PFObject* book1 = [PFObject objectWithClassName:@"Book"];
         [book1 setValue:kBookNameParse1 forKey:@"name"];
-        [book1 setValue:@NO forKey:APObjectIsDeletedAttributeName];
+        [book1 setValue:@(APObjectStatusCreated) forKey:APObjectStatusAttributeName];
         [book1 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
         [book1 setValue:@"Book" forKeyPath:APObjectEntityNameAttributeName];
         [book1 save:&saveError];
@@ -127,7 +127,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         
         PFObject* book2 = [PFObject objectWithClassName:@"Book"];
         [book2 setValue:kBookNameParse2 forKey:@"name"];
-        [book2 setValue:@NO forKey:APObjectIsDeletedAttributeName];
+        [book2 setValue:@(APObjectStatusCreated) forKey:APObjectStatusAttributeName];
         [book2 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
         [book2 setValue:@"Book" forKeyPath:APObjectEntityNameAttributeName];
         [book2 save:&saveError];
@@ -135,7 +135,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         
         PFObject* author = [PFObject objectWithClassName:@"Author"];
         [author setValue:kAuthorNameParse forKey:@"name"];
-        [author setValue:@NO forKey:APObjectIsDeletedAttributeName];
+        [author setValue:@(APObjectStatusCreated) forKey:APObjectStatusAttributeName];
         [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
         [author setValue:@"Author" forKeyPath:APObjectEntityNameAttributeName];
         [author save:&saveError];
@@ -264,7 +264,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         book3[APObjectEntityNameAttributeName] = @"Book";
         [book3 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
         [book3 setValue:@"Book" forKey:APObjectEntityNameAttributeName];
-        book3[APObjectIsDeletedAttributeName] = @NO;
+        book3[APObjectStatusAttributeName] = @(APObjectStatusCreated);
         [book3 save:&error];
         
         PFObject* author = [[PFQuery queryWithClassName:@"Author"]getFirstObject];
@@ -343,7 +343,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         PFQuery* authorQuery = [PFQuery queryWithClassName:@"Author"];
         [authorQuery whereKey:@"name" containsString:kAuthorNameParse];
         PFObject* parseAuthor = [[authorQuery findObjects]lastObject];
-        [parseAuthor setValue:@YES forKey:APObjectIsDeletedAttributeName];
+        parseAuthor[APObjectStatusAttributeName] = @(APObjectStatusDeleted);
         [parseAuthor save:&error];
         XCTAssertNil(error);
         
@@ -1074,7 +1074,7 @@ Expected Results:
         newEBook[@"name"] = @"eBook#1";
         newEBook[@"format"] = @"PDF";
         newEBook[APObjectEntityNameAttributeName] = @"EBook";
-        newEBook[APObjectIsDeletedAttributeName] = @NO;
+        newEBook[APObjectStatusAttributeName] = @(APObjectStatusCreated);
         newEBook[APObjectUIDAttributeName] = [self createObjectUID];
         [newEBook save:&error];
         
@@ -1210,13 +1210,13 @@ Expected Results:
             [lastModifiedProperty setIndexed:NO];
             [additionalProperties addObject:lastModifiedProperty];
             
-            NSAttributeDescription *deletedProperty = [[NSAttributeDescription alloc] init];
-            [deletedProperty setName:APObjectIsDeletedAttributeName];
-            [deletedProperty setAttributeType:NSBooleanAttributeType];
-            [deletedProperty setIndexed:NO];
-            [deletedProperty setOptional:NO];
-            [deletedProperty setDefaultValue:@NO];
-            [additionalProperties addObject:deletedProperty];
+            NSAttributeDescription *statusProperty = [[NSAttributeDescription alloc] init];
+            [statusProperty setName:APObjectStatusAttributeName];
+            [statusProperty setAttributeType:NSInteger16AttributeType];
+            [statusProperty setIndexed:NO];
+            [statusProperty setOptional:NO];
+            [statusProperty setDefaultValue:@(APObjectStatusCreated)];
+            [additionalProperties addObject:statusProperty];
             
             NSAttributeDescription *createdRemotelyProperty = [[NSAttributeDescription alloc] init];
             [createdRemotelyProperty setName:APObjectIsCreatedRemotelyAttributeName];

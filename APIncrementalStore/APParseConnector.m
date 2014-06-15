@@ -191,12 +191,7 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
         [entityDescription.relationshipsByName enumerateKeysAndObjectsUsingBlock:^(NSString* relationName, NSRelationshipDescription* relationDescription, BOOL *stop) {
             NSString* relationshipType = relationDescription.userInfo[APParseRelationshipTypeUserInfoKey];
             if ((relationshipType && [relationshipType integerValue] == APParseRelationshipTypeArray) || [relationDescription isToMany] == NO) {
-//                if ([relationName isEqualToString:@"itens"]) {
-//                    NSString* relatedObjectsObjectUIDKey = [NSString stringWithFormat:@"%@.%@",relationName,APObjectUIDAttributeName];
-//                    [query includeKey:relatedObjectsObjectUIDKey];
-//                } else {
                      [query includeKey:relationName];
-               // }
             }
         }];
         
@@ -208,7 +203,11 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
             [query setSkip:skip];
             NSMutableArray* batchOfObjects = [[query findObjects:&localError]mutableCopy];
             if ([query hasCachedResult]) {[query clearCachedResult];}
-            if (localError) { if (error) *error = localError; return nil; }
+            
+            if (localError) {
+                if (error) *error = localError;
+                return nil;
+            }
             
             if ([batchOfObjects count] == APParseQueryFetchLimit) {
                 skip += APParseQueryFetchLimit;
@@ -230,7 +229,7 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
                     }
                     
                     NSString* objectStatus;
-                    BOOL parseObjectIsDeleted = [[parseObject valueForKey:APObjectIsDeletedAttributeName]isEqualToNumber:@YES];
+                    BOOL parseObjectIsDeleted = [[parseObject valueForKey:APObjectStatusAttributeName]isEqualToNumber:@(APObjectStatusDeleted)];
                     NSMutableDictionary* entityEntry =  mergedObjectsUIDsNestedByEntityName[entityDescription.name] ?: [NSMutableDictionary dictionary];
                     
                     if (!managedObject) {
@@ -352,7 +351,7 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
             
             // New object created localy
             
-            if ([[managedObject valueForKey:APObjectIsDeletedAttributeName] isEqualToNumber:@YES]) {
+            if ([[managedObject valueForKey:APObjectStatusAttributeName] isEqualToNumber:@(APObjectStatusDeleted)]) {
                 
                 // Object was deleted before even synced with Parse, just delete it.
                 [context deleteObject:managedObject];
@@ -421,7 +420,7 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
                         if (![parseObject save:&localError]) {
                             reportErrorStopEnumerating();
                         } else {
-                            if ([[managedObject valueForKey:APObjectIsDeletedAttributeName] isEqualToNumber:@YES]) {
+                            if ([[managedObject valueForKey:APObjectStatusAttributeName] isEqualToNumber:@(APObjectStatusDeleted)]) {
                                 [context deleteObject:managedObject];
                             } else {
                                 [managedObject setValue:@NO forKey:APObjectIsDirtyAttributeName];
@@ -644,6 +643,8 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
     // Track the original entity from Core Data model, we use it when entity inheritance is being used.
     parseObject[APObjectEntityNameAttributeName] = managedObject.entity.name;
     
+    parseObject[APObjectStatusAttributeName] = @(APObjectStatusPopulated);
+    
     [mutableProperties enumerateKeysAndObjectsUsingBlock:^(NSString* propertyName, NSPropertyDescription* propertyDesctiption, BOOL *stop) {
         [managedObject willAccessValueForKey:propertyName];
             id propertyValue = [managedObject primitiveValueForKey:propertyName];
@@ -861,7 +862,7 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
         parseObject = [PFObject objectWithClassName:rootEntity.name];
         [parseObject setValue:relatedObjectUID forKey:APObjectUIDAttributeName];
         [parseObject setValue:managedObject.entity.name forKey:APObjectEntityNameAttributeName];
-        [parseObject setValue:@NO forKey:APObjectIsDeletedAttributeName];
+        [parseObject setValue:@(APObjectStatusCreated) forKey:APObjectStatusAttributeName];
         
         [parseObject save:&localError];
         if (localError) {
@@ -1134,7 +1135,7 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
     if (dictionaryRepresentation[APObjectUIDAttributeName] == nil ||
         dictionaryRepresentation[APObjectEntityNameAttributeName] == nil ||
         dictionaryRepresentation[APObjectLastModifiedAttributeName] == nil ||
-        dictionaryRepresentation[APObjectIsDeletedAttributeName] == nil) {
+        dictionaryRepresentation[APObjectStatusAttributeName] == nil) {
         
         [NSException raise:APIncrementalStoreExceptionInconsistency format:@"%@ is an incompatible object, please ensure all objects imported have the mandatory APIncrementalStore attributes set",parseObject];
         }

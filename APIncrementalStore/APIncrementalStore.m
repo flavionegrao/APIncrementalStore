@@ -43,6 +43,8 @@ NSString* const APNotificationCacheDidFinishSync = @"com.apetis.apincrementalsto
 NSString* const APNotificationCacheNumberOfLocalObjectsKey = @"com.apetis.apincrementalstore.diskcache.numberoflocalobjects.key";
 NSString* const APNotificationCacheNumberOfRemoteObjectsKey = @"com.apetis.apincrementalstore.diskcache.numberofremoteobjects.key";
 
+NSString *const APNotificationErrorKey = @"com.apetis.apincrementalstore.diskcache.error.key";
+
 
 /**************************
 / Cache Reset Notifications
@@ -79,6 +81,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
 @property (nonatomic,assign) BOOL shouldResetCacheFile;
 @property (nonatomic,strong) id <APWebServiceConnector> webServiceConnector;
 @property (nonatomic,strong) NSManagedObjectModel* model;
+@property (atomic,assign, getter = isSyncing) BOOL syncing;
 
 
 /*
@@ -775,6 +778,13 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     
     if (AP_DEBUG_METHODS) { MLog()}
     
+    if (self.isSyncing) {
+        if (AP_DEBUG_INFO) { DLog(@"Already syncing... can't request another one until the previous process is finished")};
+        return;
+    } else {
+        self.syncing = YES;
+    }
+    
     [self.diskCache syncAllObjects:allRemoteObjects onCountingObjects:^(NSInteger localObjects, NSInteger remoteObjects) {
         NSDictionary* userInfo = @{APNotificationCacheNumberOfLocalObjectsKey: @(localObjects),
                                    APNotificationCacheNumberOfRemoteObjectsKey: @(remoteObjects)};
@@ -785,15 +795,16 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         NSDictionary* userInfo = @{userInfoKey: @1};
         [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationCacheDidSyncObject object:self userInfo:userInfo];
     
-    } onCompletion:^(NSDictionary* objectUIDsNestedByEntityName, NSError *syncError) {
+    } onCompletion:^(NSDictionary* objectIDsNestedByEntityName, NSError *syncError) {
         
         if (!syncError) {
-            NSDictionary* translatedDictionary = [self translateObjectUIDsToManagedObjectIDs:objectUIDsNestedByEntityName];
+            NSDictionary* translatedDictionary = [self translateObjectUIDsToManagedObjectIDs:objectIDsNestedByEntityName];
             [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationCacheDidFinishSync object:self userInfo:translatedDictionary];
             
         } else {
             if (AP_DEBUG_ERRORS) {ELog(@"Error syncronising: %@",syncError)};
         }
+        self.syncing = NO;
     }];
 }
 

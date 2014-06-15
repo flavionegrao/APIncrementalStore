@@ -100,14 +100,14 @@ static NSString* const kBookName2 = @"A Clash of Kings";
         NSError* saveError = nil;
         PFObject* book = [PFObject objectWithClassName:@"Book"];
         book[@"name"] = kBookName1;
-        book[APObjectIsDeletedAttributeName] = @NO;
+        book[APObjectStatusAttributeName] = @(APObjectStatusPopulated);
         book[APObjectEntityNameAttributeName] = @"Book";
         book[APObjectUIDAttributeName] = [self createObjectUID];
         [book save:&saveError];
         
         PFObject* author = [PFObject objectWithClassName:@"Author"];
         author[@"name"] = kAuthorName;
-        author[APObjectIsDeletedAttributeName] = @NO;
+        author[APObjectStatusAttributeName] = @(APObjectStatusPopulated);
         author[APObjectEntityNameAttributeName] = @"Author";
         author[APObjectUIDAttributeName] = [self createObjectUID];
         [author save:&saveError];
@@ -295,7 +295,7 @@ static NSString* const kBookName2 = @"A Clash of Kings";
         NSError* error;
         PFObject* book2 = [PFObject objectWithClassName:@"Book"];
         book2[@"name"] = kBookName2;
-        book2[APObjectIsDeletedAttributeName] = @NO;
+        book2[APObjectStatusAttributeName] = @(APObjectStatusPopulated);
         book2[APObjectEntityNameAttributeName] = @"Book";
         book2[APObjectUIDAttributeName] = [self createObjectUID];
         [book2 save:&error];
@@ -358,7 +358,7 @@ static NSString* const kBookName2 = @"A Clash of Kings";
         PFObject* book1 = [PFObject objectWithClassName:@"Book"];
         book1[@"name"] = @"Book#1";
         book1[APObjectEntityNameAttributeName] = @"Book";
-        book1[APObjectIsDeletedAttributeName] = @NO;
+        book1[APObjectStatusAttributeName] = @(APObjectStatusPopulated);
         book1[APObjectUIDAttributeName] = [self createObjectUID];
         [book1 save:&error];
         
@@ -411,11 +411,11 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     
     dispatch_group_async(self.group, self.queue, ^{
         [[[PFQuery queryWithClassName:@"Book"]findObjects]enumerateObjectsUsingBlock:^(PFObject* obj, NSUInteger idx, BOOL *stop) {
-            XCTAssertTrue([[obj valueForKey:APObjectIsDeletedAttributeName] isEqualToNumber:@YES]);
+            XCTAssertTrue([[obj valueForKey:APObjectStatusAttributeName] isEqualToNumber:@(APObjectStatusDeleted)]);
         }];
         
         [[[PFQuery queryWithClassName:@"Author"]findObjects]enumerateObjectsUsingBlock:^(PFObject* obj, NSUInteger idx, BOOL *stop) {
-            XCTAssertTrue([[obj valueForKey:APObjectIsDeletedAttributeName] isEqualToNumber:@YES]);
+            XCTAssertTrue([[obj valueForKey:APObjectStatusAttributeName] isEqualToNumber:@(APObjectStatusDeleted)]);
         }];
     });
     dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
@@ -460,10 +460,10 @@ Expected Results:
         [[[PFQuery queryWithClassName:@"Book"]findObjects]enumerateObjectsUsingBlock:^(PFObject* obj, NSUInteger idx, BOOL *stop) {
             
             if ([[obj valueForKeyPath:@"name"] isEqualToString:kBookName1]) {
-                XCTAssertTrue([[obj valueForKey:APObjectIsDeletedAttributeName] isEqualToNumber:@NO]);
+                XCTAssertTrue([[obj valueForKey:APObjectStatusAttributeName] isEqualToNumber:@(APObjectStatusPopulated)]);
                 
             } else if ([[obj valueForKeyPath:@"name"] isEqualToString:kBookName2]) {
-                XCTAssertTrue([[obj valueForKey:APObjectIsDeletedAttributeName] isEqualToNumber:@YES]);
+                XCTAssertTrue([[obj valueForKey:APObjectStatusAttributeName] isEqualToNumber:@(APObjectStatusDeleted)]);
                 
                 PFObject* author = [obj objectForKey:@"author"];
                 XCTAssertTrue([author isEqual:[NSNull null]]);
@@ -475,7 +475,7 @@ Expected Results:
         
         // Verify that the author is not marked as delete at Parse
         [[[PFQuery queryWithClassName:@"Author"]findObjects]enumerateObjectsUsingBlock:^(PFObject* obj, NSUInteger idx, BOOL *stop) {
-            XCTAssertTrue([[obj valueForKey:APObjectIsDeletedAttributeName] isEqualToNumber:@NO]);
+            XCTAssertTrue([[obj valueForKey:APObjectStatusAttributeName] isEqualToNumber:@(APObjectStatusPopulated)]);
         }];
         
     });
@@ -523,7 +523,7 @@ Expected Results:
             for (NSUInteger i = 0; i < skip; i++) {
                 PFObject* author = [PFObject objectWithClassName:@"Author"];
                 [author setValue:[NSString stringWithFormat:@"Author#%lu",(unsigned long) thread * skip + i] forKey:@"name"];
-                [author setValue:@NO forKey:APObjectIsDeletedAttributeName];
+                author[APObjectStatusAttributeName] = @(APObjectStatusPopulated);
                 [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
                 author[APObjectEntityNameAttributeName] = @"Author";
                 [author save:&saveError];
@@ -589,13 +589,13 @@ Expected Results:
     
     PFObject* author1 = [PFObject objectWithClassName:@"Author"];
     [author1 setValue:@"author1" forKey:@"name"];
-    [author1 setValue:@NO forKey:APObjectIsDeletedAttributeName];
+    author1[APObjectStatusAttributeName] = @(APObjectStatusPopulated);
     [author1 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
     author1[APObjectEntityNameAttributeName] = @"Author";
     
     PFObject* author2 = [PFObject objectWithClassName:@"Author"];
     [author2 setValue:@"author2" forKey:@"name"];
-    [author2 setValue:@NO forKey:APObjectIsDeletedAttributeName];
+    author2[APObjectStatusAttributeName] = @(APObjectStatusPopulated);
     [author2 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
     author2[APObjectEntityNameAttributeName] = @"Author";
     
@@ -614,7 +614,7 @@ Expected Results:
         for (NSUInteger i = 0; i < numberOfMagazinescostsToBeCreated; i++) {
             PFObject* magazine = [PFObject objectWithClassName:@"Magazine"];
             [magazine setValue:[NSString stringWithFormat:@"Magaznine#%lu",(unsigned long) i] forKey:@"name"];
-            [magazine setValue:@NO forKey:APObjectIsDeletedAttributeName];
+            magazine[APObjectStatusAttributeName] = @(APObjectStatusPopulated);
             [magazine setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
             magazine[APObjectEntityNameAttributeName] = @"Magazine";
             [magazine addObject:author1 forKey:@"authors"];
@@ -747,7 +747,7 @@ Expected Results:
         for (NSUInteger i = 0; i < [sortedNames count]; i++) {
             PFObject* author = [PFObject objectWithClassName:@"Author"];
             [author setValue:sortedNames[i] forKey:@"name"];
-            [author setValue:@NO forKey:APObjectIsDeletedAttributeName];
+            author[APObjectStatusAttributeName] = @(APObjectStatusPopulated);
             [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
             author[APObjectEntityNameAttributeName] = @"Author";
             [author save:&saveError];
@@ -825,7 +825,7 @@ Expected Results:
         newEBook[@"name"] = ebookName;
         newEBook[@"format"] = ebookFormat;
         newEBook[APObjectEntityNameAttributeName] = @"EBook";
-        newEBook[APObjectIsDeletedAttributeName] = @NO;
+        newEBook[APObjectStatusAttributeName] = @(APObjectStatusPopulated);
         newEBook[APObjectUIDAttributeName] = [self createObjectUID];
         [newEBook save:&error];
         
@@ -882,7 +882,7 @@ Expected Results:
         newEBook[@"name"] = ebookName;
         newEBook[@"format"] = ebookFormat;
         newEBook[APObjectEntityNameAttributeName] = @"EBook";
-        newEBook[APObjectIsDeletedAttributeName] = @NO;
+        newEBook[APObjectStatusAttributeName] = @(APObjectStatusPopulated);
         newEBook[APObjectUIDAttributeName] = [self createObjectUID];
         [newEBook save:&error];
         

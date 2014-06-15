@@ -21,6 +21,7 @@
 
 NSString* const APObjectUIDAttributeName = @"apObjectUID";
 NSString* const APObjectIsDeletedAttributeName = @"apObjectIsDeleted";
+NSString* const APObjectStatusAttributeName = @"apObjectStatus";
 NSString* const APObjectEntityNameAttributeName = @"apObjectEntityName";
 
 NSString* const APObjectLastModifiedAttributeName = @"apObjectLastModified";
