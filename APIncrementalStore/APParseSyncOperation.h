@@ -16,7 +16,11 @@
  */
 
 #import <Foundation/Foundation.h>
-#import "APDiskCache.h"
+#import "APWebServiceSyncOperation.h"
+#import <Parse-iOS-SDK/Parse.h>
+
+#import "APError.h"
+#import "APCommon.h"
 
 extern NSString* const APParseRelationshipTypeUserInfoKey;
 
@@ -25,6 +29,16 @@ typedef NS_ENUM(NSUInteger, APParseRelationshipType) {
     APParseRelationshipTypeArray = 1,
 };
 
-@interface APParseConnector : NSObject <APWebServiceConnector>
+@interface APParseSyncOperation : APWebServiceSyncOperation
+
+/**
+ @param user A already authenticated user
+ @param policy one of defined APMergePolicy options
+ @param the managed context to be synced
+ */
+- (instancetype)initWithMergePolicy:(APMergePolicy) policy
+             authenticatedParseUser:(PFUser*) authenticatedUser;
+
+@property (nonatomic, strong) PFUser* authenticatedUser;
 
 @end

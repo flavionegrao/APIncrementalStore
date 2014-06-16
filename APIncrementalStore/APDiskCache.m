@@ -34,7 +34,6 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 @property (nonatomic, strong) NSString* localStoreFileName;
 @property (nonatomic, assign) BOOL shouldResetCacheFile;
 @property (nonatomic, strong) NSString* (^translateManagedObjectIDToObjectUIDBlock) (NSManagedObjectID*);
-@property (nonatomic, weak) id <APWebServiceConnector> connector;
 
 // Context used for saving in BG
 @property (nonatomic, strong) NSManagedObjectContext* privateContext;
@@ -60,22 +59,20 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 }
 
 
-- (id)initWithManagedModel: (NSManagedObjectModel*) model
- translateToObjectUIDBlock: (NSString* (^)(NSManagedObjectID*)) translateBlock
-        localStoreFileName: (NSString*) localStoreFileName
-      shouldResetCacheFile: (BOOL) shouldResetCache
-       webServiceConnector: (id <APWebServiceConnector>) connector {
+- (id)initWithManagedModel:(NSManagedObjectModel*) model
+ translateToObjectUIDBlock:(NSString* (^)(NSManagedObjectID*)) translateBlock
+        localStoreFileName:(NSString*) localStoreFileName
+      shouldResetCacheFile:(BOOL) shouldResetCache {
     
     if (AP_DEBUG_METHODS) { MLog()}
     
     self = [super init];
     
     if (self) {
-        if (model && translateBlock && localStoreFileName && connector) {
+        if (model && translateBlock && localStoreFileName) {
             _localStoreFileName = localStoreFileName;
             _translateManagedObjectIDToObjectUIDBlock = translateBlock;
             _shouldResetCacheFile = shouldResetCache;
-            _connector = connector;
             self.model = model;
             
             if (AP_DEBUG_INFO) {DLog(@"Disk cache using local store name: %@",localStoreFileName)}
@@ -90,6 +87,8 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 
 
 #pragma mark - Getters and Setters
+
+
 
 - (void) setModel:(NSManagedObjectModel *)model {
     
@@ -108,7 +107,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         /*
          It's necessary to change all properties to be optional due to the possibility of the
          APWebServiceConnector creates a new placeholder managed object for a relationship of a object
-         being synced that doesn't exist localy at the moment. That new placeholder object will 
+         being synced that doesn't exist localy at the moment. That new placeholder object will
          only contain the APObjectUIDAttributeName and will be populated when the APWebServiceConnector
          fetches it equivavalent representation from theWeb Service. If we have any optional property set to NO
          it will not be possible to save it. This situation may happen when APWebServiceConnector say syncs
@@ -185,7 +184,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         _syncContext = [[NSManagedObjectContext alloc]initWithConcurrencyType:NSPrivateQueueConcurrencyType];
         _syncContext.parentContext = self.mainContext;
         _syncContext.undoManager = nil;
-       // _syncContext.retainsRegisteredObjects = YES;
+        // _syncContext.retainsRegisteredObjects = YES;
     }
     return _syncContext;
 }
@@ -212,7 +211,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
             
             if (![[NSFileManager defaultManager] removeItemAtURL:storeURL error:&deleteError]){
                 if (AP_DEBUG_ERRORS) { ELog(@"Error deleting cachefile:%@",deleteError)}
-           
+                
             } else {
                 if (AP_DEBUG_INFO) { DLog(@"Cache file deleted")};
             }
@@ -240,96 +239,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 }
 
 
-#pragma mark - Sync
 
-- (void) syncAllObjects: (BOOL) allObjects
-      onCountingObjects: (void (^)(NSInteger localObjects, NSInteger remoteObjects)) countingBlock
-           onSyncObject: (void (^)(BOOL isRemoteObject)) syncObjectBlock
-           onCompletion: (void (^)(NSDictionary* objectUIDsNestedByEntityName, NSError* syncError)) conpletionBlock {
-    
-    if (AP_DEBUG_METHODS) {MLog()}
-    
-    [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:YES];
-    
-    [self.syncContext performBlock:^ {
-        
-        __block NSError* localError = nil;
-        
-        void (^failureBlock)(void) = ^{
-            [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
-            if (conpletionBlock) conpletionBlock(nil,localError);
-        };
-        
-        
-        /* Count objects to be synced and report it via countingBlock */
-        
-        if (countingBlock) {
-            NSUInteger localObjects = [self.connector countLocalObjectsToBeSyncedInContext:self.syncContext error:&localError];
-            if (localError) {
-                [[NSOperationQueue mainQueue]addOperationWithBlock:failureBlock];
-                return;
-            }
-            
-            NSUInteger remoteObjects = [self.connector countRemoteObjectsToBeSyncedInContext:self.syncContext fullSync:allObjects error:&localError];
-            if (localError) {
-                [[NSOperationQueue mainQueue]addOperationWithBlock:failureBlock];
-                return;
-            }
-            
-            [[NSOperationQueue mainQueue]addOperationWithBlock:^{ countingBlock(localObjects, remoteObjects); }];
-        }
-        
-        
-        /* Local Updates - all objects marked as "dirty" and add entries from temporary to permanent objectsUID */
-        
-        BOOL localMergeSuccess = [self.connector mergeManagedContext:self.syncContext onSyncObject:^{
-            
-            /*
-             Save contexts after each object update
-             Even though we are saving local to webservice, we need to update the local APObjectLastModifiedAttributeName
-             as it will be updated by the webservice and we never trust on local time.
-             */
-
-            NSError* savingError = nil;
-            if (![self saveSyncContext:&savingError]) {
-                if (AP_DEBUG_ERRORS) { ELog(@"Error syncing local changes: %@",localError)}
-              //  #warning review all error handlig proccess
-            }
-            [[NSOperationQueue mainQueue]addOperationWithBlock:^{if (syncObjectBlock) syncObjectBlock(YES); }];
-        } error:&localError];
-        
-        if (!localMergeSuccess) {
-            if (AP_DEBUG_ERRORS) { ELog(@"Error syncing local changes: %@",localError)}
-            [[NSOperationQueue mainQueue]addOperationWithBlock:failureBlock];
-            return;
-        }
-        
-        
-        /* Remote Updates - all objects that have updated date earlier than our last successful sync */
-        
-        NSDictionary* mergedObjectUIDsNestedByEntityName;
-        mergedObjectUIDsNestedByEntityName = [self.connector mergeRemoteObjectsWithContext:self.syncContext fullSync:allObjects onSyncObject:^{
-            NSError* savingError = nil;
-            if (![self saveSyncContext:&savingError]) {
-                if (AP_DEBUG_ERRORS) { ELog(@"Error syncing local changes: %@",localError)}
-               // #warning review all error handlig proccess
-            }
-            
-            [[NSOperationQueue mainQueue]addOperationWithBlock:^{ if (syncObjectBlock) syncObjectBlock(YES); }];
-        } error:&localError];
-        
-        if (localError) {
-            if (AP_DEBUG_ERRORS) { ELog(@"Error syncing remote changes: %@",localError)}
-        }
-        
-        [self.connector syncProcessDidFinish:YES];
-        [[NSOperationQueue mainQueue]addOperationWithBlock:^{
-            [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
-            if (conpletionBlock) conpletionBlock(mergedObjectUIDsNestedByEntityName,localError);
-        }];
-        self.syncContext = nil;
-    }];
-}
 
 
 #pragma mark - Fetching
@@ -361,7 +271,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 
 
 - (NSDictionary*) representationFromManagedObject: (NSManagedObject*) cacheObject {
-                                       // forEntity: (NSEntityDescription*) entity {
+    // forEntity: (NSEntityDescription*) entity {
     
     if (AP_DEBUG_METHODS) { MLog()}
     
@@ -405,9 +315,9 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
                 
                 [relatedObjects enumerateObjectsUsingBlock:^(NSManagedObject* relatedObject, BOOL *stop) {
                     [relatedObject willAccessValueForKey:propertyName];
-                        NSMutableArray* relatedObjectsUID = [[relatedObjectsRepresentation valueForKey:relatedObject.entity.name]mutableCopy] ?: [NSMutableArray arrayWithCapacity:1];
-                        [relatedObjectsUID addObject:[relatedObject valueForKey:APObjectUIDAttributeName]];
-                        [relatedObjectsRepresentation setValue:relatedObjectsUID forKey:relatedObject.entity.name];
+                    NSMutableArray* relatedObjectsUID = [[relatedObjectsRepresentation valueForKey:relatedObject.entity.name]mutableCopy] ?: [NSMutableArray arrayWithCapacity:1];
+                    [relatedObjectsUID addObject:[relatedObject valueForKey:APObjectUIDAttributeName]];
+                    [relatedObjectsRepresentation setValue:relatedObjectsUID forKey:relatedObject.entity.name];
                     [relatedObject didAccessValueForKey:propertyName];
                 }];
                 representation[propertyName] = relatedObjectsRepresentation ?: [NSNull null];
@@ -596,7 +506,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 #pragma mark - Inserting/Creating/Updating
 
 - (BOOL)inserteObjectRepresentations:(NSArray*) representations
-                         // entityName:(NSString*) entityName
+// entityName:(NSString*) entityName
                                error:(NSError *__autoreleasing *)error {
     
     if (AP_DEBUG_METHODS) { MLog()}
@@ -644,7 +554,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 
 
 - (BOOL)updateObjectRepresentations:(NSArray*) updateObjects
-                        // entityName:(NSString*) entityName
+// entityName:(NSString*) entityName
                               error:(NSError *__autoreleasing *) error {
     
     if (AP_DEBUG_METHODS) {MLog()}
@@ -672,7 +582,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 
 
 - (BOOL)deleteObjectRepresentations:(NSArray*) deleteObjects
-                         //entityName:(NSString*) entityName
+//entityName:(NSString*) entityName
                               error:(NSError *__autoreleasing *)error {
     
     if (AP_DEBUG_METHODS) {MLog()}
@@ -713,7 +623,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
             if (representation[propertyName] == [NSNull null]) {
                 [managedObject setPrimitiveValue:nil forKey:propertyName];
             } else {
-
+                
                 if (representation[propertyName]) {
                     [managedObject setPrimitiveValue:representation[propertyName] forKey:propertyName];
                 }
@@ -807,9 +717,6 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
                     if (AP_DEBUG_ERRORS) { ELog(@"Error saving changes: %@",localError)}
                     success = NO;
                     if (error) *error = localError;
-                    
-                } else {
-                    if (AP_DEBUG_INFO) { DLog(@"Context Saved to disk") }
                 }
             }];
         }

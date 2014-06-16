@@ -18,7 +18,7 @@
 @import XCTest;
 
 #import "APDiskCache.h"
-#import "APParseConnector.h"
+#import "APParseSyncOperation.h"
 
 #import "APCommon.h"
 #import "NSLogEmoji.h"
@@ -58,7 +58,7 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
 @interface APDiskCacheTestCase : XCTestCase
 
 @property (nonatomic, strong) APDiskCache* localCache;
-@property (nonatomic, strong) APParseConnector* parseConnector;
+@property (nonatomic, strong) APParseSyncOperation* parseConnector;
 @property (nonatomic, strong) NSManagedObjectContext* testContext;
 @property (nonatomic, strong) NSMutableDictionary* mapManagedObjectIDToObjectUID;
 
@@ -83,13 +83,10 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
         return weakSelf.mapManagedObjectIDToObjectUID[objectID];
     };
     
-    self.parseConnector = [[APParseConnector alloc]initWithAuthenticatedUser:[self authenticatedUser] mergePolicy:APMergePolicyClientWins];
-    
     self.localCache = [[APDiskCache alloc]initWithManagedModel:[self testModel]
                                      translateToObjectUIDBlock:translateBlock
                                             localStoreFileName:APCacheSqliteFile
-                                          shouldResetCacheFile:YES
-                                           webServiceConnector:self.parseConnector];
+                                          shouldResetCacheFile:YES];
 }
 
 

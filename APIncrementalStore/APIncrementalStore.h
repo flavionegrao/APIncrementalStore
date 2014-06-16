@@ -35,13 +35,24 @@ extern NSString *const APNotificationRequestCacheFullSync;
  *****************************/
 
 /// APIncrementalStore will post this message before it starts the disk cache sync process. Also the NSNotification userinfo will be keyed with APNotificationCacheNumberOfLocalObjectsKey and APNotificationCacheNumberOfRemoteObjectsKey showing the TOTAL number of objects that will be synced, the value will be -1 if couting is not supported.
-extern NSString *const APNotificationCacheWillStartSync;
+extern NSString *const APNotificationCacheWillStartSync __attribute__((deprecated("use APNotificationStoreWillStartSync. First deprecated in 0.4")));
+
+/// APIncrementalStore will post this message before it starts the disk cache sync process. Also the NSNotification userinfo will be keyed with APNotificationCacheNumberOfLocalObjectsKey and APNotificationCacheNumberOfRemoteObjectsKey showing the TOTAL number of objects that will be synced, the value will be -1 if couting is not supported.
+extern NSString *const APNotificationStoreWillStartSync;
 
 /// APIncrementalStore will post this message once it synced a single object. Also the NSNotification userinfo will be keyed with APNotificationCacheNumberOfLocalObjectsKey and APNotificationCacheNumberOfRemoteObjectsKey showing the number of objects that were synced.
-extern NSString *const APNotificationCacheDidSyncObject;
+extern NSString *const APNotificationCacheDidSyncObject __attribute__((deprecated("use APNotificationStoreDidSyncObject. First deprecated in 0.4")));
+
+
+/// APIncrementalStore will post this message once it synced a single object. Also the NSNotification userinfo will be keyed with APNotificationCacheNumberOfLocalObjectsKey and APNotificationCacheNumberOfRemoteObjectsKey showing the number of objects that were synced.
+extern NSString *const APNotificationStoreDidSyncObject;
+
 
 /// APIncrementalStore will post this message once it finished the disk cache sync process.
-extern NSString *const APNotificationCacheDidFinishSync;
+extern NSString *const APNotificationCacheDidFinishSync __attribute__((deprecated("use APNotificationStoreDidSyncObject. First deprecated in 0.4")));
+
+/// APIncrementalStore will post this message once it finished the disk cache sync process.
+extern NSString *const APNotificationStoreDidFinishSync;
 
 
 /// APIncrementalStore will include this key when the APNotificationCacheWillStartSync is sent showing how many cached objects will be synced. The value will be -1 if couting is not supported.
@@ -59,10 +70,16 @@ extern NSString *const APNotificationErrorKey;
 ***************************/
 
 /// Post this message to request the disk cache to recreate the local sqlite db as well as its psc and mocs
-extern NSString* const APNotificationCacheRequestReset;
+extern NSString* const APNotificationCacheRequestReset __attribute__((deprecated("use APNotificationStoreDidSyncObject. First deprecated in 0.4")));;
+
+/// Post this message to request the disk cache to recreate the local sqlite db as well as its psc and mocs
+extern NSString* const APNotificationStoreRequestCacheReset;
 
 /// APIncrementalStore will post this message once it finished the disk cache reset process
-extern NSString* const APNotificationCacheDidFinishReset;
+extern NSString* const APNotificationCacheDidFinishReset __attribute__((deprecated("use APNotificationStoreDidSyncObject. First deprecated in 0.4")));;
+
+/// APIncrementalStore will post this message once it finished the disk cache reset process
+extern NSString* const APNotificationStoreDidFinishCacheReset;
 
 
 

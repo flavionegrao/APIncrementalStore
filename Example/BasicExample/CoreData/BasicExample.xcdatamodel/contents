@@ -4,7 +4,7 @@
         <attribute name="name" optional="YES" attributeType="String" syncable="YES"/>
         <attribute name="photo" optional="YES" attributeType="Transformable" syncable="YES"/>
         <relationship name="books" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Book" inverseName="author" inverseEntity="Book" syncable="YES"/>
-        <relationship name="magazines" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Magazine" inverseName="authors" inverseEntity="Magazine" syncable="YES"/>
+        <relationship name="magazines" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Magazine" inverseName="authors" inverseEntity="Magazine" syncable="YES"/>
     </entity>
     <entity name="Book" representedClassName="Book" syncable="YES">
         <attribute name="name" optional="YES" attributeType="String" syncable="YES"/>
@@ -17,7 +17,7 @@
     </entity>
     <entity name="Magazine" representedClassName="Magazine" syncable="YES">
         <attribute name="name" optional="YES" attributeType="String" syncable="YES"/>
-        <relationship name="authors" optional="YES" maxCount="1" deletionRule="No Action" destinationEntity="Author" inverseName="magazines" inverseEntity="Author" syncable="YES">
+        <relationship name="authors" optional="YES" toMany="YES" deletionRule="No Action" destinationEntity="Author" inverseName="magazines" inverseEntity="Author" syncable="YES">
             <userInfo>
                 <entry key="APParseRelationshipType" value="1"/>
             </userInfo>
@@ -29,10 +29,10 @@
         <relationship name="magazine" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Magazine" inverseName="pages" inverseEntity="Magazine" syncable="YES"/>
     </entity>
     <elements>
-        <element name="Author" positionX="0" positionY="0" width="128" height="103"/>
+        <element name="Author" positionX="0" positionY="0" width="128" height="30"/>
         <element name="Book" positionX="0" positionY="0" width="128" height="105"/>
         <element name="EBook" positionX="18" positionY="45" width="128" height="60"/>
+        <element name="Magazine" positionX="18" positionY="36" width="128" height="30"/>
         <element name="Page" positionX="0" positionY="0" width="128" height="73"/>
-        <element name="Magazine" positionX="18" positionY="36" width="128" height="88"/>
     </elements>
 </model>

@@ -5,3 +5,4 @@ inhibit_all_warnings!
 platform :ios, '7.0'
 
 pod 'APIncrementalStore', :path => "../"
+pod 'MBProgressHUD' , :git => 'https://github.com/jdg/MBProgressHUD.git'

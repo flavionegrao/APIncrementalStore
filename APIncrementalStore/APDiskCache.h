@@ -25,13 +25,6 @@
 
 @import CoreData;
 
-typedef NS_ENUM(NSInteger, APMergePolicy) {
-    APMergePolicyServerWins = 0,
-    APMergePolicyClientWins = 1
-};
-
-@protocol APWebServiceConnector;
-
 
 @interface APDiskCache : NSObject
 
@@ -45,27 +38,32 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
 - (id)initWithManagedModel:(NSManagedObjectModel*) model
  translateToObjectUIDBlock:(NSString* (^)(NSManagedObjectID*)) translateBlock
         localStoreFileName:(NSString*) localStoreFileName
-      shouldResetCacheFile:(BOOL) shouldResetCache
-       webServiceConnector:(id <APWebServiceConnector>) connector;
+      shouldResetCacheFile:(BOOL) shouldResetCache;
+
+@property (nonatomic, readonly) NSManagedObjectContext* syncContext;
+
+@property (nonatomic, readonly) NSString* localStoreFileName;
+
+- (BOOL) saveSyncContext:(NSError *__autoreleasing*) error;
 
 
 /**
  Retrieve cached objects representations using the following format:
  [
-     {
-         "APObjectUIDAttributeName": objectUID,
-         "APObjectEntityNameAttributeName": entityName,
-          "AttributeName1": provertyValue1,
-          "AttributeName2": provertyValue2,
-          "AttributeData1": NSData,
-          "RelationshipToOneName": obectUIDValue,
-          "RelationshipToMany": 
-          [
-              obectUID,
-              obectUID,
-              obectUID,
-          ]
-     },
+ {
+ "APObjectUIDAttributeName": objectUID,
+ "APObjectEntityNameAttributeName": entityName,
+ "AttributeName1": provertyValue1,
+ "AttributeName2": provertyValue2,
+ "AttributeData1": NSData,
+ "RelationshipToOneName": obectUIDValue,
+ "RelationshipToMany":
+ [
+ obectUID,
+ obectUID,
+ obectUID,
+ ]
+ },
  ...
  ]
  
@@ -87,16 +85,17 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
                                              entityName:(NSString*) entityName;
 
 - (BOOL)inserteObjectRepresentations:(NSArray*) insertedObjects
-                         // entityName:(NSString*) entityName
+// entityName:(NSString*) entityName
                                error:(NSError *__autoreleasing *)error;
 
 - (BOOL)updateObjectRepresentations:(NSArray*) updateObjects
-                        // entityName:(NSString*) entityName
+// entityName:(NSString*) entityName
                               error:(NSError *__autoreleasing *)error;
 
 - (BOOL)deleteObjectRepresentations:(NSArray*) deleteObjects
-                        // entityName:(NSString*) entityName
+// entityName:(NSString*) entityName
                               error:(NSError *__autoreleasing *)error;
+
 /**
  Permanent objectIDs are only allocated when the objects are syncronized with the remote webservice. Before that
  we must allocate a temporary objectID to allow for unique identification of objects between the APIncrementalStore
@@ -105,96 +104,6 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
  */
 - (NSString*) createObjectUID;
 
-/**
- Requests the localCache to start the sync process using its remoteDBConnector
- @param allObjects if YES it will ignore whether an object had been already syncronized previously
- @param countingBlock before starting merging the objects this block will be called passing the total number of objects to be synced, if counting is not supported by the employed webservice it will return -1
- @param syncObjectBlock whenever a object is synced this block gets called. The block parameter isRemoteObject is set to YES if the synced objects merged from the server otherwise it is a local object merged.
- @param conpletionBlock the block to be called when the sync is done passing a disctionary containing the objects that were successfuly synced keyed by the corresponding entity name.
- */
-- (void) syncAllObjects:(BOOL) allObjects
-      onCountingObjects:(void(^)(NSInteger localObjects, NSInteger remoteObjects)) countingBlock
-           onSyncObject:(void(^)(BOOL isRemoteObject)) syncObjectBlock
-           onCompletion:(void(^)(NSDictionary* objectUIDsNestedByEntityName, NSError* syncError)) conpletionBlock;
-
 - (void) resetCache;
-
-@end
-
-
-/**
- Buid a class that this protocol's methods and pass it when init an instance of APDiskCache.
- The APDiskCache will use it to interact with the remote web service provider to persist
- your data remotely. This API implements connectivity to Parse through the class APParseConnector
- */
-@protocol APWebServiceConnector <NSObject>
-
-/**
- @param user A already authenticated user
- @param policy one of defined APMergePolicy options
- */
-- (instancetype)initWithAuthenticatedUser:(id) user mergePolicy:(APMergePolicy) policy;
-
-
-/**
- Any string to enable changing environements without loosing the already populated cache file.
- This class use it to keep disticts NSDictionaries that contains the last objects updated dates for each entity synced.
- Therefore is it possible to keep multiple caches one of each means a user and optitionaly a different environement.
- The way I use is is to enable the app to change the Parse App (keys) without having to rebuild and distribute a new ios app.
- For example you may use it to change from development to production cache file without having to rebuild the app.
- */
-- (void) setEnvID: (NSString*) string;
-
-/**
- @returns Returns an uniqueID for the authenticated user
- */
-- (NSString*) authenticatedUserID;
-
-
-- (void) setMergePolicy:(APMergePolicy) policy;
-
-
-/**
- Get all remote objets that the user has access to and merge into the given context.
- @param context the context to be syncronised
- @param fullSync if YES ignores the last sync and syncs the whole DB.
- @returns A NSDictionary containing the merged objectUIDs keyed by entity name.
- */
-- (NSDictionary*) mergeRemoteObjectsWithContext:(NSManagedObjectContext*) context
-                                       fullSync:(BOOL) fullSync
-                                   onSyncObject:(void (^)(void)) onSyncObject
-                                          error:(NSError*__autoreleasing*) error;
-
-/**
- Merge all managedObjects marked as "dirty".
- @param replaceBlock block will be called whenever a temporary objectUID is replaced by a permanent one.
- @returns YES if the merge was successful otherwise NO.
- */
-- (BOOL) mergeManagedContext:(NSManagedObjectContext *)context
-                onSyncObject:(void (^)(void)) onSyncObject
-                       error:(NSError*__autoreleasing*) error;
-
-/**
- Let connector know that sync process has been finished
- Use this method to free any resource in use related to sync or save last versions of synced objects.
- @param success whether the process was succesful or not
- */
-- (void) syncProcessDidFinish:(BOOL) success;
-
-/**
- Counts and return the local objects that need to be synced. Doesn't make much sense implement it 
- if the webservice does not support couting.
- @returns the total number of local objects that need to be synced, if it's not supported return -1
- */
-- (NSInteger) countLocalObjectsToBeSyncedInContext:(NSManagedObjectContext *)context
-                                              error:(NSError*__autoreleasing*) error;
-
-/**
- If the webservice supports couting return the total number of objects that need to be synced.
- @returns the total number of objects that need to be synced localy, if it's not supported return -1
- */
-- (NSInteger) countRemoteObjectsToBeSyncedInContext:(NSManagedObjectContext *)context
-                                            fullSync:(BOOL) fullSync
-                                               error:(NSError*__autoreleasing*) error;
 
 @end

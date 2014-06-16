@@ -22,7 +22,9 @@
 
 #import "Author+Transformable.h"
 #import "Book.h"
+
 #import <Parse-iOS-SDK/Parse.h>
+#import <MBProgressHUD/MBProgressHUD.h>
 #import "APCommon.h"
 #import "NSLogEmoji.h"
 
@@ -33,18 +35,52 @@ static NSString* const APDefaultParsePassword = @"1234";
 
 @interface ListAuthorsTVC () <UITableViewDataSource,UITableViewDelegate,UIAlertViewDelegate>
 
+@property (weak, nonatomic) IBOutlet UIBarButtonItem *add1000Authors;
 @property (nonatomic, strong) UIBarButtonItem *syncButton;
 @property (nonatomic, strong) UIBarButtonItem *addButton;
 @property (weak, nonatomic) IBOutlet UIBarButtonItem *loginButton;
+@property (strong, nonatomic) MBProgressHUD* syncHUD;
+
+// Sync HUD
+@property (nonatomic, assign) NSUInteger totalObjectsSynced;
 
 @end
 
 
 @implementation ListAuthorsTVC
 
+- (void) configFetchResultController {
+    
+    NSManagedObjectContext* moc = [CoreDataController sharedInstance].mainContext;
+    NSFetchRequest* fr = [NSFetchRequest fetchRequestWithEntityName:@"Author"];
+    fr.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"name" ascending:YES]];
+    self.frc = [[NSFetchedResultsController alloc]initWithFetchRequest:fr managedObjectContext:moc sectionNameKeyPath:nil cacheName:nil];
+}
+
+- (void) configNavBarForLoggedUser: (BOOL) userIsLoggedIn {
+    
+    if (userIsLoggedIn) {
+        self.addButton.enabled = YES;
+        self.syncButton.enabled = YES;
+        self.loginButton.enabled = YES;
+        self.add1000Authors.enabled = YES;
+        [self.loginButton setTitle:@"Logout"];
+        self.navigationItem.prompt = [NSString stringWithFormat:@"Logged username: %@",[PFUser currentUser].username];
+    } else {
+        self.addButton.enabled = NO;
+        self.syncButton.enabled = NO;
+        self.loginButton.enabled = YES;
+        self.add1000Authors.enabled = NO;
+        [self.loginButton setTitle:@"Login"];
+        self.navigationItem.prompt = nil;
+    }
+}
+
 - (void) viewDidLoad {
     
     [super viewDidLoad];
+    
+    self.totalObjectsSynced = 0;
     
     self.syncButton = [[UIBarButtonItem alloc]
                        initWithTitle:@"Sync"
@@ -120,37 +156,35 @@ static NSString* const APDefaultParsePassword = @"1234";
 }
 
 
-- (void) configNavBarForLoggedUser: (BOOL) userIsLoggedIn {
-    
-    if (userIsLoggedIn) {
-        self.addButton.enabled = YES;
-        self.syncButton.enabled = YES;
-        self.loginButton.enabled = YES;
-        [self.loginButton setTitle:@"Logout"];
-        self.navigationItem.prompt = [NSString stringWithFormat:@"Logged username: %@",[PFUser currentUser].username];
-    } else {
-        self.addButton.enabled = NO;
-        self.syncButton.enabled = NO;
-        self.loginButton.enabled = YES;
-        [self.loginButton setTitle:@"Login"];
-        self.navigationItem.prompt = nil;
-    }
-}
-
+#pragma mark - Sync
 
 - (IBAction)syncButtonTouched:(id)sender {
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didReceiveSyncIsFinished:) name:
-     CoreDataControllerNotificationDidSync object:[CoreDataController sharedInstance]];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didReceiveSyncIsFinished:) name:CoreDataControllerNotificationDidFinishSync object:[CoreDataController sharedInstance]];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didReceiveSyncObject:) name:CoreDataControllerNotificationDidSyncObject object:[CoreDataController sharedInstance]];
     [[CoreDataController sharedInstance] requestSyncCache];
     self.syncButton.enabled = NO;
-    
+}
+
+
+- (void) didReceiveSyncObject: (NSNotification*) note {
+    if (!self.syncHUD) {
+        self.syncHUD = [MBProgressHUD showHUDAddedTo:self.view animated:YES];
+    }
+    self.totalObjectsSynced++;
+    self.syncHUD.detailsLabelText = [NSString stringWithFormat:@"Synced: %lu objects",(unsigned long) self.totalObjectsSynced];
+    [self.syncHUD show:YES];
 }
 
 
 - (void) didReceiveSyncIsFinished: (NSNotification*) note {
+
+    [self.syncHUD hide:YES];
+    self.totalObjectsSynced = 0;
     self.syncButton.enabled = YES;
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:CoreDataControllerNotificationDidSync object:[CoreDataController sharedInstance]];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:CoreDataControllerNotificationDidFinishSync object:[CoreDataController sharedInstance]];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:CoreDataControllerNotificationDidSyncObject object:[CoreDataController sharedInstance]];
+    
 }
 
 
@@ -183,14 +217,7 @@ static NSString* const APDefaultParsePassword = @"1234";
 }
 
 
-- (void) configFetchResultController {
-    
-    NSManagedObjectContext* moc = [CoreDataController sharedInstance].mainContext;
-    NSFetchRequest* fr = [NSFetchRequest fetchRequestWithEntityName:@"Author"];
-    fr.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"name" ascending:YES]];
-    self.frc = [[NSFetchedResultsController alloc]initWithFetchRequest:fr managedObjectContext:moc sectionNameKeyPath:nil cacheName:nil];
-}
-
+#pragma mark - TableView DataSource Protocol
 
 - (UITableViewCell*) tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     
@@ -217,6 +244,33 @@ static NSString* const APDefaultParsePassword = @"1234";
     listBooksTVC.author = selectedAuthor;
     listBooksTVC.title = [NSString stringWithFormat:@"Books from %@", selectedAuthor.name];
     listBooksTVC.navigationItem.prompt = [NSString stringWithFormat:@"Logged username: %@",[PFUser currentUser].username];
+}
+
+- (IBAction)add1000AuthorButtonTouched:(UIBarButtonItem *)sender {
+    
+    NSManagedObjectContext* context = [CoreDataController sharedInstance].mainContext;
+    NSError* error = nil;
+    
+    for (NSInteger i = 0; i < 100; i++) {
+        Author* newAuthor= [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass([Author class]) inManagedObjectContext:[CoreDataController sharedInstance].mainContext];
+        newAuthor.name = [NSString stringWithFormat:@"Author#%lu (%@)",(unsigned long)i,[PFUser currentUser].username];
+        newAuthor.photo = [UIImage imageNamed:@"authorPic"];
+        
+        Book* newBook = [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass([Book class]) inManagedObjectContext:[CoreDataController sharedInstance].mainContext];
+        newBook.name = [NSString stringWithFormat:@"Book#%lu (%@)",(unsigned long)i,[PFUser currentUser].username];
+        newBook.author = newAuthor;
+        
+        // Set ACL to the object.
+        NSString* currentUserObjectId = [PFUser currentUser].objectId;
+        [[CoreDataController sharedInstance] addWriteAccess:YES readAccess:YES isRole:NO forParseIdentifier:currentUserObjectId forManagedObject:newAuthor];
+        [[CoreDataController sharedInstance] addWriteAccess:YES readAccess:YES isRole:YES forParseIdentifier:@"Moderators" forManagedObject:newAuthor];
+        
+        [context save:&error];
+        if(error){
+            ELog(@"Fetching error: %@",error);
+        }
+
+    }
 }
 
 @end

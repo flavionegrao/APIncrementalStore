@@ -18,8 +18,8 @@
 #import "AppDelegate.h"
 #import <Parse-iOS-SDK/Parse.h>
 
-static NSString* const APParsepApplicationId = @"";
-static NSString* const APParseClientKey =  @"";
+static NSString* const APParsepApplicationId = @"qIUyjec7eqM57Hfq06Gy2TA0gnIr3h2tDZ6evGN3";
+static NSString* const APParseClientKey =  @"W9VdyfLihytmUBXxu85PezCOEh0PYNrrictEcm18";
 
 @implementation AppDelegate
 
@@ -31,34 +31,51 @@ static NSString* const APParseClientKey =  @"";
         [NSException raise:@"App config exception" format:@"Set the correct Parse keys on AppDelegate.m"];
     }
     [Parse setApplicationId:APParsepApplicationId clientKey:APParseClientKey];
+    
+    UIApplicationState state = [application applicationState];
+    switch (state) {
+        case UIApplicationStateActive:
+            NSLog(@"Application is Active");
+            break;
+        case UIApplicationStateInactive:
+            NSLog(@"Application is Inactive");
+            break;
+        case UIApplicationStateBackground:
+            NSLog(@"Application is BG");
+            break;
+        default:
+            break;
+    }
     return YES;
+    
 }
-							
+
+- (void)applicationWillTerminate:(UIApplication *)application {
+    NSLog(@"App Will Terminate");
+}
+
+
+- (void)applicationWillEnterForeground:(UIApplication *)application {
+    NSLog(@"App Will Enter Foreground");
+}
+
+- (void)applicationDidEnterBackground:(UIApplication *)application {
+    NSLog(@"App Did Enter BG");
+}
+
+
 - (void)applicationWillResignActive:(UIApplication *)application
 {
-    // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
-    // Use this method to pause ongoing tasks, disable timers, and throttle down OpenGL ES frame rates. Games should use this method to pause the game.
+    NSLog(@"App will Resign Active");
+    
 }
 
-- (void)applicationDidEnterBackground:(UIApplication *)application
-{
-    // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later. 
-    // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
+- (void)applicationDidBecomeActive:(UIApplication *)application {
+    NSLog(@"App did Become Active");
+    
 }
 
-- (void)applicationWillEnterForeground:(UIApplication *)application
-{
-    // Called as part of the transition from the background to the inactive state; here you can undo many of the changes made on entering the background.
+- (void)applicationDidReceiveMemoryWarning:(UIApplication *)application {
+    NSLog(@"Memory Warning received");
 }
-
-- (void)applicationDidBecomeActive:(UIApplication *)application
-{
-    // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
-}
-
-- (void)applicationWillTerminate:(UIApplication *)application
-{
-    // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
-}
-
 @end

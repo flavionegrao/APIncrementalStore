@@ -20,8 +20,9 @@
 #import "NSLogEmoji.h"
 #import "APCommon.h"
 
-NSString* const CoreDataControllerNotificationDidSync = @"CoreDataControllerNotificationDidSync";
-NSString* const CoreDataControllerNotificationDidResetTheCache = @"CoreDataControllerNotificationDidResetTheCache";
+NSString* const CoreDataControllerNotificationDidFinishSync = @"com.apetis.apincrementalstore.coredatacontroller.notification.didfinishsync";
+NSString* const CoreDataControllerNotificationDidSyncObject = @"com.apetis.apincrementalstore.coredatacontroller.notification.didsyncobject";
+NSString* const CoreDataControllerNotificationDidResetTheCache = @"com.apetis.apincrementalstore.coredatacontroller.notification.didresetthecache";
 NSString* const CoreDataControllerACLAttributeName = @"__ACL";
 
 static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
@@ -72,18 +73,20 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
     
     if (AP_DEBUG_METHODS) {MLog()}
     
-    [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheWillStartSync:) name:APNotificationCacheWillStartSync object:nil];
-    [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheDidFinishSync:) name:APNotificationCacheDidFinishSync object:nil];
-    [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheDidReset:) name:APNotificationCacheDidFinishReset object:nil];
+    [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheWillStartSync:) name:APNotificationStoreWillStartSync object:nil];
+    [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheDidFinishSync:) name:APNotificationStoreDidFinishSync object:nil];
+    [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheDidSyncObject:) name:APNotificationStoreDidSyncObject object:nil];
+    [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheDidReset:) name:APNotificationStoreDidFinishCacheReset object:nil];
 }
 
 - (void) dealloc {
     
     if (AP_DEBUG_METHODS) {MLog()}
     
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationCacheDidFinishReset object:nil];
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationCacheDidFinishSync object:nil];
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationCacheWillStartSync object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationStoreDidFinishCacheReset object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationStoreDidSyncObject object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationStoreDidFinishSync object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationStoreWillStartSync object:nil];
 }
 
 
@@ -115,7 +118,7 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
 - (void) configPersistantStoreCoordinator {
     
     /* Turn on/off to enable different levels of debugging */
-    AP_DEBUG_METHODS = YES;
+    AP_DEBUG_METHODS = NO;
     AP_DEBUG_ERRORS = YES;
     AP_DEBUG_INFO = YES;
     
@@ -173,7 +176,7 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
     
     self.isResetingTheCache = YES;
     [[NSOperationQueue mainQueue]addOperationWithBlock:^{
-        [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationCacheRequestReset object:self];
+        [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationStoreRequestCacheReset object:self];
     }];
 }
 
@@ -205,6 +208,10 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
 }
 
 
+- (void) didReceiveNotificationCacheDidSyncObject: (NSNotification*) note {
+    [[NSNotificationCenter defaultCenter]postNotificationName:CoreDataControllerNotificationDidSyncObject object:self];
+}
+
 - (void) didReceiveNotificationCacheDidFinishSync:(NSNotification*) note {
     
     if (AP_DEBUG_METHODS) {MLog()}
@@ -227,7 +234,7 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
     
     self.isSyncingTheCache = NO;
     if (AP_DEBUG_INFO) {DLog(@"Notification modified to: %@",note)}
-    [[NSNotificationCenter defaultCenter]postNotificationName:CoreDataControllerNotificationDidSync object:self];
+    [[NSNotificationCenter defaultCenter]postNotificationName:CoreDataControllerNotificationDidFinishSync object:self];
 }
 
 

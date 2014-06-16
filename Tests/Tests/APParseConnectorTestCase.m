@@ -19,7 +19,7 @@
 @import XCTest;
 @import CoreData;
 
-#import "APParseConnector.h"
+#import "APParseSyncOperation.h"
 
 #import "NSLogEmoji.h"
 #import "APCommon.h"
@@ -32,6 +32,8 @@
 #import "Magazine.h" //Has relationship to Author as a Array at Parse
 
 #import "UnitTestingCommon.h"
+
+#define WAIT_PATIENTLY [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]
 
 /* Parse objects strings */
 static NSString* const kAuthorNameParse = @"George R. R. Martin";
@@ -56,9 +58,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 
 @property (strong, nonatomic) NSManagedObjectModel* testModel;
 @property (strong, nonatomic) NSManagedObjectContext* testContext;
-@property (strong, nonatomic) dispatch_queue_t queue;
-@property (strong, nonatomic) dispatch_group_t group;
-@property (strong, nonatomic) APParseConnector* parseConnector;
+@property (strong, nonatomic) NSOperationQueue* syncQueue;
 
 @end
 
@@ -88,14 +88,14 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     
     /* 
      All tests will be conducted in background to enable us to supress the *$@%@$ Parse SDK warning
-     complening that we are running long calls in the main thread.
+     complaning that we are running long calls in the main thread.
      */
-    self.queue = dispatch_queue_create("parseConnectorTestCase", NULL);
-    self.group = dispatch_group_create();
+    dispatch_queue_t queue = dispatch_queue_create("parseConnectorTestCase", NULL);
+    dispatch_group_t group = dispatch_group_create();
     
    // [Parse setApplicationId:APUnitTestingParsepApplicationId clientKey:APUnitTestingParseClientKey];
     
-    dispatch_group_async(self.group, self.queue, ^{
+    dispatch_group_async(group, queue, ^{
         
         PFUser* authenticatedUser = [PFUser logInWithUsername:APUnitTestingParseUserName password:APUnitTestingParsePassword];
         if (!authenticatedUser){
@@ -103,7 +103,6 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         } else {
             DLog(@"User has been authenticated:%@",authenticatedUser.username);
         }
-        self.parseConnector = [[APParseConnector alloc]initWithAuthenticatedUser:authenticatedUser mergePolicy:APMergePolicyClientWins];
         
         [self removeAllEntriesFromParse];
         NSError* saveError = nil;
@@ -154,7 +153,11 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 
         DLog(@"Relations have been set");
     });
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
+    
+    self.syncQueue = [[NSOperationQueue alloc]init];
+    [self.syncQueue setName:@"Unit Test Sync Queue"];
+    [self.syncQueue setMaxConcurrentOperationCount:1]; //Serial
 }
 
 
@@ -165,13 +168,15 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     // Remove SQLite file
     [self removeCacheStore];
     
-    dispatch_group_async(self.group, self.queue, ^{
-        [self removeAllEntriesFromParse];
-    });
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    [self removeAllEntriesFromParse];
     [super tearDown];
 }
 
+- (APParseSyncOperation*) newParseOperation {
+    APParseSyncOperation* parseConnector = [[APParseSyncOperation alloc]initWithMergePolicy:APMergePolicyServerWins authenticatedParseUser:[PFUser currentUser]];
+    parseConnector.context = self.testContext;
+    return parseConnector;
+}
 
 #pragma mark - Tests - Basic Stuff
 
@@ -183,41 +188,40 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 
 #pragma mark - Tests - Merge
 
+
 - (void) testMergeRemoteObjectsReturn {
     
-    __block NSDictionary* results;
-    __block NSError* syncError;
+    APParseSyncOperation* parseSyncOperation1 = [self newParseOperation];
     
-    dispatch_group_async(self.group, self.queue, ^{
-        results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&syncError];
-    });
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
-    
-    XCTAssertNil(syncError, @"Sync error:%@",syncError);
-    XCTAssertTrue([results count] == 2);
-    
-    NSDictionary* authorEntry = results[@"Author"];
-    XCTAssertTrue([[[authorEntry allKeys]lastObject] isEqualToString:@"inserted"]);
-    XCTAssertTrue([authorEntry[@"inserted"] count] == 1);
-    
-    NSDictionary* bookEntry = results[@"Book"];
-    XCTAssertTrue([[[bookEntry allKeys]lastObject] isEqualToString:@"inserted"]);
-    XCTAssertTrue([bookEntry[@"inserted"] count] == 2);
-    
-    // Sync again - should not bring an empty result.
-    
-    dispatch_group_async(self.group, self.queue, ^{
-        results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:^{
-            XCTFail();
-        } error:&syncError];
-    });
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
-    
-    XCTAssertNil(syncError, @"Sync error:%@",syncError);
-    XCTAssertTrue([results count] == 0);
+    [parseSyncOperation1 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        
+        XCTAssertNil(operationError, @"Sync error:%@",operationError);
+        XCTAssertTrue([mergedObjectsUIDsNestedByEntityName count] == 2);
+        
+        NSDictionary* authorEntry = mergedObjectsUIDsNestedByEntityName[@"Author"];
+        XCTAssertTrue([[[authorEntry allKeys]lastObject] isEqualToString:@"inserted"]);
+        XCTAssertTrue([authorEntry[@"inserted"] count] == 1);
+        
+        NSDictionary* bookEntry = mergedObjectsUIDsNestedByEntityName[@"Book"];
+        XCTAssertTrue([[[bookEntry allKeys]lastObject] isEqualToString:@"inserted"]);
+        XCTAssertTrue([bookEntry[@"inserted"] count] == 2);
 
+    }];
+       
+    // Sync again - should bring an empty result.
+    
+    APParseSyncOperation* parseSyncOperation2 = [self newParseOperation];
+    [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        XCTAssertNil(operationError, @"Sync error:%@",operationError);
+        XCTAssertTrue([mergedObjectsUIDsNestedByEntityName count] == 0);
+    }];
+    [parseSyncOperation2 addDependency:parseSyncOperation1];
+    
+    [self.syncQueue addOperation:parseSyncOperation1];
+    [self.syncQueue addOperation:parseSyncOperation2];
+    
+    while ([parseSyncOperation2 isFinished] == NO && WAIT_PATIENTLY);
+    
 }
 
 
@@ -225,18 +229,18 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 
 - (void) testMergeRemoteObjects {
     
-    __block NSDictionary* results;
-    __block NSError* syncError;
+    APParseSyncOperation* parseSyncOperation = [self newParseOperation];
     
-    dispatch_group_async(self.group, self.queue, ^{
-        results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&syncError];
-    });
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        
+        XCTAssertNil(operationError, @"Sync error:%@",operationError);
+        XCTAssertTrue([mergedObjectsUIDsNestedByEntityName count] == 2);
+    }];
     
-    XCTAssertNil(syncError, @"Sync error:%@",syncError);
-    XCTAssertTrue([results count] == 2);
+    
+    [self.syncQueue addOperation:parseSyncOperation];
+    
+    while ([parseSyncOperation isFinished] == NO && WAIT_PATIENTLY);
     
     NSFetchRequest* booksFr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
     booksFr.predicate = [NSPredicate predicateWithFormat:@"name == %@",kBookNameParse1];
@@ -255,36 +259,58 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 - (void) testMergeRemoteCreatedRelationship {
     
     __block NSError* error;
+    __block PFObject* book3;
+    __block PFObject* author;
     
-    dispatch_group_async(self.group, self.queue, ^{
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:nil error:&error];
+    APParseSyncOperation* parseSyncOperation = [self newParseOperation];
+    [self.syncQueue addOperation:parseSyncOperation];
+    
+    while ([parseSyncOperation isFinished] == NO && WAIT_PATIENTLY);
         
-        PFObject* book3 = [PFObject objectWithClassName:@"Book"];
-        [book3 setValue:kBookNameParse3 forKey:@"name"];
-        book3[APObjectEntityNameAttributeName] = @"Book";
-        [book3 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
-        [book3 setValue:@"Book" forKey:APObjectEntityNameAttributeName];
-        book3[APObjectStatusAttributeName] = @(APObjectStatusCreated);
-        [book3 save:&error];
+    book3 = [PFObject objectWithClassName:@"Book"];
+    [book3 setValue:kBookNameParse3 forKey:@"name"];
+    book3[APObjectEntityNameAttributeName] = @"Book";
+    [book3 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+    [book3 setValue:@"Book" forKey:APObjectEntityNameAttributeName];
+    book3[APObjectStatusAttributeName] = @(APObjectStatusCreated);
+    
+    __block BOOL done = NO;
+    [book3 saveInBackgroundWithBlock:^(BOOL succeeded, NSError *error) {
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    author = [[PFQuery queryWithClassName:@"Author"]getFirstObject];
+    [[author relationForKey:@"books"] addObject:book3];
+    
+    done = NO;
+    [author saveInBackgroundWithBlock:^(BOOL succeeded, NSError *error) {
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    book3[@"author"] = author;
+    done = NO;
+    [book3 saveInBackgroundWithBlock:^(BOOL succeeded, NSError *error) {
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    APParseSyncOperation* parseSyncOperation2 = [self newParseOperation];
+    
+    [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         
-        PFObject* author = [[PFQuery queryWithClassName:@"Author"]getFirstObject];
-        [[author relationForKey:@"books"] addObject:book3];
-        [author save:&error];
-        
-        book3[@"author"] = author;
-        [book3 save:&error];
-
-        NSDictionary* results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:nil error:&error];
         XCTAssertNil(error);
         
-        NSArray* updatedAuthors = results[@"Author"][NSUpdatedObjectsKey];
+        NSArray* updatedAuthors = mergedObjectsUIDsNestedByEntityName[@"Author"][NSUpdatedObjectsKey];
         XCTAssertTrue([[updatedAuthors lastObject]isEqualToString:[author valueForKey:APObjectUIDAttributeName] ]);
         
-        NSArray* insertedAuthor = results[@"Book"][NSInsertedObjectsKey];
+        NSArray* insertedAuthor = mergedObjectsUIDsNestedByEntityName[@"Book"][NSInsertedObjectsKey];
         XCTAssertTrue([[insertedAuthor lastObject]isEqualToString:[book3 valueForKey:APObjectUIDAttributeName]]);
-        
-    });
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    }];
+    
+    [self.syncQueue addOperation:parseSyncOperation2];
+    while ([parseSyncOperation2 isFinished] == NO && WAIT_PATIENTLY);
 
     NSFetchRequest* booksFr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
     [booksFr setPredicate:[NSPredicate predicateWithFormat:@"name = %@",kBookNameParse3]];
@@ -294,23 +320,16 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     
     NSFetchRequest* authorFr = [NSFetchRequest fetchRequestWithEntityName:@"Author"];
     NSArray* authors = [self.testContext executeFetchRequest:authorFr error:&error];
-    Author* author = [authors lastObject];
-    XCTAssertTrue([author.books count] == 3);
+    Author* fetchedAuthor = [authors lastObject];
+    XCTAssertTrue([fetchedAuthor.books count] == 3);
 }
 
 
 - (void) testMergeRemoteCreatedRelationshipToMany {
     
-    __block NSDictionary* results;
-    __block NSError* syncError;
-    
-    dispatch_group_async(self.group, self.queue, ^{
-        results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&syncError];
-
-    });
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    APParseSyncOperation* parseSyncOperation = [self newParseOperation];
+    [self.syncQueue addOperation:parseSyncOperation];
+    while ([parseSyncOperation isFinished] == NO && WAIT_PATIENTLY);
     
     NSFetchRequest* authorFr = [NSFetchRequest fetchRequestWithEntityName:@"Author"];
     NSArray* authors = [self.testContext executeFetchRequest:authorFr error:nil];
@@ -329,36 +348,38 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 
 - (void) testMergeRemoteDeletedObjects {
     
-    dispatch_group_async(self.group, self.queue, ^{
-        
-        // Merge server objects
-        NSError* error;
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&error];
-
-        XCTAssertNil(error);
-        
-        // Mark Author as deleted
-        PFQuery* authorQuery = [PFQuery queryWithClassName:@"Author"];
-        [authorQuery whereKey:@"name" containsString:kAuthorNameParse];
-        PFObject* parseAuthor = [[authorQuery findObjects]lastObject];
-        parseAuthor[APObjectStatusAttributeName] = @(APObjectStatusDeleted);
-        [parseAuthor save:&error];
-        XCTAssertNil(error);
-        
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:YES onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&error];
-        
-        // Fetch local object
-        NSFetchRequest* authorFr = [NSFetchRequest fetchRequestWithEntityName:@"Author"];
-        authorFr.predicate = [NSPredicate predicateWithFormat:@"name == %@",kAuthorNameParse];
-        NSArray* authors = [self.testContext executeFetchRequest:authorFr error:nil];
-        XCTAssertTrue([authors count] == 0);
-    });
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    APParseSyncOperation* parseSyncOperation = [self newParseOperation];
+    [self.syncQueue addOperation:parseSyncOperation];
+    while ([parseSyncOperation isFinished] == NO && WAIT_PATIENTLY);
     
+    
+    // Merge server objects
+    NSError* error;
+    
+    XCTAssertNil(error);
+    
+    // Mark Author as deleted
+    PFQuery* authorQuery = [PFQuery queryWithClassName:@"Author"];
+    [authorQuery whereKey:@"name" containsString:kAuthorNameParse];
+    PFObject* parseAuthor = [[authorQuery findObjects]lastObject];
+    parseAuthor[APObjectStatusAttributeName] = @(APObjectStatusDeleted);
+    __block BOOL done = NO;
+    [parseAuthor saveInBackgroundWithBlock:^(BOOL succeeded, NSError *error) {
+        XCTAssertNil(error);
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    APParseSyncOperation* parseSyncOperation2 = [self newParseOperation];
+    [self.syncQueue addOperation:parseSyncOperation2];
+    while ([parseSyncOperation2 isFinished] == NO && WAIT_PATIENTLY);
+    
+    // Fetch local object
+    NSFetchRequest* authorFr = [NSFetchRequest fetchRequestWithEntityName:@"Author"];
+    authorFr.predicate = [NSPredicate predicateWithFormat:@"name == %@",kAuthorNameParse];
+    NSArray* authors = [self.testContext executeFetchRequest:authorFr error:nil];
+    XCTAssertTrue([authors count] == 0);
+
 }
 
 
@@ -366,74 +387,82 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 
 - (void) testMergeLocalCreatedObjects {
     
-    dispatch_group_async(self.group, self.queue, ^{
-        __block NSError* mergeError;
-        
-        // Create a local Book and insert it on Parse
-        Book* book = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.testContext];
-        [book setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [book setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
-        book.name = kBookNameLocal1;
-        
-        // Create a local Author and insert it on Parse
-        Author* author = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.testContext];
-        [author setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
-        author.name =kAuthorNameLocal;
-        
-        [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&mergeError];
-        XCTAssertNil(mergeError);
-        
-        PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
-        [bookQuery whereKey:@"name" containsString:kBookNameLocal1];
-        PFObject* fetchedBook;
-        fetchedBook = [[bookQuery findObjects]lastObject];
-        
-        XCTAssertNotNil(fetchedBook);
-        XCTAssertEqualObjects([fetchedBook valueForKey:@"name"],kBookNameLocal1);
-    });
+    // Create a local Book and insert it on Parse
+    Book* book = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.testContext];
+    [book setValue:@YES forKey:APObjectIsDirtyAttributeName];
+    [book setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+    book.name = kBookNameLocal1;
     
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    // Create a local Author and insert it on Parse
+    Author* author = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.testContext];
+    [author setValue:@YES forKey:APObjectIsDirtyAttributeName];
+    [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+    author.name =kAuthorNameLocal;
+    
+    APParseSyncOperation* parseSyncOperation2 = [self newParseOperation];
+    [self.syncQueue addOperation:parseSyncOperation2];
+    [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        XCTAssertNil(operationError);
+    }];
+    while ([parseSyncOperation2 isFinished] == NO && WAIT_PATIENTLY);
+    
+    PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
+    [bookQuery whereKey:@"name" containsString:kBookNameLocal1];
+    __block PFObject* fetchedBook;
+    __block BOOL done = NO;
+    [bookQuery getFirstObjectInBackgroundWithBlock:^(PFObject *object, NSError *error) {
+        fetchedBook = object;
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    XCTAssertNotNil(fetchedBook);
+    XCTAssertEqualObjects([fetchedBook valueForKey:@"name"],kBookNameLocal1);
 }
 
 - (void) testMergeLocalCreatedRelationshipToOne {
     
-    dispatch_group_async(self.group, self.queue, ^{
-        __block NSError* mergeError;
-        
-        // Create a local Book, mark is as "dirty" and set the objectUID with the predefined prefix
-        Book* book = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.testContext];
-        [book setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [book setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
-        book.name = kBookNameLocal1;
-        
-        // Create a local Author, mark is as "dirty" and set the objectUID with the predefined prefix
-        Author* author = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.testContext];
-        [author setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
-        author.name =kAuthorNameLocal;
-
-        // Create the relationship locally and merge the context with Parse
-        book.author = author;
-        [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&mergeError];
-        
-        // Fetch the book from Parse and verify the related To-One author
-        PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
-        [bookQuery whereKey:@"name" containsString:kBookNameLocal1];
-        PFObject* fetchedBook;
-        fetchedBook = [[bookQuery findObjects]lastObject];
-        PFObject* relatedAuthor = fetchedBook[@"author"];
-        [relatedAuthor refresh];
-        
-        XCTAssertNotNil(relatedAuthor);
-        XCTAssertEqualObjects([relatedAuthor valueForKey:@"name"],kAuthorNameLocal);
-    });
+    // Create a local Book, mark is as "dirty" and set the objectUID with the predefined prefix
+    Book* book = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.testContext];
+    [book setValue:@YES forKey:APObjectIsDirtyAttributeName];
+    [book setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+    book.name = kBookNameLocal1;
     
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    // Create a local Author, mark is as "dirty" and set the objectUID with the predefined prefix
+    Author* author = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.testContext];
+    [author setValue:@YES forKey:APObjectIsDirtyAttributeName];
+    [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+    author.name =kAuthorNameLocal;
+    
+    // Create the relationship locally and merge the context with Parse
+    book.author = author;
+    
+    //Sync
+    APParseSyncOperation* parseSyncOperation2 = [self newParseOperation];
+    [self.syncQueue addOperation:parseSyncOperation2];
+    [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        XCTAssertNil(operationError);
+    }];
+    while ([parseSyncOperation2 isFinished] == NO && WAIT_PATIENTLY);
+    
+    // Fetch the book from Parse and verify the related To-One author
+    PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
+    [bookQuery whereKey:@"name" containsString:kBookNameLocal1];
+    __block PFObject* fetchedBook;
+    __block BOOL done = NO;
+    [bookQuery getFirstObjectInBackgroundWithBlock:^(PFObject *object, NSError *error) {
+        fetchedBook = object;
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    done = NO;
+    PFObject* relatedAuthor = fetchedBook[@"author"];
+    [relatedAuthor refreshInBackgroundWithBlock:^(PFObject *object, NSError *error) {
+        XCTAssertNotNil(object);
+        XCTAssertEqualObjects([object valueForKey:@"name"],kAuthorNameLocal);
+        done = YES;
+    }];
 }
 
 
@@ -450,70 +479,82 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
  */
 - (void) testMergeLocalCreatedRelationshipToMany {
     
-    dispatch_group_async(self.group, self.queue, ^{
-        __block NSError* mergeError;
-        
-        // Create a local Book, mark is as "dirty" and set the objectUID with the predefined prefix
-        Book* book1 = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.testContext];
-        [book1 setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [book1 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
-        book1.name = kBookNameLocal1;
-        
-        // Create a local Book, mark is as "dirty" and set the objectUID with the predefined prefix
-        Book* book2 = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.testContext];
-        [book2 setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [book2 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
-        book2.name = kBookNameLocal2;
-        
-        // Create a local Author, mark is as "dirty" and set the objectUID with the predefined prefix
-        Author* author = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.testContext];
-        [author setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
-        author.name =kAuthorNameLocal;
-        
-        // Create the relationship locally and merge the context with Parse
-        [author addBooksObject:book1];
-        [author addBooksObject:book2];
-        [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&mergeError];
-        
-        /* 
-         After the objects get merged with Parse, they should have the following attributes set:
-         - APObjectLastModifiedAttributeName
-         - APObjectUIDAttributeName
-         - APObjectIsDirtyAttributeName
-         */
-        XCTAssertNotNil([author valueForKey:APObjectLastModifiedAttributeName]);
-        XCTAssertNotNil([author valueForKey:APObjectUIDAttributeName]);
-        XCTAssertTrue([[author valueForKey:APObjectIsDirtyAttributeName] isEqualToNumber:@NO]);
-        
-        XCTAssertNotNil([book1 valueForKey:APObjectLastModifiedAttributeName]);
-        XCTAssertNotNil([book1 valueForKey:APObjectUIDAttributeName]);
-        XCTAssertTrue([[book1 valueForKey:APObjectIsDirtyAttributeName] isEqualToNumber:@NO]);
-        
-        XCTAssertNotNil([book2 valueForKey:APObjectLastModifiedAttributeName]);
-        XCTAssertNotNil([book2 valueForKey:APObjectUIDAttributeName]);
-        XCTAssertTrue([[book2 valueForKey:APObjectIsDirtyAttributeName] isEqualToNumber:@NO]);
-        
-        
-        // Fetch the book from Parse and verify the related To-One author
-        PFQuery* authorQuery = [PFQuery queryWithClassName:@"Author"];
-        [authorQuery whereKey:@"name" containsString:kAuthorNameLocal];
-        PFObject* fetchedAuthor = [[authorQuery findObjects]lastObject];
-        
-        PFRelation* booksRelation = [fetchedAuthor relationForKey:@"books"];
-        NSArray* books = [[booksRelation query]findObjects];
-        XCTAssertTrue([books count] == 2);
-        
-        Book* relatedBook1 = [[books filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"name == %@",kBookNameLocal1]]lastObject];
-        XCTAssertNotNil(relatedBook1);
-        
-        Book* relatedBook2 = [[books filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"name == %@",kBookNameLocal1]]lastObject];
-        XCTAssertNotNil(relatedBook2);
-    });
+    // Create a local Book, mark is as "dirty" and set the objectUID with the predefined prefix
+    Book* book1 = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.testContext];
+    [book1 setValue:@YES forKey:APObjectIsDirtyAttributeName];
+    [book1 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+    book1.name = kBookNameLocal1;
     
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    // Create a local Book, mark is as "dirty" and set the objectUID with the predefined prefix
+    Book* book2 = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.testContext];
+    [book2 setValue:@YES forKey:APObjectIsDirtyAttributeName];
+    [book2 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+    book2.name = kBookNameLocal2;
+    
+    // Create a local Author, mark is as "dirty" and set the objectUID with the predefined prefix
+    Author* author = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.testContext];
+    [author setValue:@YES forKey:APObjectIsDirtyAttributeName];
+    [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+    author.name =kAuthorNameLocal;
+    
+    // Create the relationship locally and merge the context with Parse
+    [author addBooksObject:book1];
+    [author addBooksObject:book2];
+    
+    //Sync
+    APParseSyncOperation* parseSyncOperation2 = [self newParseOperation];
+    [self.syncQueue addOperation:parseSyncOperation2];
+    [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        XCTAssertNil(operationError);
+    }];
+    while ([parseSyncOperation2 isFinished] == NO && WAIT_PATIENTLY);
+    
+    /*
+     After the objects get merged with Parse, they should have the following attributes set:
+     - APObjectLastModifiedAttributeName
+     - APObjectUIDAttributeName
+     - APObjectIsDirtyAttributeName
+     */
+    XCTAssertNotNil([author valueForKey:APObjectLastModifiedAttributeName]);
+    XCTAssertNotNil([author valueForKey:APObjectUIDAttributeName]);
+    XCTAssertTrue([[author valueForKey:APObjectIsDirtyAttributeName] isEqualToNumber:@NO]);
+    
+    XCTAssertNotNil([book1 valueForKey:APObjectLastModifiedAttributeName]);
+    XCTAssertNotNil([book1 valueForKey:APObjectUIDAttributeName]);
+    XCTAssertTrue([[book1 valueForKey:APObjectIsDirtyAttributeName] isEqualToNumber:@NO]);
+    
+    XCTAssertNotNil([book2 valueForKey:APObjectLastModifiedAttributeName]);
+    XCTAssertNotNil([book2 valueForKey:APObjectUIDAttributeName]);
+    XCTAssertTrue([[book2 valueForKey:APObjectIsDirtyAttributeName] isEqualToNumber:@NO]);
+    
+    
+    // Fetch the book from Parse and verify the related To-One author
+    PFQuery* authorQuery = [PFQuery queryWithClassName:@"Author"];
+    [authorQuery whereKey:@"name" containsString:kAuthorNameLocal];
+    
+    __block BOOL done = NO;
+    __block PFObject* fetchedAuthor;
+    [authorQuery getFirstObjectInBackgroundWithBlock:^(PFObject *object, NSError *error) {
+        fetchedAuthor = object;
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    PFRelation* booksRelation = [fetchedAuthor relationForKey:@"books"];
+    __block NSArray* books;
+    done = NO;
+    [[booksRelation query]findObjectsInBackgroundWithBlock:^(NSArray *objects, NSError *error) {
+        books = objects;
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    XCTAssertTrue([books count] == 2);
+    
+    Book* relatedBook1 = [[books filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"name == %@",kBookNameLocal1]]lastObject];
+    XCTAssertNotNil(relatedBook1);
+    
+    Book* relatedBook2 = [[books filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"name == %@",kBookNameLocal1]]lastObject];
+    XCTAssertNotNil(relatedBook2);
 }
 
 /*
@@ -529,114 +570,119 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
  */
 - (void) testMergeLocalCreatedRelationshipToManyUsingParseArray {
     
-    dispatch_group_async(self.group, self.queue, ^{
-        __block NSError* mergeError;
-        
-        // Create a local Book, mark is as "dirty" and set the objectUID with the predefined prefix
-        Author* author1 = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.testContext];
-        [author1 setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [author1 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
-        author1.name = kAuthorNameLocal;
-        
-        // Create a local Book, mark is as "dirty" and set the objectUID with the predefined prefix
-        Author* author2 = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.testContext];
-        [author2 setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [author2 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
-        author2.name = kAuthorNameLocal2;
-        
-        // Create a local Author, mark is as "dirty" and set the objectUID with the predefined prefix
-        Magazine* magazine = [NSEntityDescription insertNewObjectForEntityForName:@"Magazine" inManagedObjectContext:self.testContext];
-        [magazine setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [magazine setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
-        magazine.name =kMagazineNameLocal1;
-        
-        // Create the relationship locally and merge the context with Parse
-        [magazine addAuthorsObject:author1];
-        [magazine addAuthorsObject:author2];
-        [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&mergeError];
-        
-        /*
-         After the objects get merged with Parse, they should have the following attributes set:
-         - APObjectLastModifiedAttributeName
-         - APObjectUIDAttributeName
-         - APObjectIsDirtyAttributeName
-         */
-        XCTAssertNotNil([magazine valueForKey:APObjectLastModifiedAttributeName]);
-        XCTAssertNotNil([magazine valueForKey:APObjectUIDAttributeName]);
-        XCTAssertTrue([[magazine valueForKey:APObjectIsDirtyAttributeName] isEqualToNumber:@NO]);
-        
-        XCTAssertNotNil([author1 valueForKey:APObjectLastModifiedAttributeName]);
-        XCTAssertNotNil([author1 valueForKey:APObjectUIDAttributeName]);
-        XCTAssertTrue([[author1 valueForKey:APObjectIsDirtyAttributeName] isEqualToNumber:@NO]);
-        
-        XCTAssertNotNil([author2 valueForKey:APObjectLastModifiedAttributeName]);
-        XCTAssertNotNil([author2 valueForKey:APObjectUIDAttributeName]);
-        XCTAssertTrue([[author2 valueForKey:APObjectIsDirtyAttributeName] isEqualToNumber:@NO]);
-        
-        
-        // Fetch the book from Parse and verify the related To-One author
-        PFQuery* magazineQuery = [PFQuery queryWithClassName:@"Magazine"];
-        [magazineQuery whereKey:@"name" containsString:kMagazineNameLocal1];
-        [magazineQuery includeKey:@"authors"];
-        PFObject* fetchedMagazine = [[magazineQuery findObjects]lastObject];
-        
-        NSArray* authors = [fetchedMagazine valueForKey:@"authors"];
-        XCTAssertTrue([authors count] == 2);
-        
-        Author* relatedAuthor1 = [[authors filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"name == %@",kAuthorNameLocal]]lastObject];
-        XCTAssertNotNil(relatedAuthor1);
-        
-        Author* relatedAuthor2 = [[authors filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"name == %@",kAuthorNameLocal2]]lastObject];
-        XCTAssertNotNil(relatedAuthor2);
-    });
+    // Create a local Book, mark is as "dirty" and set the objectUID with the predefined prefix
+    Author* author1 = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.testContext];
+    [author1 setValue:@YES forKey:APObjectIsDirtyAttributeName];
+    [author1 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+    author1.name = kAuthorNameLocal;
     
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    // Create a local Book, mark is as "dirty" and set the objectUID with the predefined prefix
+    Author* author2 = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.testContext];
+    [author2 setValue:@YES forKey:APObjectIsDirtyAttributeName];
+    [author2 setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+    author2.name = kAuthorNameLocal2;
+    
+    // Create a local Author, mark is as "dirty" and set the objectUID with the predefined prefix
+    Magazine* magazine = [NSEntityDescription insertNewObjectForEntityForName:@"Magazine" inManagedObjectContext:self.testContext];
+    [magazine setValue:@YES forKey:APObjectIsDirtyAttributeName];
+    [magazine setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+    magazine.name =kMagazineNameLocal1;
+    
+    // Create the relationship locally and merge the context with Parse
+    [magazine addAuthorsObject:author1];
+    [magazine addAuthorsObject:author2];
+    
+    //Sync
+    APParseSyncOperation* parseSyncOperation2 = [self newParseOperation];
+    [self.syncQueue addOperation:parseSyncOperation2];
+    [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        XCTAssertNil(operationError);
+    }];
+    while ([parseSyncOperation2 isFinished] == NO && WAIT_PATIENTLY);
+    
+    /*
+     After the objects get merged with Parse, they should have the following attributes set:
+     - APObjectLastModifiedAttributeName
+     - APObjectUIDAttributeName
+     - APObjectIsDirtyAttributeName
+     */
+    XCTAssertNotNil([magazine valueForKey:APObjectLastModifiedAttributeName]);
+    XCTAssertNotNil([magazine valueForKey:APObjectUIDAttributeName]);
+    XCTAssertTrue([[magazine valueForKey:APObjectIsDirtyAttributeName] isEqualToNumber:@NO]);
+    
+    XCTAssertNotNil([author1 valueForKey:APObjectLastModifiedAttributeName]);
+    XCTAssertNotNil([author1 valueForKey:APObjectUIDAttributeName]);
+    XCTAssertTrue([[author1 valueForKey:APObjectIsDirtyAttributeName] isEqualToNumber:@NO]);
+    
+    XCTAssertNotNil([author2 valueForKey:APObjectLastModifiedAttributeName]);
+    XCTAssertNotNil([author2 valueForKey:APObjectUIDAttributeName]);
+    XCTAssertTrue([[author2 valueForKey:APObjectIsDirtyAttributeName] isEqualToNumber:@NO]);
+    
+    
+    // Fetch the book from Parse and verify the related To-One author
+    PFQuery* magazineQuery = [PFQuery queryWithClassName:@"Magazine"];
+    [magazineQuery whereKey:@"name" containsString:kMagazineNameLocal1];
+    [magazineQuery includeKey:@"authors"];
+    __block BOOL done = NO;
+    __block PFObject* fetchedMagazine;
+    [magazineQuery getFirstObjectInBackgroundWithBlock:^(PFObject *object, NSError *error) {
+        fetchedMagazine = object;
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    NSArray* authors = [fetchedMagazine valueForKey:@"authors"];
+    XCTAssertTrue([authors count] == 2);
+    
+    Author* relatedAuthor1 = [[authors filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"name == %@",kAuthorNameLocal]]lastObject];
+    XCTAssertNotNil(relatedAuthor1);
+    
+    Author* relatedAuthor2 = [[authors filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"name == %@",kAuthorNameLocal2]]lastObject];
+    XCTAssertNotNil(relatedAuthor2);
 }
 
 
 
 #pragma mark - Tests - Counting objects to sync
 
-- (void) testCountRemoteObjectsToSync {
-    
-    dispatch_group_async(self.group, self.queue, ^{
-        
-        NSError* countingError;
-        NSInteger numberOfObjectsToBeSynced = [self.parseConnector countRemoteObjectsToBeSyncedInContext:self.testContext fullSync:YES error:&countingError];
-        XCTAssertNil(countingError);
-        
-        // Parse doesn't quite support couting
-        XCTAssertTrue(numberOfObjectsToBeSynced == -1);
-    });
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
-}
+//- (void) testCountRemoteObjectsToSync {
+//
+//    dispatch_group_async(self.group, self.queue, ^{
+//
+//        NSError* countingError;
+//        NSInteger numberOfObjectsToBeSynced = [self.parseConnector countRemoteObjectsToBeSyncedInContext:self.testContext fullSync:YES error:&countingError];
+//        XCTAssertNil(countingError);
+//        
+//        // Parse doesn't quite support couting
+//        XCTAssertTrue(numberOfObjectsToBeSynced == -1);
+//    });
+//    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+//}
 
 
-- (void) testCountLocalObjectsToSync {
-    
-    NSUInteger const numberOfBooksToBeCreated = 10;
-    
-    for (NSUInteger i = 0; i < numberOfBooksToBeCreated; i++) {
-        Book* newBook = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.testContext];
-        newBook.name = [NSString stringWithFormat:@"book#%lu",(unsigned long) i];
-        [newBook setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [newBook setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
-    }
-    XCTAssertTrue([[self.testContext registeredObjects]count] == numberOfBooksToBeCreated);
-    
-    NSError* savingError;
-    [self.testContext save:&savingError];
-    XCTAssertNil(savingError);
-    
-    NSError* countingError;
-    NSInteger numberOfObjectsToBeSynced = [self.parseConnector countLocalObjectsToBeSyncedInContext:self.testContext error:&countingError];
-    XCTAssertNil(countingError);
-    
-    // Parse doesn't quite support couting
-    XCTAssertTrue(numberOfObjectsToBeSynced == -1);
-}
+//- (void) testCountLocalObjectsToSync {
+//    
+//    NSUInteger const numberOfBooksToBeCreated = 10;
+//    
+//    for (NSUInteger i = 0; i < numberOfBooksToBeCreated; i++) {
+//        Book* newBook = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.testContext];
+//        newBook.name = [NSString stringWithFormat:@"book#%lu",(unsigned long) i];
+//        [newBook setValue:@YES forKey:APObjectIsDirtyAttributeName];
+//        [newBook setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
+//    }
+//    XCTAssertTrue([[self.testContext registeredObjects]count] == numberOfBooksToBeCreated);
+//    
+//    NSError* savingError;
+//    [self.testContext save:&savingError];
+//    XCTAssertNil(savingError);
+//    
+//    NSError* countingError;
+//    NSInteger numberOfObjectsToBeSynced = [self.parseConnector countLocalObjectsToBeSyncedInContext:self.testContext error:&countingError];
+//    XCTAssertNil(countingError);
+//    
+//    // Parse doesn't quite support couting
+//    XCTAssertTrue(numberOfObjectsToBeSynced == -1);
+//}
 
 
 #pragma mark - Tests - Binary Attributes
@@ -651,43 +697,56 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
  */
 - (void) testBinaryAttributeMergingFromParse {
     
-    dispatch_group_async(self.group, self.queue, ^{
-        
-        // 495KB JPG Image sample image
-        NSURL *imageURL = [[[NSBundle bundleForClass:[self class]]bundleURL] URLByAppendingPathComponent:@"Sample_495KB.jpg"];
-        NSData* bookCoverData = [NSData dataWithContentsOfURL:imageURL];
-        XCTAssertNotNil(bookCoverData);
-        
-        NSError* savingError;
-        PFFile* bookCoverFile = [PFFile fileWithData:bookCoverData];
-        XCTAssertTrue([bookCoverFile save:&savingError]);
-        XCTAssertNil(savingError);
-        
-        PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
-        [bookQuery whereKey:@"name" containsString:kBookNameParse1];
-        PFObject* fetchedBookFromParse = [[bookQuery findObjects]lastObject];
-        XCTAssertNotNil(fetchedBookFromParse);
-        
-        fetchedBookFromParse[@"picture"] = bookCoverFile;
-        XCTAssertTrue([fetchedBookFromParse save:&savingError]);
-        XCTAssertNil(savingError);
-        
-        NSError* mergeError;
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&mergeError];
-        XCTAssertNil(mergeError);
-        
-        NSFetchRequest* booksFr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
-        booksFr.predicate = [NSPredicate predicateWithFormat:@"name == %@",kBookNameParse1];
-        NSArray* books = [self.testContext executeFetchRequest:booksFr error:nil];
-        Book* book = [books lastObject];
-        XCTAssertNotNil(book);
-        XCTAssertTrue([bookCoverData isEqualToData:book.picture]);
-    });
+    __block NSData* bookCoverData;
     
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
-}
+    // 495KB JPG Image sample image
+    NSURL *imageURL = [[[NSBundle bundleForClass:[self class]]bundleURL] URLByAppendingPathComponent:@"Sample_495KB.jpg"];
+    bookCoverData = [NSData dataWithContentsOfURL:imageURL];
+    XCTAssertNotNil(bookCoverData);
+    
+     __block BOOL done = NO;
+    PFFile* bookCoverFile = [PFFile fileWithData:bookCoverData];
+    [bookCoverFile saveInBackgroundWithBlock:^(BOOL succeeded, NSError *error) {
+        XCTAssertNil(error);
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
+    [bookQuery whereKey:@"name" containsString:kBookNameParse1];
+    
+    done = NO;
+    __block PFObject* fetchedBookFromParse;
+    [bookQuery getFirstObjectInBackgroundWithBlock:^(PFObject *object, NSError *error) {
+        XCTAssertNil(error);
+        fetchedBookFromParse = object;
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    fetchedBookFromParse[@"picture"] = bookCoverFile;
+    done = NO;
+    [fetchedBookFromParse saveInBackgroundWithBlock:^(BOOL succeeded, NSError *error) {
+        XCTAssertNil(error);
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+     
+     //Sync
+     APParseSyncOperation* parseSyncOperation = [self newParseOperation];
+     [self.syncQueue addOperation:parseSyncOperation];
+     [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        XCTAssertNil(operationError);
+    }];
+     while ([parseSyncOperation isFinished] == NO && WAIT_PATIENTLY);
+     
+     NSFetchRequest* booksFr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
+     booksFr.predicate = [NSPredicate predicateWithFormat:@"name == %@",kBookNameParse1];
+     NSArray* books = [self.testContext executeFetchRequest:booksFr error:nil];
+     Book* book = [books lastObject];
+     XCTAssertNotNil(book);
+     XCTAssertTrue([bookCoverData isEqualToData:book.picture]);
+     }
 
 /*
  Scenario:
@@ -699,57 +758,65 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
  */
 - (void) testBinaryAttributeMergingToParse {
     
-    dispatch_group_async(self.group, self.queue, ^{
-        
-        NSError* mergeError;
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&mergeError];
-        XCTAssertNil(mergeError);
-        
-        NSFetchRequest* booksFr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
-        booksFr.predicate = [NSPredicate predicateWithFormat:@"name == %@",kBookNameParse1];
-        NSArray* books = [self.testContext executeFetchRequest:booksFr error:nil];
-        Book* book = [books lastObject];
-        XCTAssertNotNil(book);
-        
-        // 495KB JPG Image sample image
-        NSURL *imageURL = [[[NSBundle bundleForClass:[self class]]bundleURL] URLByAppendingPathComponent:@"Sample_495KB.jpg"];
-        NSData* bookCoverData = [NSData dataWithContentsOfURL:imageURL];
-        XCTAssertNotNil(bookCoverData);
-        
-        book.picture = bookCoverData;
-        [book setValue:@YES forKey:APObjectIsDirtyAttributeName];
-       
-        NSError* saveError;
-        [self.testContext save:&saveError];
-        XCTAssertNil(saveError);
-        
-        [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&mergeError];
-        XCTAssertNil(mergeError);
-        
-        PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
-        [bookQuery whereKey:@"name" containsString:kBookNameParse1];
-        PFObject* fetchedBook = [[bookQuery findObjects]lastObject];
-        XCTAssertNotNil(fetchedBook);
-        
-        PFFile* pictureFromParse = [fetchedBook objectForKey:@"picture"];
-        NSData* parseBookCoverData = [pictureFromParse getData];
-        XCTAssertNotNil(parseBookCoverData);
-        
-        XCTAssertTrue([parseBookCoverData isEqualToData:bookCoverData]);
-    });
+    //Sync
+    APParseSyncOperation* parseSyncOperation = [self newParseOperation];
+    [self.syncQueue addOperation:parseSyncOperation];
+    [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        XCTAssertNil(operationError);
+    }];
+    while ([parseSyncOperation isFinished] == NO && WAIT_PATIENTLY);
     
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    
+    NSFetchRequest* booksFr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
+    booksFr.predicate = [NSPredicate predicateWithFormat:@"name == %@",kBookNameParse1];
+    NSArray* books = [self.testContext executeFetchRequest:booksFr error:nil];
+    Book* book = [books lastObject];
+    XCTAssertNotNil(book);
+    
+    // 495KB JPG Image sample image
+    NSURL *imageURL = [[[NSBundle bundleForClass:[self class]]bundleURL] URLByAppendingPathComponent:@"Sample_495KB.jpg"];
+    NSData* bookCoverData = [NSData dataWithContentsOfURL:imageURL];
+    XCTAssertNotNil(bookCoverData);
+    
+    book.picture = bookCoverData;
+    [book setValue:@YES forKey:APObjectIsDirtyAttributeName];
+    
+    NSError* saveError;
+    [self.testContext save:&saveError];
+    XCTAssertNil(saveError);
+    
+    //Sync
+    APParseSyncOperation* parseSyncOperation2 = [self newParseOperation];
+    [self.syncQueue addOperation:parseSyncOperation2];
+    [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        XCTAssertNil(operationError);
+    }];
+    while ([parseSyncOperation2 isFinished] == NO && WAIT_PATIENTLY);
+    
+    PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
+    [bookQuery whereKey:@"name" containsString:kBookNameParse1];
+    PFObject* fetchedBook = [[bookQuery findObjects]lastObject];
+    XCTAssertNotNil(fetchedBook);
+    
+    PFFile* pictureFromParse = [fetchedBook objectForKey:@"picture"];
+    __block NSData* parseBookCoverData;
+    __block BOOL done = NO;
+    [pictureFromParse getDataInBackgroundWithBlock:^(NSData *data, NSError *error) {
+        parseBookCoverData = data;
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    XCTAssertNotNil(parseBookCoverData);
+    
+    XCTAssertTrue([parseBookCoverData isEqualToData:bookCoverData]);
 }
 
 
 #pragma mark  - Tests - Conflicts
 
 /*
- Scenario:  
+ Scenario:
  - We merge an existing object from Parse that wasn't localy present before
  - Therefore the local kAPIncrementalStoreLastModifiedAttributeName gets populated.
  - The same object gets changed at Parse again consequentely updatedAt gets updated as well.
@@ -759,49 +826,59 @@ Expected Results:
  */
 - (void) testModifiedDatesAfterMergeFromServer {
     
-    dispatch_group_async(self.group, self.queue, ^{
-        
-        // Sync server objects
-        NSError* mergeError;
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&mergeError];
-        XCTAssertNil(mergeError);
-        
-        // Fetch local object
-        NSFetchRequest* booksFr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
-        booksFr.predicate = [NSPredicate predicateWithFormat:@"name == %@",kBookNameParse1];
-        NSArray* books = [self.testContext executeFetchRequest:booksFr error:nil];
-        Book* localBook = [books lastObject];
-        
-        NSDate* originalDate = [localBook valueForKey:APObjectLastModifiedAttributeName];
-        XCTAssertNotNil(originalDate);
-        
-        PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
-        [bookQuery whereKey:@"name" containsString:kBookNameParse1];
-        PFObject* parseBook = [[bookQuery findObjects]lastObject];
-        XCTAssertNotNil(parseBook);
-        XCTAssertEqualObjects(parseBook.updatedAt, originalDate);
-        
-        [parseBook setValue:kBookNameParse2 forKey:@"name"];
-        
-        // Wait for 5 seconds and save the object
-        [NSThread sleepForTimeInterval:5];
-        [parseBook save];
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&mergeError];
-        
-        // The local object date should have been updated.
-        NSDate* updatedDate = [localBook valueForKey:APObjectLastModifiedAttributeName];
-        XCTAssertTrue([updatedDate compare:originalDate] == NSOrderedDescending);
-    });
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    //Sync
+    APParseSyncOperation* parseSyncOperation = [self newParseOperation];
+    [self.syncQueue addOperation:parseSyncOperation];
+    [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        XCTAssertNil(operationError);
+    }];
+    while ([parseSyncOperation isFinished] == NO && WAIT_PATIENTLY);
+    
+    // Fetch local object
+    NSFetchRequest* booksFr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
+    booksFr.predicate = [NSPredicate predicateWithFormat:@"name == %@",kBookNameParse1];
+    __block BOOL done = NO;
+    NSArray* books = [self.testContext executeFetchRequest:booksFr error:nil];
+    Book* localBook = [books lastObject];
+    
+    NSDate* originalDate = [localBook valueForKey:APObjectLastModifiedAttributeName];
+    XCTAssertNotNil(originalDate);
+    
+    PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
+    [bookQuery whereKey:@"name" containsString:kBookNameParse1];
+    __block PFObject* parseBook;
+    done = NO;
+    [bookQuery getFirstObjectInBackgroundWithBlock:^(PFObject *object, NSError *error) {
+        parseBook = object;
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    XCTAssertNotNil(parseBook);
+    XCTAssertEqualObjects(parseBook.updatedAt, originalDate);
+    
+    [parseBook setValue:kBookNameParse2 forKey:@"name"];
+    
+    // Wait for 5 seconds and save the object
+    [NSThread sleepForTimeInterval:5];
+    [parseBook save];
+    
+    //Sync
+    APParseSyncOperation* parseSyncOperation2 = [self newParseOperation];
+    [self.syncQueue addOperation:parseSyncOperation2];
+    [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        XCTAssertNil(operationError);
+    }];
+    while ([parseSyncOperation2 isFinished] == NO && WAIT_PATIENTLY);
+    
+    // The local object date should have been updated.
+    NSDate* updatedDate = [localBook valueForKey:APObjectLastModifiedAttributeName];
+    XCTAssertTrue([updatedDate compare:originalDate] == NSOrderedDescending);
 }
 
 
 /*
- Scenario:  
+ Scenario:
  - We have merged our context, then we update an book name making it "dirty".
  - Before we merge it back to Parse, the remote equivalent object gets updated, characterizing a conflict.
             
@@ -811,45 +888,63 @@ Expected Results:
  */
 - (void) testConflictWhenMergingObjectsClientWinsPolicy {
     
-    dispatch_group_async(self.group, self.queue, ^{
-        
-        [self.parseConnector setMergePolicy:APMergePolicyClientWins];
-        
-        // Sync server objects
-        NSError* mergeError;
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&mergeError];
-        XCTAssertNil(mergeError);
-        
-        // Fetch local object
-        NSFetchRequest* booksFr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
-        booksFr.predicate = [NSPredicate predicateWithFormat:@"name == %@",kBookNameParse1];
-        NSArray* books = [self.testContext executeFetchRequest:booksFr error:nil];
-        Book* localBook = [books lastObject];
-        localBook.name = kBookNameParse3;
-        [localBook setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        
-        // Fetch, change the book name and save it back to Parse
-        PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
-        [bookQuery whereKey:@"name" containsString:kBookNameParse1];
-        PFObject* parseBook = [[bookQuery findObjects]lastObject];
-        [parseBook setValue:kBookNameParse4 forKey:@"name" ];
-        [parseBook save:&mergeError];
-        XCTAssertNil(mergeError);
-        XCTAssertTrue([[parseBook valueForKey:APObjectUIDAttributeName] isEqualToString:[localBook valueForKey:APObjectUIDAttributeName]]);
-        
-        [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&mergeError];
-        XCTAssertNil(mergeError);
-        XCTAssertEqualObjects(localBook.name, kBookNameParse3);
-        
-        [parseBook refresh];
-        XCTAssertEqualObjects([parseBook valueForKey:@"name"], kBookNameParse3);
-    });
-        
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    //Sync
+    APParseSyncOperation* parseSyncOperation = [self newParseOperation];
+    [self.syncQueue addOperation:parseSyncOperation];
+    [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        XCTAssertNil(operationError);
+    }];
+    while ([parseSyncOperation isFinished] == NO && WAIT_PATIENTLY);
+    
+    // Fetch local object
+    NSFetchRequest* booksFr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
+    booksFr.predicate = [NSPredicate predicateWithFormat:@"name == %@",kBookNameParse1];
+    NSArray* books = [self.testContext executeFetchRequest:booksFr error:nil];
+    Book* localBook = [books lastObject];
+    localBook.name = kBookNameParse3;
+    [localBook setValue:@YES forKey:APObjectIsDirtyAttributeName];
+    
+    // Fetch, change the book name and save it back to Parse
+    PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
+    [bookQuery whereKey:@"name" containsString:kBookNameParse1];
+    __block BOOL done = NO;
+    __block PFObject* parseBook;
+    [bookQuery getFirstObjectInBackgroundWithBlock:^(PFObject *object, NSError *error) {
+        parseBook = object;
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    parseBook[@"name"] = kBookNameParse4;
+    
+    done = NO;
+    [parseBook saveInBackgroundWithBlock:^(BOOL succeeded, NSError *error) {
+        XCTAssertNil(error);
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    XCTAssertTrue([[parseBook valueForKey:APObjectUIDAttributeName] isEqualToString:[localBook valueForKey:APObjectUIDAttributeName]]);
+    
+    //Sync
+    APParseSyncOperation* parseSyncOperation2 = [self newParseOperation];
+    parseSyncOperation2.mergePolicy = APMergePolicyClientWins;
+    [self.syncQueue addOperation:parseSyncOperation2];
+    [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        XCTAssertNil(operationError);
+    }];
+    while ([parseSyncOperation2 isFinished] == NO && WAIT_PATIENTLY);
+    
+    XCTAssertEqualObjects(localBook.name, kBookNameParse3);
+    
+    done = NO;
+    [parseBook refreshInBackgroundWithBlock:^(PFObject *object, NSError *error) {
+         XCTAssertEqualObjects([object valueForKey:@"name"], kBookNameParse3);
+         done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+   
+    
 }
 
 
@@ -864,109 +959,131 @@ Expected Results:
  */
 - (void) testConflictWhenMergingObjectsServerWinsPolicy {
     
-    [self.parseConnector setMergePolicy:APMergePolicyServerWins];
+        
+    //Sync
+    APParseSyncOperation* parseSyncOperation = [self newParseOperation];
+    [self.syncQueue addOperation:parseSyncOperation];
+    [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        XCTAssertNil(operationError);
+    }];
+    while ([parseSyncOperation isFinished] == NO && WAIT_PATIENTLY);
     
-    dispatch_group_async(self.group, self.queue, ^{
-        
-        // Sync server objects
-        NSError* mergeError;
-        
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&mergeError];
-        
-        XCTAssertNil(mergeError);
-        
-        // Fetch local object
-        NSFetchRequest* booksFr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
-        booksFr.predicate = [NSPredicate predicateWithFormat:@"name == %@",kBookNameParse1];
-        NSArray* books = [self.testContext executeFetchRequest:booksFr error:nil];
-        Book* localBook = [books lastObject];
-        localBook.name = kBookNameParse3;
-        [localBook setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        
-        // Fetch, change the book name and save it back to Parse
-        PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
-        [bookQuery whereKey:@"name" containsString:kBookNameParse1];
-        PFObject* parseBook = [[bookQuery findObjects]lastObject];
-        [parseBook setValue:kBookNameParse4 forKey:@"name" ];
-        [parseBook save:&mergeError];
-        XCTAssertNil(mergeError);
-        XCTAssertTrue([[parseBook valueForKey:APObjectUIDAttributeName] isEqualToString:[localBook valueForKey:APObjectUIDAttributeName]]);
-
-        [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&mergeError];
-        XCTAssertNil(mergeError);
-        
-        // Fetch local object
-        NSFetchRequest* renamedBooksFr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
-        renamedBooksFr.predicate = [NSPredicate predicateWithFormat:@"name == %@",kBookNameParse4];
-        NSArray* remamedBooks = [self.testContext executeFetchRequest:renamedBooksFr error:nil];
-        Book* localBookRenamed = [remamedBooks lastObject];
-        XCTAssertEqualObjects(localBookRenamed.name, kBookNameParse4);
-    });
+    // Fetch local object
+    NSFetchRequest* booksFr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
+    booksFr.predicate = [NSPredicate predicateWithFormat:@"name == %@",kBookNameParse1];
+    NSArray* books = [self.testContext executeFetchRequest:booksFr error:nil];
+    Book* localBook = [books lastObject];
+    localBook.name = kBookNameParse3;
+    [localBook setValue:@YES forKey:APObjectIsDirtyAttributeName];
     
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    // Fetch, change the book name and save it back to Parse
+    PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
+    [bookQuery whereKey:@"name" containsString:kBookNameParse1];
+    __block BOOL done = NO;
+    __block PFObject* parseBook;
+    [bookQuery getFirstObjectInBackgroundWithBlock:^(PFObject *object, NSError *error) {
+        parseBook = object;
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    parseBook[@"name"] = kBookNameParse4;
+    
+    done = NO;
+    [parseBook saveInBackgroundWithBlock:^(BOOL succeeded, NSError *error) {
+        XCTAssertNil(error);
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    XCTAssertTrue([[parseBook valueForKey:APObjectUIDAttributeName] isEqualToString:[localBook valueForKey:APObjectUIDAttributeName]]);
+    
+    //Sync
+    APParseSyncOperation* parseSyncOperation2 = [self newParseOperation];
+    parseSyncOperation2.mergePolicy = APMergePolicyServerWins;
+    [self.syncQueue addOperation:parseSyncOperation2];
+    [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        XCTAssertNil(operationError);
+    }];
+    while ([parseSyncOperation2 isFinished] == NO && WAIT_PATIENTLY);
+    
+    XCTAssertEqualObjects(localBook.name, kBookNameParse4);
+    
+    done = NO;
+    [parseBook refreshInBackgroundWithBlock:^(PFObject *object, NSError *error) {
+        XCTAssertEqualObjects([object valueForKey:@"name"], kBookNameParse4);
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
 }
 
 
 - (void) testParseUpdatedAtDates {
     
-    dispatch_group_async(self.group, self.queue, ^{
-        PFObject* book = [[PFObject alloc]initWithClassName:@"Book"];
-        [book setValue:@"some name" forKeyPath:@"name"];
-        [book setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
-        [book setValue:@"Book" forKey:APObjectEntityNameAttributeName];
-        [book save:nil];
-        NSDate* updatedAtAfterSave = book.updatedAt;
-        
-        PFQuery* query = [PFQuery queryWithClassName:@"Book"];
-        [query whereKey:@"name" containsString:@"some name"];
-        PFObject* fetchedBook = [[query findObjects]lastObject];
-        NSDate* updatedAtAfterFetch = fetchedBook.updatedAt;
-        
-        XCTAssertEqualObjects(updatedAtAfterSave, updatedAtAfterFetch);
-    });
+    PFObject* book = [[PFObject alloc]initWithClassName:@"Book"];
+    [book setValue:@"some name" forKeyPath:@"name"];
+    [book setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
+    [book setValue:@"Book" forKey:APObjectEntityNameAttributeName];
     
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    __block BOOL done = NO;
+    [book saveInBackgroundWithBlock:^(BOOL succeeded, NSError *error) {
+        XCTAssertNil(error);
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    NSDate* updatedAtAfterSave = book.updatedAt;
+    
+    PFQuery* query = [PFQuery queryWithClassName:@"Book"];
+    [query whereKey:@"name" containsString:@"some name"];
+    done = NO;
+    [query getFirstObjectInBackgroundWithBlock:^(PFObject *object, NSError *error) {
+        NSDate* updatedAtAfterFetch = object.updatedAt;
+        XCTAssertEqualObjects(updatedAtAfterSave, updatedAtAfterFetch);
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
 }
 
 
 - (void) testIncludeACLFromManagedObjectToParseObejct {
     
-    dispatch_group_async(self.group, self.queue, ^{
-        
-        Book* newBook = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.testContext];
-        newBook.name = @"Book#1";
-        [newBook setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [newBook setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
-        
-        NSMutableDictionary* ACL;
-        ACL = [NSMutableDictionary dictionary];
-        
-        // Roles
-        [ACL setValue:@{@"write":@"true", @"read":@"false"} forKey:[@"role:" stringByAppendingString:@"Role_Name"]];
-        [ACL setValue:@{@"write":@"false",@"read":@"true"} forKey:[@"role:" stringByAppendingString:@"Role_Name2"]];
-        
-        // Users
-        [ACL setValue:@{@"write":@"true",@"read":@"true"} forKey:[PFUser currentUser].objectId];
-        [ACL setValue:@{@"write":@"false", @"read":@"false"} forKey:@"FDfaLRcqn1"];
-        
-        NSData* ACLData = [NSJSONSerialization dataWithJSONObject:ACL options:0 error:nil];
-        [newBook setValue:ACLData forKey:@"__ACL"];
-        
-        NSError* error;
-        [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&error];
-
-        PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
-        [bookQuery whereKey:@"name" containsString:@"Book#1"];
-        PFObject* parseBook = [bookQuery getFirstObject:&error];
+    Book* newBook = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.testContext];
+    newBook.name = @"Book#1";
+    [newBook setValue:@YES forKey:APObjectIsDirtyAttributeName];
+    [newBook setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
+    
+    NSMutableDictionary* ACL;
+    ACL = [NSMutableDictionary dictionary];
+    
+    // Roles
+    [ACL setValue:@{@"write":@"true", @"read":@"false"} forKey:[@"role:" stringByAppendingString:@"Role_Name"]];
+    [ACL setValue:@{@"write":@"false",@"read":@"true"} forKey:[@"role:" stringByAppendingString:@"Role_Name2"]];
+    
+    // Users
+    [ACL setValue:@{@"write":@"true",@"read":@"true"} forKey:[PFUser currentUser].objectId];
+    [ACL setValue:@{@"write":@"false", @"read":@"false"} forKey:@"FDfaLRcqn1"];
+    
+    NSData* ACLData = [NSJSONSerialization dataWithJSONObject:ACL options:0 error:nil];
+    [newBook setValue:ACLData forKey:@"__ACL"];
+    
+    //Sync
+    APParseSyncOperation* parseSyncOperation = [self newParseOperation];
+    parseSyncOperation.mergePolicy = APMergePolicyServerWins;
+    [self.syncQueue addOperation:parseSyncOperation];
+    [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        XCTAssertNil(operationError);
+    }];
+    while ([parseSyncOperation isFinished] == NO && WAIT_PATIENTLY);;
+    
+    PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
+    [bookQuery whereKey:@"name" containsString:@"Book#1"];
+    
+    __block BOOL done = NO;
+    [bookQuery getFirstObjectInBackgroundWithBlock:^(PFObject *object, NSError *error) {
         XCTAssertNil(error);
         
-        PFACL* acl = parseBook.ACL;
+        PFACL* acl = object.ACL;
+        
         XCTAssertTrue([acl getWriteAccessForUser:[PFUser currentUser]] == YES);
         XCTAssertTrue([acl getWriteAccessForUserId:@"FDfaLRcqn1"] == NO);
         XCTAssertTrue([acl getWriteAccessForRoleWithName:@"Role_Name"] == YES);
@@ -977,137 +1094,129 @@ Expected Results:
         XCTAssertTrue([acl getReadAccessForRoleWithName:@"Role_Name"] == NO);
         XCTAssertTrue([acl getReadAccessForRoleWithName:@"Role_Name2"] == YES);
         
-    });
-    
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
-    
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
 }
 
-/*
- This test is a bit trick to be executed as we need to change the localcache sync implementation in a way that we can pause it and change few objects at Parse.
- That change on parse object will simulate another client changing objects while we are syncing as well.
- The steps will be:
- 1. Create the objects via -setUp
- 2. Start the sync process and pause it for 10 seconds after all books have been received.
- 3. While ithe sync process paused introduce a new book to the same initial author, so that it will not be synced during this sync loop.
- 4. Sync again and the new book should be recevied.
- 
- Don't forget to uncomment the changes included on APParceConnector to make this test possible.
- You can find it at the end of the method -[APParseConnector mergeRemoteObjectsWithContext:fullSync:error:]
- 
- */
-- (void) testMergingWithOtherClientMergingSimultaneously {
-    
-    // Sync server objects 1st time
-//    NSError* mergeError;
-//    [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO error:&mergeError];
-//    XCTAssertNil(mergeError);
-//    
-//    // Fetch local objects
-//    NSFetchRequest* booksFr1 = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
-//    booksFr1.predicate = [NSPredicate predicateWithFormat:@"name == %@",@"another book"];
-//    XCTAssertTrue([[self.testContext executeFetchRequest:booksFr1 error:nil] count] == 0);
-//    
-//    // Fetch local objects
-//    NSFetchRequest* pageFr = [NSFetchRequest fetchRequestWithEntityName:@"Page"];
-//    XCTAssertTrue([[self.testContext executeFetchRequest:pageFr error:nil] count] == 1);
-//    
-//    
-//    // Sync server objects 2nd time
-//    [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO error:&mergeError];
-//    XCTAssertNil(mergeError);
-//    
-//    // Fetch local object
-//    NSFetchRequest* booksFr2= [NSFetchRequest fetchRequestWithEntityName:@"Book"];
-//    booksFr2.predicate = [NSPredicate predicateWithFormat:@"name == %@",@"another book"];
-//    XCTAssertTrue([[self.testContext executeFetchRequest:booksFr2 error:nil] count] == 1);
-}
 
 - (void) testInheritanceMergeLocalCreatedSubEntityObject {
     
-    dispatch_group_async(self.group, self.queue, ^{
-        EBook* newEBook = [NSEntityDescription insertNewObjectForEntityForName:@"EBook" inManagedObjectContext:self.testContext];
-        newEBook.name = @"eBook#1";
-        newEBook.format = @"PDF";
-        [newEBook setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [newEBook setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
-        
-        // Create a local Author, mark is as "dirty" and set the objectUID with the predefined prefix
-        Author* author = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.testContext];
-        [author setValue:@YES forKey:APObjectIsDirtyAttributeName];
-        [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
-        author.name =kAuthorNameLocal;
-        
-        // Create the relationship locally and merge the context with Parse
-        newEBook.author = author;
-        
-        NSError* error;
-        [self.parseConnector mergeManagedContext:self.testContext onSyncObject:^{
-            DLog(@"Object has been synced");
-        } error:&error];
-        
-        PFQuery* eBookQuery = [PFQuery queryWithClassName:@"Book"];
-        [eBookQuery whereKey:@"name" containsString:@"eBook#1"];
-        PFObject* parseEBook = [eBookQuery getFirstObject:&error];
+    EBook* newEBook = [NSEntityDescription insertNewObjectForEntityForName:@"EBook" inManagedObjectContext:self.testContext];
+    newEBook.name = @"eBook#1";
+    newEBook.format = @"PDF";
+    [newEBook setValue:@YES forKey:APObjectIsDirtyAttributeName];
+    [newEBook setValue:[self createObjectUID] forKeyPath:APObjectUIDAttributeName];
+    
+    // Create a local Author, mark is as "dirty" and set the objectUID with the predefined prefix
+    Author* author = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.testContext];
+    [author setValue:@YES forKey:APObjectIsDirtyAttributeName];
+    [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+    author.name =kAuthorNameLocal;
+    
+    // Create the relationship locally and merge the context with Parse
+    newEBook.author = author;
+    
+    //Sync
+    APParseSyncOperation* parseSyncOperation = [self newParseOperation];
+    parseSyncOperation.mergePolicy = APMergePolicyServerWins;
+    [self.syncQueue addOperation:parseSyncOperation];
+    [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        XCTAssertNil(operationError);
+    }];
+    while ([parseSyncOperation isFinished] == NO && WAIT_PATIENTLY);
+    
+    PFQuery* eBookQuery = [PFQuery queryWithClassName:@"Book"];
+    [eBookQuery whereKey:@"name" containsString:@"eBook#1"];
+    __block BOOL done = NO;
+    [eBookQuery getFirstObjectInBackgroundWithBlock:^(PFObject *object, NSError *error) {
         XCTAssertNil(error);
-        XCTAssertTrue([[parseEBook valueForKey:@"format"]isEqualToString:@"PDF"]);
+        XCTAssertTrue([[object valueForKey:@"format"]isEqualToString:@"PDF"]);
         
-        PFObject* relatedAuthor = parseEBook[@"author"];
+        PFObject* relatedAuthor = object[@"author"];
         [relatedAuthor fetch:&error];
         XCTAssertNil(error);
         XCTAssertNotNil(relatedAuthor);
         XCTAssertEqualObjects([relatedAuthor valueForKey:@"name"],kAuthorNameLocal);
-    });
-    
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+        
+        done = YES;
+    }];
+     while (done == NO && WAIT_PATIENTLY);
 }
 
 
 - (void) testInheritanceRemoteCreatedSubEntityObject {
     
-    __block NSError* error;
+    //Sync
+    APParseSyncOperation* parseSyncOperation = [self newParseOperation];
+    parseSyncOperation.mergePolicy = APMergePolicyServerWins;
+    [self.syncQueue addOperation:parseSyncOperation];
+    [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        XCTAssertNil(operationError);
+    }];
+    while ([parseSyncOperation isFinished] == NO && WAIT_PATIENTLY);
     
-    dispatch_group_async(self.group, self.queue, ^{
-        [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:nil error:&error];
-        
-        PFObject* newEBook = [PFObject objectWithClassName:@"Book"];
-        newEBook[@"name"] = @"eBook#1";
-        newEBook[@"format"] = @"PDF";
-        newEBook[APObjectEntityNameAttributeName] = @"EBook";
-        newEBook[APObjectStatusAttributeName] = @(APObjectStatusCreated);
-        newEBook[APObjectUIDAttributeName] = [self createObjectUID];
-        [newEBook save:&error];
-        
-        PFObject* author = [[PFQuery queryWithClassName:@"Author"]getFirstObject];
-        [[author relationForKey:@"books"] addObject:newEBook];
-        [author save:&error];
-        
-        newEBook[@"author"] = author;
-        [newEBook save:&error];
-        
-        NSDictionary* results = [self.parseConnector mergeRemoteObjectsWithContext:self.testContext fullSync:NO onSyncObject:nil error:&error];
+    PFObject* newEBook = [PFObject objectWithClassName:@"Book"];
+    newEBook[@"name"] = @"eBook#1";
+    newEBook[@"format"] = @"PDF";
+    newEBook[APObjectEntityNameAttributeName] = @"EBook";
+    newEBook[APObjectStatusAttributeName] = @(APObjectStatusCreated);
+    newEBook[APObjectUIDAttributeName] = [self createObjectUID];
+    __block BOOL done = NO;
+    [newEBook saveInBackgroundWithBlock:^(BOOL succeeded, NSError *error) {
         XCTAssertNil(error);
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    
+    PFObject* author = [[PFQuery queryWithClassName:@"Author"]getFirstObject];
+    [[author relationForKey:@"books"] addObject:newEBook];
+    
+    done = NO;
+    [author saveInBackgroundWithBlock:^(BOOL succeeded, NSError *error) {
+        XCTAssertNil(error);
+         done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    newEBook[@"author"] = author;
+    
+    done = NO;
+    [newEBook saveInBackgroundWithBlock:^(BOOL succeeded, NSError *error) {
+        XCTAssertNil(error);
+         done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    
+    //Sync
+    APParseSyncOperation* parseSyncOperation2 = [self newParseOperation];
+    [self.syncQueue addOperation:parseSyncOperation2];
+    [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        XCTAssertNil(operationError);
         
-        NSArray* updatedAuthors = results[@"Author"][NSUpdatedObjectsKey];
+        NSArray* updatedAuthors = mergedObjectsUIDsNestedByEntityName[@"Author"][NSUpdatedObjectsKey];
         XCTAssertTrue([[updatedAuthors lastObject]isEqualToString:[author valueForKey:APObjectUIDAttributeName] ]);
         
-        NSArray* insertedBook = results[@"EBook"][NSInsertedObjectsKey];
+        NSArray* insertedBook = mergedObjectsUIDsNestedByEntityName[@"EBook"][NSInsertedObjectsKey];
         XCTAssertTrue([[insertedBook lastObject]isEqualToString:[newEBook valueForKey:APObjectUIDAttributeName]]);
-        
-    });
-    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    }];
+    while ([parseSyncOperation2 isFinished] == NO && WAIT_PATIENTLY);
+    
     
     NSFetchRequest* eBooksFr = [NSFetchRequest fetchRequestWithEntityName:@"EBook"];
     [eBooksFr setPredicate:[NSPredicate predicateWithFormat:@"name == %@",@"eBook#1"]];
+    NSError* error = nil;
     NSArray* ebooks = [self.testContext executeFetchRequest:eBooksFr error:&error];
+    XCTAssertNil(error);
     EBook* ebook = [ebooks lastObject];
     XCTAssertEqualObjects(ebook.author.name, kAuthorNameParse);
     
     NSFetchRequest* authorFr = [NSFetchRequest fetchRequestWithEntityName:@"Author"];
     NSArray* authors = [self.testContext executeFetchRequest:authorFr error:&error];
-    Author* author = [authors lastObject];
-    XCTAssertTrue([author.books count] == 3);
-
+    Author* fetchedAuthor = [authors lastObject];
+    XCTAssertTrue([fetchedAuthor.books count] == 3);
 }
 
 
@@ -1136,34 +1245,44 @@ Expected Results:
 
 - (void) removeAllObjectsFromParseQuery:(PFQuery*) query {
     
-    // Delete parse object block
-    void (^deleteAllObjects)(PFObject*, NSUInteger, BOOL*) = ^(PFObject* obj, NSUInteger idx, BOOL *stop) {
+    dispatch_queue_t queue = dispatch_queue_create("remove objects unit test queue", NULL);
+    dispatch_group_t group = dispatch_group_create();
+    
+    // [Parse setApplicationId:APUnitTestingParsepApplicationId clientKey:APUnitTestingParseClientKey];
+    
+    dispatch_group_async(group, queue, ^{
+        
+        // Delete parse object block
+        void (^deleteAllObjects)(PFObject*, NSUInteger, BOOL*) = ^(PFObject* obj, NSUInteger idx, BOOL *stop) {
+            NSError* error;
+            [obj delete:&error];
+            if (!error) {
+                DLog(@"Object of class: %@ was deleted from Parse",[obj parseClassName]);
+            } else {
+                ELog(@"Object of class: %@ was not deleted from Parse - error: %@",[obj parseClassName],error);
+            }
+        };
+        
+        // count how many objects we have to remove
+        // default parse limit of objects per query is 100, can be set to 1000.
+        // let's maintain the default.
         NSError* error;
-        [obj delete:&error];
-        if (!error) {
-            DLog(@"Object of class: %@ was deleted from Parse",[obj parseClassName]);
-        } else {
-            ELog(@"Object of class: %@ was not deleted from Parse - error: %@",[obj parseClassName],error);
+        NSUInteger numberOfObjectsToDelete = [query countObjects:&error];
+        if (error) {
+            ELog(@"Error counting objects for query for class: %@",query.parseClassName);
+            return;
         }
-    };
+        
+        NSUInteger const step = 100;
+        NSUInteger deleted = 0;
+        while (deleted < numberOfObjectsToDelete) {
+            //[query setSkip:skip];
+            [[query findObjects]enumerateObjectsUsingBlock:deleteAllObjects];
+            deleted += step;
+        }
+    });
+    dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
     
-    // count how many objects we have to remove
-    // default parse limit of objects per query is 100, can be set to 1000.
-    // let's maintain the default.
-    NSError* error;
-    NSUInteger numberOfObjectsToDelete = [query countObjects:&error];
-    if (error) {
-        ELog(@"Error counting objects for query for class: %@",query.parseClassName);
-        return;
-    }
-    
-    NSUInteger const step = 100;
-    NSUInteger deleted = 0;
-    while (deleted < numberOfObjectsToDelete) {
-        //[query setSkip:skip];
-        [[query findObjects]enumerateObjectsUsingBlock:deleteAllObjects];
-        deleted += step;
-    }
 }
 
 

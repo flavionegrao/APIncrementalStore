@@ -30,6 +30,8 @@
 
 #import "UnitTestingCommon.h"
 
+#define WAIT_PATIENTLY [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]
+
 static NSString* const kAuthorName = @"George R. R. Martin";
 static NSString* const kBookName1 = @"A Game of Thrones";
 static NSString* const kBookName2 = @"A Clash of Kings";
@@ -84,8 +86,7 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     // Starting fresh
     DLog(@"Reseting Cache");
     [self.coreDataController requestResetCache];
-    while (self.coreDataController.isResetingTheCache &&
-           [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
+    while (self.coreDataController.isResetingTheCache && WAIT_PATIENTLY);
     
     /* Create the objects and its relationships
      
@@ -129,8 +130,7 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     
     // Sync and wait untill it's finished
     [self.coreDataController requestSyncCache];
-    while (self.coreDataController.isSyncingTheCache &&
-           [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
+    while (self.coreDataController.isSyncingTheCache && WAIT_PATIENTLY);
     DLog(@"Set-up finished");
 }
 
@@ -406,8 +406,8 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     
     // Sync and wait untill it's finished
     [self.coreDataController requestSyncCache];
-    while (self.coreDataController.isSyncingTheCache &&
-           [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
+    while (self.coreDataController.isSyncingTheCache && WAIT_PATIENTLY);
+    
     
     dispatch_group_async(self.group, self.queue, ^{
         [[[PFQuery queryWithClassName:@"Book"]findObjects]enumerateObjectsUsingBlock:^(PFObject* obj, NSUInteger idx, BOOL *stop) {
@@ -430,7 +430,7 @@ static NSString* const kBookName2 = @"A Clash of Kings";
  
 Expected Results:
  - The existing author should remain with only one book.
- - Be mindful that we don't actually delete the objects, instead we mark it as deleted (APObjectIsDeleted)
+ - Be mindful that we don't actually delete the objects, instead we mark it as deleted (APObjectStatusDeleted)
    in order to allow other users to sync this change corretly afterwards
  */
 - (void) testRemoveObjectFromToManyRelationship {
@@ -446,14 +446,15 @@ Expected Results:
     [self.coreDataController.mainContext save:&error];
     XCTAssertNil(error);
     [self.coreDataController requestSyncCache];
-    while (self.coreDataController.isSyncingTheCache && [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]])
+    while (self.coreDataController.isSyncingTheCache && WAIT_PATIENTLY);
     
     // Delete object, Save & Sync
     [self.coreDataController.mainContext deleteObject: book2];
     [self.coreDataController.mainContext save:&error];
     XCTAssertNil(error);
+    
     [self.coreDataController requestSyncCache];
-    while (self.coreDataController.isSyncingTheCache && [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
+    while (self.coreDataController.isSyncingTheCache && WAIT_PATIENTLY);
     
     // Verify that only one books is marked as delete at Parse
     dispatch_group_async(self.group, self.queue, ^{

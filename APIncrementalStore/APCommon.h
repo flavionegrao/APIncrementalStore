@@ -31,17 +31,17 @@ extern NSString* const APObjectIsDirtyAttributeName;
 extern NSString* const APObjectIsDeletedAttributeName __attribute__((deprecated("use APObjectStatus attribute. First deprecated in 0.3.1")));
 
 /**
- During the sync process, the webservice database may become inconsistent if the sync process of a 
+ During the sync process, the webservice database may become inconsistent if the sync process of a
  given client gets interrupted before all objects are populated. The algorithm used by the ParseConnector
  class enumarates all classes, populate its Parse objects and creates placeholders for the relationships
  if the related object doesn't exist. Problem may happen if any object doesn't get populated and other
- client syncs it to its cache. Objects with the status APObjectStatusCreated will no be returned by this 
+ client syncs it to its cache. Objects with the status APObjectStatusCreated will no be returned by this
  Store to the Persisntant Coordinator untill it becomes APObjectStatusPopulated.
  
  Three possible status are currently defined:
-   • 1 - APObjectStatusCreated - The object has been created as a placeholder from other object during sync process, the object is yet to be populated.
-   • 2 - APObjectStatusPopulated - The object has been fully populated and is ok to be returned by the APIncrementalStore to the requesing Persistant Coordinator
-   • 3 - APObjectStatusDeleted - The object has been deleted and will be removed from the Webserice database as in the near future.
+ • 1 - APObjectStatusCreated - The object has been created as a placeholder from other object during sync process, the object is yet to be populated.
+ • 2 - APObjectStatusPopulated - The object has been fully populated and is ok to be returned by the APIncrementalStore to the requesing Persistant Coordinator
+ • 3 - APObjectStatusDeleted - The object has been deleted and will be removed from the Webserice database as in the near future.
  */
 extern NSString* const APObjectStatusAttributeName;
 
@@ -51,9 +51,9 @@ extern NSString* const APObjectEntityNameAttributeName;
 /// Whether or not an object is created remotely.
 extern NSString* const APObjectIsCreatedRemotelyAttributeName;
 
-/** 
- If a Core Data entity has this attribute it will be interpreted as a Parse PFACL attribute. 
- It should be Binary Property containing a JSON object encoded with UTF-8. 
+/**
+ If a Core Data entity has this attribute it will be interpreted as a Parse PFACL attribute.
+ It should be Binary Property containing a JSON object encoded with UTF-8.
  It will follow the same Parse REST format, which means a Dictionary
  
  Example:
