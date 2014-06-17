@@ -544,7 +544,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     }];
     
     NSError* saveError = nil;
-    if (![self saveMainContext:&saveError]) {
+    if (![self saveAndReset:NO mainContext:&saveError]) {
         success = NO;
         *error = saveError;
     }
@@ -572,7 +572,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     }];
     
     NSError* saveError = nil;
-    if (![self saveMainContext:&saveError]) {
+    if (![self saveAndReset:NO mainContext:&saveError]) {
         success = NO;
         *error = saveError;
     }
@@ -600,7 +600,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     }];
     
     NSError* saveError = nil;
-    if (![self saveMainContext:&saveError]) {
+    if (![self saveAndReset:NO mainContext:&saveError]) {
         success = NO;
         *error = saveError;
     }
@@ -668,7 +668,9 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     }];
 }
 
-- (BOOL) saveSyncContext:(NSError *__autoreleasing*) error {
+
+- (BOOL) saveAndReset:(BOOL) reset
+          syncContext:(NSError *__autoreleasing*) error {
     
     __block BOOL success = YES;
     __block NSError* localError = nil;
@@ -683,8 +685,8 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
                 if (error) *error = localError;
                 
             } else {
-                [self.syncContext reset];
-                if (![self saveMainContext:&localError]){
+                if (reset) [self.syncContext reset];
+                if (![self saveAndReset:reset syncContext:&localError]){
                     success = NO;
                     if (error) *error = localError;
                 }
@@ -695,7 +697,8 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 }
 
 
-- (BOOL) saveMainContext: (NSError *__autoreleasing *)error {
+- (BOOL) saveAndReset: (BOOL) reset
+          mainContext: (NSError *__autoreleasing *)error {
     
     if (AP_DEBUG_METHODS) { MLog() }
     

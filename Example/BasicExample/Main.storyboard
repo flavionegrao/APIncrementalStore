@@ -64,7 +64,7 @@
                         </constraints>
                     </view>
                     <toolbarItems>
-                        <barButtonItem title="Add 100 Authors + Pics" id="GY0-wl-lAp">
+                        <barButtonItem title="Add 100 Authors with 1 Book each" id="GY0-wl-lAp">
                             <connections>
                                 <action selector="add1000AuthorButtonTouched:" destination="vXZ-lx-hvc" id="d7D-KV-VJI"/>
                             </connections>

@@ -92,20 +92,38 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     
     if (![self isCancelled]) {
         
-        NSError* error = nil;
-        if (![self mergeLocalContextError:&error]) {
-            if (AP_DEBUG_ERRORS) {ELog(@"Error merging local object: %@",error)};
+        NSError* localMergeError = nil;
+        NSError* remoteMergeError = nil;
+        
+        if (![self mergeLocalContextError:&localMergeError]) {
             
-        } else if (![self mergeRemoteObjectsError:&error]) {
-            if (AP_DEBUG_ERRORS) {ELog(@"Error merging remote object: %@",error)};
+            if (self.syncCompletionBlock) {
+                
+                [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+                    self.syncCompletionBlock(self.mergedObjectsUIDsNestedByEntityName,localMergeError);
+                }];
+            }
             
+        } else if (![self mergeRemoteObjectsError:&remoteMergeError]) {
+            
+            if (self.syncCompletionBlock) {
+                
+                [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+                    self.syncCompletionBlock(self.mergedObjectsUIDsNestedByEntityName,remoteMergeError);
+                }];
+            }
+            
+        } else {
+            
+            if (self.syncCompletionBlock) {
+                
+                [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+                    self.syncCompletionBlock(self.mergedObjectsUIDsNestedByEntityName,nil);
+                }];
+            }
         }
         
-        if (self.syncCompletionBlock) {
-            [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-                self.syncCompletionBlock(self.mergedObjectsUIDsNestedByEntityName,error);
-            }];
-        }
+        
         
     } else {
         [[NSOperationQueue mainQueue] addOperationWithBlock:^{
@@ -189,6 +207,12 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     
     for (NSEntityDescription* entityDescription in sortedEntities) {
         
+        if ([self isCancelled]) {
+            localError = [NSError errorWithDomain:APIncrementalStoreErrorDomain code:APIncrementalStoreErrorSyncOperationWasCancelled userInfo:nil];
+            success = NO;
+            break;
+        }
+        
         NSUInteger skip = 0;
         BOOL thereAreObjectsToBeFetched = YES;
         
@@ -197,8 +221,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             @autoreleasepool {
                 
                 if ([self isCancelled]) {
-                    if (error) *error = [NSError errorWithDomain:APIncrementalStoreErrorDomain code:APIncrementalStoreErrorSyncOperationWasCancelled userInfo:nil];
-                    return NO;
+                    break;
                 }
                 NSLog(@"Syncing: %@ offset: %@",entityDescription.name,@(skip));
                 PFQuery* syncQuery = [self syncQueryForEntity:entityDescription maxUpdatedDate:parseServerTime offset:skip];
@@ -220,8 +243,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 while ([batchOfObjects count] > 0) {
                     
                     if ([self isCancelled]) {
-                        if (error) *error = [NSError errorWithDomain:APIncrementalStoreErrorDomain code:APIncrementalStoreErrorSyncOperationWasCancelled userInfo:nil];
-                        return NO;
+                        break;
                     }
                     
                     @autoreleasepool {
@@ -262,15 +284,16 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                                 
                                 [self populateManagedObject:managedObject withSerializedParseObject:serializeParseObject onInsertedRelatedObject:^(NSManagedObject *insertedObject) {
                                     
-                                    // Include an entry for the inserted object into the returning NSDictionary
-                                    // if any related objects isn't relflected locally yet
-                                    
-                                    NSMutableDictionary* relatedEntityEntry = self.mergedObjectsUIDsNestedByEntityName[insertedObject.entity.name] ?: [NSMutableDictionary dictionary];
-                                    NSArray* mergedObjectUIDs = relatedEntityEntry[NSInsertedObjectsKey] ?: [[NSArray alloc]init];
-                                    NSString* relatedObjectObjectID = [insertedObject valueForKey:APObjectUIDAttributeName];
-                                    relatedEntityEntry[NSInsertedObjectsKey] = [mergedObjectUIDs arrayByAddingObject:relatedObjectObjectID];
-                                    
                                     if (![self isCancelled]) {
+                                        // Include an entry for the inserted object into the returning NSDictionary
+                                        // if any related objects isn't relflected locally yet
+                                        
+                                        NSMutableDictionary* relatedEntityEntry = self.mergedObjectsUIDsNestedByEntityName[insertedObject.entity.name] ?: [NSMutableDictionary dictionary];
+                                        NSArray* mergedObjectUIDs = relatedEntityEntry[NSInsertedObjectsKey] ?: [[NSArray alloc]init];
+                                        NSString* relatedObjectObjectID = [insertedObject valueForKey:APObjectUIDAttributeName];
+                                        relatedEntityEntry[NSInsertedObjectsKey] = [mergedObjectUIDs arrayByAddingObject:relatedObjectObjectID];
+                                        
+                                        
                                         self.mergedObjectsUIDsNestedByEntityName[insertedObject.entity.name] = relatedEntityEntry;
                                     }
                                 }];
@@ -333,6 +356,9 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         }//@autoreleasepool
     }
     
+    if (localError) {
+        *error = localError;
+    }
     return success;
 }
 

@@ -161,10 +161,16 @@ static NSString* const APDefaultParsePassword = @"1234";
 
 - (IBAction)syncButtonTouched:(id)sender {
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didReceiveSyncIsFinished:) name:CoreDataControllerNotificationDidFinishSync object:[CoreDataController sharedInstance]];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didReceiveSyncIsFinished:) name:CoreDataControllerNotificationDidSync object:[CoreDataController sharedInstance]];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didReceiveSyncObject:) name:CoreDataControllerNotificationDidSyncObject object:[CoreDataController sharedInstance]];
     [[CoreDataController sharedInstance] requestSyncCache];
     self.syncButton.enabled = NO;
+    
+    if (!self.syncHUD) {
+        self.syncHUD = [MBProgressHUD showHUDAddedTo:self.view animated:YES];
+    }
+    self.syncHUD.detailsLabelText = @"Syncing";
+    [self.syncHUD show:YES];
 }
 
 
@@ -180,10 +186,22 @@ static NSString* const APDefaultParsePassword = @"1234";
 
 - (void) didReceiveSyncIsFinished: (NSNotification*) note {
 
+    if (note.userInfo[CoreDataControllerErrorKey]) {
+        
+        /*
+         You are likely here because the app went to background, Parse stop all fetching operations when it happens.
+         I haven't managed to figure out a way to improve it so that the only feasible option we have
+         at the moment is abort the sync operation and return error.
+         You might want to request another sync imediatelly and continue to count where it stopped
+         */
+        
+        [[[UIAlertView alloc]initWithTitle:@"Error" message:@"Error syncing" delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil, nil]show];
+        NSLog(@"Error syncing %@",note.userInfo[CoreDataControllerErrorKey]);
+    }
     [self.syncHUD hide:YES];
     self.totalObjectsSynced = 0;
     self.syncButton.enabled = YES;
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:CoreDataControllerNotificationDidFinishSync object:[CoreDataController sharedInstance]];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:CoreDataControllerNotificationDidSync object:[CoreDataController sharedInstance]];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:CoreDataControllerNotificationDidSyncObject object:[CoreDataController sharedInstance]];
     
 }
@@ -252,14 +270,14 @@ static NSString* const APDefaultParsePassword = @"1234";
     NSManagedObjectContext* context = [CoreDataController sharedInstance].mainContext;
     NSError* error = nil;
     
-    for (NSInteger i = 0; i < 1000; i++) {
+    for (NSInteger i = 0; i < 100; i++) {
         Author* newAuthor= [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass([Author class]) inManagedObjectContext:[CoreDataController sharedInstance].mainContext];
         newAuthor.name = [NSString stringWithFormat:@"Author#%lu (%@)",(unsigned long)i,[PFUser currentUser].username];
-        //newAuthor.photo = [UIImage imageNamed:@"authorPic"];
+        newAuthor.photo = [UIImage imageNamed:@"authorPic"];
         
-//        Book* newBook = [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass([Book class]) inManagedObjectContext:[CoreDataController sharedInstance].mainContext];
-//        newBook.name = [NSString stringWithFormat:@"Book#%lu (%@)",(unsigned long)i,[PFUser currentUser].username];
-//        newBook.author = newAuthor;
+        Book* newBook = [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass([Book class]) inManagedObjectContext:[CoreDataController sharedInstance].mainContext];
+        newBook.name = [NSString stringWithFormat:@"Book#%lu (%@)",(unsigned long)i,[PFUser currentUser].username];
+        newBook.author = newAuthor;
         
         // Set ACL to the object.
         NSString* currentUserObjectId = [PFUser currentUser].objectId;

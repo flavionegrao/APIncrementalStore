@@ -44,7 +44,8 @@
 
 @property (nonatomic, readonly) NSString* localStoreFileName;
 
-- (BOOL) saveSyncContext:(NSError *__autoreleasing*) error;
+- (BOOL) saveAndReset:(BOOL) reset
+          syncContext:(NSError *__autoreleasing*) error;
 
 
 /**

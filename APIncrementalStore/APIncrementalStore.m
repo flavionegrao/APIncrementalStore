@@ -822,9 +822,16 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     
     [self.syncOperation setPerObjectCompletionBlock:^(BOOL isRemote) {
         
-        /* Saving and reseting the sync context for every object to avoid unecessary high memory usage */
+        /* Saving and reseting the sync context for every remote object synced 
+         to avoid unecessary high memory usage. This is particulary true for an initial sync when many
+         objects are likely to be fetched from the webservice (i.e. 10K objects). Without reseting the context 
+         the app may potentlialy go over the iOS memory threshold and get terminated 
+         Perhaps with iOS 8 it might be changed and the APDiskcache be able to save directly to the SQLite database
+         without having to materilaize ManagedObjects in memory....*/
+        
         NSError* saveSyncContextError = nil;
-        if (![weakSelf.diskCache saveSyncContext:&saveSyncContextError]) {
+        BOOL shouldResetSyncContext = (isRemote) ? YES : NO;
+        if (![weakSelf.diskCache saveAndReset:shouldResetSyncContext syncContext:&saveSyncContextError]) {
             [weakSelf.syncOperation cancel];
         }
         
@@ -840,10 +847,9 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         if (!operationError) {
             
             NSError* saveSyncContextError = nil;
-            if (![weakSelf.diskCache saveSyncContext:&saveSyncContextError]) {
+            if (![weakSelf.diskCache saveAndReset:NO syncContext:&saveSyncContextError]) {
                 [weakSelf.syncOperation cancel];
             }
-            
         }
         
         NSMutableDictionary* syncResults = [NSMutableDictionary dictionaryWithCapacity:2];

@@ -17,12 +17,12 @@
     </entity>
     <entity name="Magazine" representedClassName="Magazine" syncable="YES">
         <attribute name="name" optional="YES" attributeType="String" syncable="YES"/>
-        <relationship name="authors" optional="YES" toMany="YES" deletionRule="No Action" destinationEntity="Author" inverseName="magazines" inverseEntity="Author" syncable="YES">
+        <relationship name="authors" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Author" inverseName="magazines" inverseEntity="Author" syncable="YES">
             <userInfo>
                 <entry key="APParseRelationshipType" value="1"/>
             </userInfo>
         </relationship>
-        <relationship name="pages" optional="YES" toMany="YES" deletionRule="No Action" destinationEntity="Page" inverseName="magazine" inverseEntity="Page" syncable="YES"/>
+        <relationship name="pages" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Page" inverseName="magazine" inverseEntity="Page" syncable="YES"/>
     </entity>
     <entity name="Page" representedClassName="Page" syncable="YES">
         <relationship name="book" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Book" inverseName="pages" inverseEntity="Book" syncable="YES"/>
@@ -32,7 +32,7 @@
         <element name="Author" positionX="0" positionY="0" width="128" height="30"/>
         <element name="Book" positionX="0" positionY="0" width="128" height="105"/>
         <element name="EBook" positionX="18" positionY="45" width="128" height="60"/>
-        <element name="Magazine" positionX="18" positionY="36" width="128" height="30"/>
+        <element name="Magazine" positionX="18" positionY="36" width="128" height="90"/>
         <element name="Page" positionX="0" positionY="0" width="128" height="73"/>
     </elements>
 </model>

@@ -184,22 +184,24 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
     
     /*
      Apparently the method -[NSManagedObjectContext mergeChangesFromContextDidSaveNotification:] accepts only managed objects within
-     the passed notification userInfo. When the APDiskCache finishes its sync process and sends out the NSNotification it doesn't know anythng 
-     about what context are intered in merging the recent updates, therefore it can't create the managed objects, so that it sends 
+     the passed notification userInfo. When the APDiskCache finishes its sync process and sends out the NSNotification it doesn't know anythng
+     about what context are intered in merging the recent updates, therefore it can't create the managed objects, so that it sends
      only manged objects IDs.
      
      However when a coredata stack is set under iCloud, the ubiquity store sends a similar message when it finishes the import process
      NSPersistentStoreDidImportUbiquitousContentChangesNotification (@"com.apple.coredata.ubiquity.importer.didfinishimport") and that
-     contains managed object IDs. I've tested changing the message name to match it and the context identify it correctly and merge it 
-     using only managed object IDs. I don't belive this class can get away using apple message name, so it's going to first replace all 
+     contains managed object IDs. I've tested changing the message name to match it and the context identify it correctly and merge it
+     using only managed object IDs. I don't belive this class can get away using apple message name, so it's going to first replace all
      object IDs with managed objects before request the context to merge it.
      */
     NSNotification* adjustedNote = [self notificationReplacingIDsWithManagedObjectsFromNotification:note forManagedContext:self.mainContext];
     [self.mainContext mergeChangesFromContextDidSaveNotification:adjustedNote];
     
     self.isSyncingTheCache = NO;
-    if (AP_DEBUG_INFO) {DLog(@"Notification modified to: %@",note)}
-    [[NSNotificationCenter defaultCenter]postNotificationName:CoreDataControllerNotificationDidSync object:self];
+    NSError* syncError = note.userInfo[APNotificationSyncErrorKey];
+    [[NSNotificationCenter defaultCenter]postNotificationName:CoreDataControllerNotificationDidSync
+                                                       object:self
+                                                     userInfo:(syncError) ? @{CoreDataControllerErrorKey:note.userInfo[APNotificationSyncErrorKey]} : nil];
 }
 
 

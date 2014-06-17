@@ -20,9 +20,12 @@
 #import "NSLogEmoji.h"
 #import "APCommon.h"
 
-NSString* const CoreDataControllerNotificationDidFinishSync = @"com.apetis.apincrementalstore.coredatacontroller.notification.didfinishsync";
+NSString* const CoreDataControllerNotificationDidSync = @"com.apetis.apincrementalstore.coredatacontroller.notification.didsync";
 NSString* const CoreDataControllerNotificationDidSyncObject = @"com.apetis.apincrementalstore.coredatacontroller.notification.didsyncobject";
 NSString* const CoreDataControllerNotificationDidResetTheCache = @"com.apetis.apincrementalstore.coredatacontroller.notification.didresetthecache";
+NSString* const CoreDataControllerErrorKey = @"com.apetis.apincrementalstore.coredatacontroller.error.key";
+
+
 NSString* const CoreDataControllerACLAttributeName = @"__ACL";
 
 static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
@@ -73,7 +76,6 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
     
     if (AP_DEBUG_METHODS) {MLog()}
     
-    [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheWillStartSync:) name:APNotificationStoreWillStartSync object:nil];
     [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheDidFinishSync:) name:APNotificationStoreDidFinishSync object:nil];
     [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheDidSyncObject:) name:APNotificationStoreDidSyncObject object:nil];
     [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheDidReset:) name:APNotificationStoreDidFinishCacheReset object:nil];
@@ -86,7 +88,6 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
     [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationStoreDidFinishCacheReset object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationStoreDidSyncObject object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationStoreDidFinishSync object:nil];
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationStoreWillStartSync object:nil];
 }
 
 
@@ -219,22 +220,24 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
     
     /*
      Apparently the method -[NSManagedObjectContext mergeChangesFromContextDidSaveNotification:] accepts only managed objects within
-     the passed notification userInfo. When the APDiskCache finishes its sync process and sends out the NSNotification it doesn't know anythng 
-     about what context are intered in merging the recent updates, therefore it can't create the managed objects, so that it sends 
+     the passed notification userInfo. When the APDiskCache finishes its sync process and sends out the NSNotification it doesn't know anythng
+     about what context are intered in merging the recent updates, therefore it can't create the managed objects, so that it sends
      only manged objects IDs.
      
      However when a coredata stack is set under iCloud, the ubiquity store sends a similar message when it finishes the import process
      NSPersistentStoreDidImportUbiquitousContentChangesNotification (@"com.apple.coredata.ubiquity.importer.didfinishimport") and that
-     contains managed object IDs. I've tested changing the message name to match it and the context identify it correctly and merge it 
-     using only managed object IDs. I don't belive this class can get away using apple message name, so it's going to first replace all 
+     contains managed object IDs. I've tested changing the message name to match it and the context identify it correctly and merge it
+     using only managed object IDs. I don't belive this class can get away using apple message name, so it's going to first replace all
      object IDs with managed objects before request the context to merge it.
      */
     NSNotification* adjustedNote = [self notificationReplacingIDsWithManagedObjectsFromNotification:note forManagedContext:self.mainContext];
     [self.mainContext mergeChangesFromContextDidSaveNotification:adjustedNote];
     
     self.isSyncingTheCache = NO;
-    if (AP_DEBUG_INFO) {DLog(@"Notification modified to: %@",note)}
-    [[NSNotificationCenter defaultCenter]postNotificationName:CoreDataControllerNotificationDidFinishSync object:self];
+    NSError* syncError = note.userInfo[APNotificationSyncErrorKey];
+    [[NSNotificationCenter defaultCenter]postNotificationName:CoreDataControllerNotificationDidSync
+                                                       object:self
+                                                     userInfo:(syncError) ? @{CoreDataControllerErrorKey:note.userInfo[APNotificationSyncErrorKey]} : nil];
 }
 
 
