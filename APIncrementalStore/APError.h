@@ -31,5 +31,7 @@ typedef NS_ENUM(NSInteger, APIncrementalStoreErrorCode) {
     APIncrementalStoreErrorCodeUserCredentials = 0,
     APIncrementalStoreErrorCodeObtainingPermanentUUID = 1,
     APIncrementalStoreErrorCodeMergingLocalObjects = 2,
-    APIncrementalStoreErrorCodeMergingRemoteObjects = 3
+    APIncrementalStoreErrorCodeMergingRemoteObjects = 3,
+    
+    APIncrementalStoreErrorSyncOperationWasCancelled = 100
 };

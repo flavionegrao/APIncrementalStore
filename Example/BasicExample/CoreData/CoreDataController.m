@@ -241,7 +241,7 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
 - (NSNotification*) notificationReplacingIDsWithManagedObjectsFromNotification:(NSNotification*) note
                                                              forManagedContext:(NSManagedObjectContext*) context {
     
-    NSMutableDictionary* userInfoWithManagedObjects = [note.userInfo mutableCopy];
+    NSMutableDictionary* userInfoWithManagedObjects = [note.userInfo[APNotificationSyncedObjectsKey] mutableCopy];
     [userInfoWithManagedObjects enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
         if ([key isEqualToString:NSInsertedObjectsKey] || [key isEqualToString:NSUpdatedObjectsKey] || [key isEqualToString:NSDeletedObjectsKey]) {
             NSArray* managedObjectIDs = (NSArray*) obj;

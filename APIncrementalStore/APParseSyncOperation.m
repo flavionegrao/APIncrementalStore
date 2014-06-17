@@ -48,6 +48,8 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
 @property (strong,nonatomic) NSMutableDictionary* latestObjectSyncedDates;
 @property (strong,nonatomic) NSString* latestObjectSyncedKey;
 
+@property (nonatomic, strong) NSMutableDictionary* mergedObjectsUIDsNestedByEntityName;
+
 @end
 
 
@@ -96,6 +98,7 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
         
         } else if (![self mergeRemoteObjectsError:&error]) {
              if (AP_DEBUG_ERRORS) {ELog(@"Error merging remote object: %@",error)};
+        
         }
         
         if (self.syncCompletionBlock) {
@@ -104,6 +107,11 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
             }];
         }
         
+    } else {
+        [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+            NSError* error = [NSError errorWithDomain:APIncrementalStoreErrorDomain code:APIncrementalStoreErrorSyncOperationWasCancelled userInfo:nil];
+            self.syncCompletionBlock(self.mergedObjectsUIDsNestedByEntityName,error);
+        }];
     }
     
     if (AP_DEBUG_INFO) {DLog(@"FINISHED")};
@@ -114,7 +122,7 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
     
     if (AP_DEBUG_METHODS) {MLog()}
     
-    __block success = YES;
+    __block BOOL success = YES;
     
     NSError* localError = nil;
     
@@ -124,9 +132,6 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
         return success;
     }
     
-    __block NSMutableDictionary* mergedObjectsUIDsNestedByEntityName = [NSMutableDictionary dictionary];
-    NSManagedObjectModel* model = self.context.persistentStoreCoordinator.managedObjectModel;
-    NSArray* sortedEntities = [[model entities]sortedArrayUsingDescriptors:@[[NSSortDescriptor sortDescriptorWithKey:@"name" ascending:YES]]];
     
     /*
      The reason we fetch only the objects that have been updated up to now is to avoid the situation
@@ -139,9 +144,13 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
     NSDate* parseServerTime = [self getParseServerTime:&localError];
     if (localError) {
         if (error) *error = localError;
-        success = NO;
-        return success;
+        return NO;
     }
+    
+    NSManagedObjectModel* model = self.context.persistentStoreCoordinator.managedObjectModel;
+    NSArray* sortedEntities = [[model entities]sortedArrayUsingDescriptors:@[[NSSortDescriptor sortDescriptorWithKey:@"name" ascending:YES]]];
+    
+    self.mergedObjectsUIDsNestedByEntityName = [NSMutableDictionary dictionary];
     
     for (NSEntityDescription* entityDescription in sortedEntities) {
         
@@ -178,16 +187,20 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
         NSUInteger skip = 0;
         BOOL thereAreObjectsToBeFetched = YES;
         
-        while (thereAreObjectsToBeFetched && ![self isCancelled] ) {
+        while (thereAreObjectsToBeFetched) {
+            
+            if ([self isCancelled]) {
+                if (error) *error = [NSError errorWithDomain:APIncrementalStoreErrorDomain code:APIncrementalStoreErrorSyncOperationWasCancelled userInfo:nil];
+                return NO;
+            }
             
             [query setSkip:skip];
-            NSMutableArray* batchOfObjects = [[query findObjects:&localError]mutableCopy];
+            NSMutableArray* batchOfObjects = [[query findObjects:&localError] mutableCopy];
             if ([query hasCachedResult]) {[query clearCachedResult];}
             
             if (localError) {
                 if (error) *error = localError;
-                success = NO;
-                return success;
+                return NO;
             }
             
             if ([batchOfObjects count] == APParseQueryFetchLimit) {
@@ -196,7 +209,12 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
                 thereAreObjectsToBeFetched = NO;
             }
             
-            while ([batchOfObjects count] > 0 && ![self isCancelled]) {
+            while ([batchOfObjects count] > 0) {
+                
+                if ([self isCancelled]) {
+                    if (error) *error = [NSError errorWithDomain:APIncrementalStoreErrorDomain code:APIncrementalStoreErrorSyncOperationWasCancelled userInfo:nil];
+                    return NO;
+                }
                 
                 @autoreleasepool {
                     
@@ -211,7 +229,7 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
                     
                     NSString* objectStatus;
                     BOOL parseObjectIsDeleted = [[parseObject valueForKey:APObjectStatusAttributeName]isEqualToNumber:@(APObjectStatusDeleted)];
-                    NSMutableDictionary* entityEntry =  mergedObjectsUIDsNestedByEntityName[entityDescription.name] ?: [NSMutableDictionary dictionary];
+                    NSMutableDictionary* entityEntry =  self.mergedObjectsUIDsNestedByEntityName[entityDescription.name] ?: [NSMutableDictionary dictionary];
                     
                     if (!managedObject) {
                         
@@ -229,20 +247,23 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
                             }
                             
                             NSDictionary* serializeParseObject = [self serializeParseObject:parseObject forEntity:managedObject.entity error:&localError];
-                            if (localError) { if (error) *error = localError; return nil; }
+                            if (localError) {
+                                if (error) *error = localError;
+                                return NO;
+                            }
                             
                             [self populateManagedObject:managedObject withSerializedParseObject:serializeParseObject onInsertedRelatedObject:^(NSManagedObject *insertedObject) {
                                 
                                 // Include an entry for the inserted object into the returning NSDictionary
                                 // if any related objects isn't relflected locally yet
                                 
-                                NSMutableDictionary* relatedEntityEntry = mergedObjectsUIDsNestedByEntityName[insertedObject.entity.name] ?: [NSMutableDictionary dictionary];
+                                NSMutableDictionary* relatedEntityEntry = self.mergedObjectsUIDsNestedByEntityName[insertedObject.entity.name] ?: [NSMutableDictionary dictionary];
                                 NSArray* mergedObjectUIDs = relatedEntityEntry[NSInsertedObjectsKey] ?: [[NSArray alloc]init];
                                 NSString* relatedObjectObjectID = [insertedObject valueForKey:APObjectUIDAttributeName];
                                 relatedEntityEntry[NSInsertedObjectsKey] = [mergedObjectUIDs arrayByAddingObject:relatedObjectObjectID];
                                 
                                 if (![self isCancelled]) {
-                                    mergedObjectsUIDsNestedByEntityName[insertedObject.entity.name] = relatedEntityEntry;
+                                    self.mergedObjectsUIDsNestedByEntityName[insertedObject.entity.name] = relatedEntityEntry;
                                 }
                             }];
                             objectStatus = NSInsertedObjectsKey;
@@ -260,20 +281,19 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
                             NSDictionary* serializeParseObject = [self serializeParseObject:parseObject forEntity:managedObject.entity error:&localError];
                             if (localError) {
                                 if (error) *error = localError;
-                                success = NO;
-                                return success;
+                                return NO;
                             }
                             [self populateManagedObject:managedObject withSerializedParseObject:serializeParseObject onInsertedRelatedObject:^(NSManagedObject *insertedObject) {
                                 
-                                /// Include an entry for the inserterd into the return NSDictionary if any related objects isn't relflected locally yet
-                                
-                                NSMutableDictionary* relatedEntityEntry = mergedObjectsUIDsNestedByEntityName[insertedObject.entity.name] ?: [NSMutableDictionary dictionary];
-                                NSArray* mergedObjectUIDs = relatedEntityEntry[NSInsertedObjectsKey] ?: [[NSArray alloc]init];
-                                NSString* relatedObjectObjectID = [insertedObject valueForKey:APObjectUIDAttributeName];
-                                relatedEntityEntry[NSInsertedObjectsKey] = [mergedObjectUIDs arrayByAddingObject:relatedObjectObjectID];
-                                
                                 if (![self isCancelled]) {
-                                    mergedObjectsUIDsNestedByEntityName[insertedObject.entity.name] = relatedEntityEntry;
+                                
+                                    /// Include an entry for the inserterd into the return NSDictionary if any related objects isn't relflected locally yet
+                                    
+                                    NSMutableDictionary* relatedEntityEntry = self.mergedObjectsUIDsNestedByEntityName[insertedObject.entity.name] ?: [NSMutableDictionary dictionary];
+                                    NSArray* mergedObjectUIDs = relatedEntityEntry[NSInsertedObjectsKey] ?: [[NSArray alloc]init];
+                                    NSString* relatedObjectObjectID = [insertedObject valueForKey:APObjectUIDAttributeName];
+                                    relatedEntityEntry[NSInsertedObjectsKey] = [mergedObjectUIDs arrayByAddingObject:relatedObjectObjectID];
+                                    self.mergedObjectsUIDsNestedByEntityName[insertedObject.entity.name] = relatedEntityEntry;
                                 }
                             }];
                             objectStatus = NSUpdatedObjectsKey;
@@ -282,30 +302,27 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
                     
                     // Include an entry into the return NSDictionary for the corresponding object status
                     
-                    if (![entityEntry[NSInsertedObjectsKey] containsObject:[parseObject valueForKey:APObjectUIDAttributeName]]) {
-                        NSArray* mergedObjectUIDs = entityEntry[objectStatus] ?: [[NSArray alloc]init];
-                        entityEntry[objectStatus] = [mergedObjectUIDs arrayByAddingObject:[parseObject valueForKey:APObjectUIDAttributeName]];
-                        
-                        if (![self isCancelled]) {
-                            mergedObjectsUIDsNestedByEntityName[entityDescription.name] = entityEntry;
-                        }
-                    }
-                    
                     if (![self isCancelled]) {
-                        [self setLatestObjectSyncedDate:parseObject.updatedAt forEntityName:entityDescription.name];
-                        if (self.perObjectCompletionBlock) {
-                            [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-                                self.perObjectCompletionBlock(YES);
-                            }];
+                        
+                        if (![entityEntry[NSInsertedObjectsKey] containsObject:[parseObject valueForKey:APObjectUIDAttributeName]]) {
+                            NSArray* mergedObjectUIDs = entityEntry[objectStatus] ?: [[NSArray alloc]init];
+                            entityEntry[objectStatus] = [mergedObjectUIDs arrayByAddingObject:[parseObject valueForKey:APObjectUIDAttributeName]];
+                            
+                            self.mergedObjectsUIDsNestedByEntityName[entityDescription.name] = entityEntry;
+                            
+                            [self setLatestObjectSyncedDate:parseObject.updatedAt forEntityName:entityDescription.name];
+                            if (self.perObjectCompletionBlock) {
+                                [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+                                    self.perObjectCompletionBlock(YES);
+                                }];
+                            }
                         }
                     }
- 
+                    parseObject = nil;
                 } //@autoreleasepool
             }
         }
     }
-    
-    self.mergedObjectsUIDsNestedByEntityName = mergedObjectsUIDsNestedByEntityName;
     
     return success;
 }
@@ -317,7 +334,8 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
     
     __block BOOL success = YES;
     
-    NSError* localError = nil;
+    __block NSError* localError = nil;
+    
     if (![self isUserAuthenticated:&localError]) {
         if (error) *error = localError;
         return NO;
@@ -327,16 +345,10 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
     
     [dirtyManagedObjects enumerateObjectsUsingBlock:^(NSManagedObject* managedObject, NSUInteger idx, BOOL *stop) {
         
-        void (^reportErrorStopEnumerating)() = ^{
-            if (AP_DEBUG_ERRORS) {ELog(@"Error merging object: %@",managedObject)};
-            *stop = YES;
-            success = NO;
-            if (error) *error = localError;
-        };
-        
         if ([self isCancelled]) {
-            *stop = YES;
+            localError = [NSError errorWithDomain:APIncrementalStoreErrorDomain code:APIncrementalStoreErrorSyncOperationWasCancelled userInfo:nil];
             success = NO;
+            *stop = YES;
             
         } else {
             
@@ -360,7 +372,8 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
                     NSError* localError = nil;
                     [self insertOnParseManagedObject:managedObject error:&localError];
                     if (localError) {
-                        reportErrorStopEnumerating();
+                        success = NO;
+                        *stop = YES;
                     } else {
                         [managedObject setValue:@NO forKey:APObjectIsDirtyAttributeName];
                     }
@@ -391,12 +404,14 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
                         [self populateParseObject:parseObject withManagedObject:managedObject error:&localError];
                         
                         if (localError) {
-                            reportErrorStopEnumerating();
+                            success = NO;
+                            *stop = YES;
                             
                         } else {
                             
                             if (![parseObject save:&localError]) {
-                                reportErrorStopEnumerating();
+                                success = NO;
+                                *stop = YES;
                                 
                             } else {
                                 [managedObject setValue:@NO forKey:APObjectIsDirtyAttributeName];
@@ -418,7 +433,8 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
                             [self populateParseObject:parseObject withManagedObject:managedObject error:&localError];
                             
                             if (![parseObject save:&localError]) {
-                                reportErrorStopEnumerating();
+                                success = NO;
+                                *stop = YES;
                             } else {
                                 if ([[managedObject valueForKey:APObjectStatusAttributeName] isEqualToNumber:@(APObjectStatusDeleted)]) {
                                     [self.context deleteObject:managedObject];
@@ -432,8 +448,10 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
                             if (AP_DEBUG_INFO) { DLog(@"APMergePolicyServerWins")}
                             NSError* localError = nil;
                             NSDictionary* serializeParseObject = [self serializeParseObject:parseObject forEntity:managedObject.entity error:&localError];
+                            
                             if (localError) {
-                                reportErrorStopEnumerating();
+                                success = NO;
+                                *stop = YES;
                                 
                             } else {
                                 [self populateManagedObject:managedObject withSerializedParseObject:serializeParseObject onInsertedRelatedObject:nil];
@@ -453,6 +471,7 @@ static NSUInteger const APParseQueryFetchLimit = 1000;
         }
     }];
     
+    if (error) *error = localError;
     return success;
 }
 

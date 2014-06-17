@@ -683,6 +683,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
                 if (error) *error = localError;
                 
             } else {
+                [self.syncContext reset];
                 if (![self saveMainContext:&localError]){
                     success = NO;
                     if (error) *error = localError;
@@ -710,13 +711,15 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
             if (error) *error = localError;
             
         } else {
-            
+            [self.mainContext reset];
             [self.privateContext performBlock:^{
                 
                 if (![self.privateContext save:&localError]) {
                     if (AP_DEBUG_ERRORS) { ELog(@"Error saving changes: %@",localError)}
                     success = NO;
                     if (error) *error = localError;
+                } else {
+                    [self.privateContext reset];
                 }
             }];
         }

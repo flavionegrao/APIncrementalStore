@@ -48,10 +48,17 @@ NSString* const APNotificationStoreDidSyncObject = @"com.apetis.apincrementalsto
 NSString* const APNotificationStoreDidFinishSync = @"com.apetis.apincrementalstore.didfinishsinc";
 
 
+NSString* const APNotificationNumberOfLocalObjectsSyncedKey = @"com.apetis.apincrementalstore.diskcache.numberoflocalobjectssynced.key";
+NSString* const APNotificationNumberOfRemoteObjectsSyncedKey = @"com.apetis.apincrementalstore.diskcache.numberofremoteobjectssynced.key";
+
+
+/****Deprecated************/
 NSString* const APNotificationCacheNumberOfLocalObjectsKey = @"com.apetis.apincrementalstore.diskcache.numberoflocalobjects.key";
 NSString* const APNotificationCacheNumberOfRemoteObjectsKey = @"com.apetis.apincrementalstore.diskcache.numberofremoteobjects.key";
 
-NSString *const APNotificationErrorKey = @"com.apetis.apincrementalstore.diskcache.error.key";
+NSString *const APNotificationSyncedObjectsKey = @"com.apetis.apincrementalstore.syncedobjects.key";
+NSString *const APNotificationSyncErrorKey = @"com.apetis.apincrementalstore.error.key";
+/**************************/
 
 
 /**************************
@@ -199,7 +206,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didReceiveSyncNotifcation:) name:APNotificationRequestCacheSync object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didReceiveFullSyncNotifcation:) name:APNotificationRequestCacheFullSync object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didReceiveResetCacheNotifcation:) name:APNotificationCacheRequestReset object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didReceiveResetCacheNotifcation:) name:APNotificationStoreRequestCacheReset object:nil];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didReceiveAppDidEnterBackground:) name:UIApplicationDidEnterBackgroundNotification object:nil];
 }
@@ -211,7 +218,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     
     [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationRequestCacheSync object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationRequestCacheFullSync object:nil];
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationCacheRequestReset object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationStoreRequestCacheReset object:nil];
 }
 
 
@@ -785,7 +792,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     
     if (AP_DEBUG_METHODS) { MLog()}
     [self.diskCache resetCache];
-    [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationCacheDidFinishReset object:self];
+    [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationStoreDidFinishCacheReset object:self];
 }
 
 - (void) didReceiveAppDidEnterBackground: (NSNotification*) note {
@@ -811,40 +818,45 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     self.syncOperation.context = self.diskCache.syncContext;
     self.syncOperation.fullSync = allRemoteObjects;
     
+    __weak  typeof(self) weakSelf = self;
+    
     [self.syncOperation setPerObjectCompletionBlock:^(BOOL isRemote) {
         
-            /* Saving and reseting the sync context for every object to avoid unecessary high memory usage */
-            NSError* saveSyncContextError = nil;
-            if (![self.diskCache saveSyncContext:&saveSyncContextError]) {
-                if (AP_DEBUG_ERRORS) {ELog(@"Error saving sync context: %@",saveSyncContextError)};
-                [self.syncOperation cancel];
-            }
-            
-            NSString* userInfoKey = (isRemote)? APNotificationCacheNumberOfRemoteObjectsKey: APNotificationCacheNumberOfLocalObjectsKey;
-            NSDictionary* userInfo = @{userInfoKey: @1};
-            
-            [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationStoreDidSyncObject object:self userInfo:userInfo];
-            if (AP_DEBUG_INFO) {DLog(@"Object synced")};
+        /* Saving and reseting the sync context for every object to avoid unecessary high memory usage */
+        NSError* saveSyncContextError = nil;
+        if (![weakSelf.diskCache saveSyncContext:&saveSyncContextError]) {
+            [weakSelf.syncOperation cancel];
+        }
+        
+        NSString* userInfoKey = (isRemote)? APNotificationNumberOfRemoteObjectsSyncedKey: APNotificationNumberOfLocalObjectsSyncedKey;
+        NSDictionary* userInfo = @{userInfoKey: @1};
+        
+        [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationStoreDidSyncObject object:weakSelf userInfo:userInfo];
         
     }];
     
     [self.syncOperation setSyncCompletionBlock:^(NSDictionary* mergedObjectsUIDsNestedByEntityName, NSError* operationError) {
         
         if (!operationError) {
-
+            
             NSError* saveSyncContextError = nil;
-            if (![self.diskCache saveSyncContext:&saveSyncContextError]) {
-                if (AP_DEBUG_ERRORS) {ELog(@"Error saving sync context: %@",saveSyncContextError)};
-                [self.syncOperation cancel];
+            if (![weakSelf.diskCache saveSyncContext:&saveSyncContextError]) {
+                [weakSelf.syncOperation cancel];
             }
             
-            NSDictionary* translatedDictionary = [self translateObjectUIDsToManagedObjectIDs:mergedObjectsUIDsNestedByEntityName];
-            [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationStoreDidFinishSync object:self userInfo:translatedDictionary];
-            
-        } else {
-            if (AP_DEBUG_ERRORS) {ELog(@"Error syncronising: %@",operationError)};
         }
-        self.syncing = NO;
+        
+        NSMutableDictionary* syncResults = [NSMutableDictionary dictionaryWithCapacity:2];
+        if (mergedObjectsUIDsNestedByEntityName) {
+            syncResults[APNotificationSyncedObjectsKey] = [weakSelf translateObjectUIDsToManagedObjectIDs:mergedObjectsUIDsNestedByEntityName];
+        }
+        if (operationError) {
+            syncResults[APNotificationSyncErrorKey] = operationError;
+        }
+        
+        [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationStoreDidFinishSync object:weakSelf userInfo:[syncResults copy]];
+        
+        weakSelf.syncing = NO;
     }];
     
     [self.syncQueue addOperation:self.syncOperation];

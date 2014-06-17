@@ -144,6 +144,7 @@ static NSString* const APDefaultParsePassword = @"1234";
                 [CoreDataController sharedInstance].authenticatedUser = user;
                 [self configFetchResultController];
                 [self configNavBarForLoggedUser:YES];
+                NSLog(@"Session-Token: %@",user.sessionToken);
                 
             } else {
                 NSString* errorMessage = [NSString stringWithFormat:@"Authentication failure: %@",error.localizedDescription];
@@ -251,14 +252,14 @@ static NSString* const APDefaultParsePassword = @"1234";
     NSManagedObjectContext* context = [CoreDataController sharedInstance].mainContext;
     NSError* error = nil;
     
-    for (NSInteger i = 0; i < 100; i++) {
+    for (NSInteger i = 0; i < 1000; i++) {
         Author* newAuthor= [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass([Author class]) inManagedObjectContext:[CoreDataController sharedInstance].mainContext];
         newAuthor.name = [NSString stringWithFormat:@"Author#%lu (%@)",(unsigned long)i,[PFUser currentUser].username];
-        newAuthor.photo = [UIImage imageNamed:@"authorPic"];
+        //newAuthor.photo = [UIImage imageNamed:@"authorPic"];
         
-        Book* newBook = [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass([Book class]) inManagedObjectContext:[CoreDataController sharedInstance].mainContext];
-        newBook.name = [NSString stringWithFormat:@"Book#%lu (%@)",(unsigned long)i,[PFUser currentUser].username];
-        newBook.author = newAuthor;
+//        Book* newBook = [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass([Book class]) inManagedObjectContext:[CoreDataController sharedInstance].mainContext];
+//        newBook.name = [NSString stringWithFormat:@"Book#%lu (%@)",(unsigned long)i,[PFUser currentUser].username];
+//        newBook.author = newAuthor;
         
         // Set ACL to the object.
         NSString* currentUserObjectId = [PFUser currentUser].objectId;
@@ -269,7 +270,6 @@ static NSString* const APDefaultParsePassword = @"1234";
         if(error){
             ELog(@"Fetching error: %@",error);
         }
-
     }
 }
 
