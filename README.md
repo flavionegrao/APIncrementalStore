@@ -16,6 +16,8 @@ There are basically three main classes:
 3) `APParseSyncOperation` - Responsible for merging the local cache context in background as requested by the `APIncrementalStore`. After some great insights from last WWDC and to be inline with CloudKit aproach, this class is now a subclass of `APWebServiceSyncOperation`, which in turn is a sublass of `NSOperation`. This change was necessary to control how the operataion should behave when the app changes its states due to user actions. For example if the app goes into background it cancel all current operations and return an NSError. This was necessary as all Parse SDK fetch requests get interrupted imediatelly after the app go into background, therefore `APParseSyncOperation` is playing safe and aborting. All objects synced will remain persistant as it saves the contexts to disk per object basis.
 Also with this change it become quite feasible to create another subclass of `APWebServiceSyncOperation` and implement another webservice intergration, perhaps using CloudKit next.
 
+![Sync Process](https://github.com/flavionegrao/APIncrementalStore/blob/gh-pages/images/Architecture.001.png)
+
 Any question please drop me a message or open an issue.
 
 
