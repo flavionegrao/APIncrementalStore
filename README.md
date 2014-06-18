@@ -11,12 +11,12 @@ There are basically three main classes:
 
 1) `APIncrementalStore` - this is the `NSIncrementalStore` subclass that implements what is required to handle the Core Data context.
 
-2) `APDiskCache` - the APIncrementalStore uses this class as a local cache to respond to all the requests. This class exchanges NSDictionaries representations of the managed objects and uses a objectID to uniquely identify them across the managed contexts (`NSIncrementalStore` and Disk Cache). This class uses a complete core data stack to store the cached objects. There will be one sqlite store for each logged user, so that on distinct cache per user.
+2) `APDiskCache` - the APIncrementalStore uses this class as a local cache to respond to all the requests. This class exchanges NSDictionaries representations of the managed objects and uses a objectUID to uniquely identify them across the managed contexts (`NSIncrementalStore` and Disk Cache). This class uses a complete core data stack to store the cached objects. There will be one sqlite store for each logged user, so that on distinct cache per user.
 
-3) `APParseSyncOperation` - Responsible for merging the local cache context in background as requested by the `APIncrementalStore`. After some great insights from last WWDC and to be inline with CloudKit aproach, this class is now a subclass of `APWebServiceSyncOperation`, which in turn is a sublass of `NSOperation`. This change was necessary to control how the operataion should behave when the app change its states due to user actions. For example if the app goes into background it cancel all current operations and return an NSError. This was necessary as all Parse SDK fetch requests get interrupted imediatelly after the app go into background, therefore `APParseSyncOperation` is playing save and aborting. All objects synced will remain persistant as it saves the contexts to disk per object basis.
+3) `APParseSyncOperation` - Responsible for merging the local cache context in background as requested by the `APIncrementalStore`. After some great insights from last WWDC and to be inline with CloudKit aproach, this class is now a subclass of `APWebServiceSyncOperation`, which in turn is a sublass of `NSOperation`. This change was necessary to control how the operataion should behave when the app changes its states due to user actions. For example if the app goes into background it cancel all current operations and return an NSError. This was necessary as all Parse SDK fetch requests get interrupted imediatelly after the app go into background, therefore `APParseSyncOperation` is playing safe and aborting. All objects synced will remain persistant as it saves the contexts to disk per object basis.
 Also with this change it become quite feasible to create another subclass of `APWebServiceSyncOperation` and implement another webservice intergration, perhaps using CloudKit next.
 
-I will include descent documentation in the next weeks, for the time being take a look at the folder Example in the repository, you are going to find a very basic usage of this library.
+Any question please drop me a message or open an issue.
 
 
 ###Additional columns to Parse classes
@@ -170,22 +170,22 @@ Use a test Parse App as it will include few additional classes needed for testin
 ###Version history
 
 ####v.0.4.0
-Changed APParseConnector to APParseSyncOperation (NSOperation subclass - see WWDC CloudKit View to understand why)
-Changed APObjectIsDeleted to APObjectStatus in order to achieve better control over objects sync process
-Added initial support to iOS APP lifeclycle (background)
-Unit tests ammended to reflect above changes
-Bug fixes as usual
-Example app enhancements
+- Changed APParseConnector to APParseSyncOperation (NSOperation subclass - see WWDC CloudKit View to understand why)
+- Changed APObjectIsDeleted to APObjectStatus in order to achieve better control over objects sync process
+- Added initial support to iOS APP lifeclycle (background)
+- Unit tests ammended to reflect above changes
+- Bug fixes as usual
+- Example app enhancements
 
 ####v.0.3.1
-Added support to Parse Arrays (1st version - please report any bug)
-Added support for multiple apps to coexist using distinct local caches. See @protocol APWebServiceConnector -setEnvID:
+- Added support to Parse Arrays (1st version - please report any bug)
+- Added support for multiple apps to coexist using distinct local caches. See @protocol APWebServiceConnector -setEnvID:
 
 ####v.0.3.0
-Lots of bug fixes mainly related to inheritance
+- Lots of bug fixes mainly related to inheritance
 
 ####v.0.2.9
-Added support to [Core Data Entity Inheritance](https://developer.apple.com/library/mac/documentation/Cocoa/Conceptual/CoreData/Articles/cdMOM.html#//apple_ref/doc/uid/TP40002328-SW11) 
+- Added support to [Core Data Entity Inheritance](https://developer.apple.com/library/mac/documentation/Cocoa/Conceptual/CoreData/Articles/cdMOM.html#//apple_ref/doc/uid/TP40002328-SW11) 
 
 
 
