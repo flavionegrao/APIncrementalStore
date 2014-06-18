@@ -686,7 +686,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
                 
             } else {
                 if (reset) [self.syncContext reset];
-                if (![self saveAndReset:reset syncContext:&localError]){
+                if (![self saveAndReset:reset mainContext:&localError]){
                     success = NO;
                     if (error) *error = localError;
                 }
