@@ -170,22 +170,22 @@ Use a test Parse App as it will include few additional classes needed for testin
 ###Version history
 
 ####v.0.4.0
-Changed APParseConnector to APParseSyncOperation (NSOperation subclass - see WWDC CloudKit View to understand why)
-Changed APObjectIsDeleted to APObjectStatus in order to achieve better control over objects sync process
-Added initial support to iOS APP lifeclycle (background)
-Unit tests ammended to reflect above changes
-Bug fixes as usual
-Example app enhancements
+- Changed APParseConnector to APParseSyncOperation (NSOperation subclass - see WWDC CloudKit View to understand why)
+- Changed APObjectIsDeleted to APObjectStatus in order to achieve better control over objects sync process
+- Added initial support to iOS APP lifeclycle (background)
+- Unit tests ammended to reflect above changes
+- Bug fixes as usual
+- Example app enhancements
 
 ####v.0.3.1
-Added support to Parse Arrays (1st version - please report any bug)
-Added support for multiple apps to coexist using distinct local caches. See @protocol APWebServiceConnector -setEnvID:
+- Added support to Parse Arrays (1st version - please report any bug)
+- Added support for multiple apps to coexist using distinct local caches. See @protocol APWebServiceConnector -setEnvID:
 
 ####v.0.3.0
-Lots of bug fixes mainly related to inheritance
+- Lots of bug fixes mainly related to inheritance
 
 ####v.0.2.9
-Added support to [Core Data Entity Inheritance](https://developer.apple.com/library/mac/documentation/Cocoa/Conceptual/CoreData/Articles/cdMOM.html#//apple_ref/doc/uid/TP40002328-SW11) 
+- Added support to [Core Data Entity Inheritance](https://developer.apple.com/library/mac/documentation/Cocoa/Conceptual/CoreData/Articles/cdMOM.html#//apple_ref/doc/uid/TP40002328-SW11) 
 
 
 
