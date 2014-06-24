@@ -333,8 +333,6 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     if (AP_DEBUG_METHODS) { MLog()}
     
     NSFetchRequest* cacheFetchRequest = [fetchRequest copy];
-    //[cacheFetchRequest setReturnsDistinctResults:YES];
-    [cacheFetchRequest setEntity:[NSEntityDescription entityForName:fetchRequest.entityName inManagedObjectContext:self.mainContext]];
     [cacheFetchRequest setPredicate:[self cachePredicateFromPredicate:fetchRequest.predicate forEntityName:fetchRequest.entityName]];
     return cacheFetchRequest;
 }

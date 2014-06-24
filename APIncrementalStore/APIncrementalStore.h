@@ -120,6 +120,9 @@ extern NSString* const APNotificationCacheDidFinishReset __attribute__((deprecat
 /// The user object authenticated that will be used to sync with the BaaS provider.
 extern NSString* const APOptionAuthenticatedUserObjectKey;
 
+/// Set it to YES and the APIncrementalStore will start a sync process after each context save. Default is YES.
+extern NSString* const APOptionSyncOnSaveKey;
+
 /// The name of the disk cache store file.
 extern NSString* const APOptionCacheFileNameKey;
 

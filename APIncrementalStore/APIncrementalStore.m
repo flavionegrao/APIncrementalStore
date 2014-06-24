@@ -81,6 +81,7 @@ NSString* const APOptionCacheFileNameKey = @"com.apetis.apincrementalstore.optio
 NSString* const APOptionCacheFileResetKey = @"com.apetis.apincrementalstore.option.diskcachereset.key";
 
 NSString* const APOptionMergePolicyKey = @"com.apetis.apincrementalstore.option.mergepolicy.key";
+NSString* const APOptionSyncOnSaveKey = @"com.apetis.apincrementalstore.option.synconsave.key";
 NSString* const APOptionMergePolicyServerWins = @"com.apetis.apincrementalstore.option.mergepolicy.serverwins";
 NSString* const APOptionMergePolicyClientWins = @"com.apetis.apincrementalstore.option.mergepolicy.clientwins";
 
@@ -106,6 +107,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
 @property (nonatomic, strong) NSOperationQueue* syncQueue;
 @property (nonatomic, strong) APWebServiceSyncOperation* syncOperation;
 @property (nonatomic, assign) APMergePolicy mergePolicy;
+@property (nonatomic, assign) BOOL syncOnSave;
 @property (nonatomic, assign) PFUser* authenticatedUser;
 
 
@@ -166,6 +168,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
             return nil;
         }
         _mergePolicy = [[options valueForKey:APOptionMergePolicyKey] integerValue];
+        _syncOnSave = [options valueForKey:APOptionSyncOnSaveKey] ? [[options valueForKey:APOptionSyncOnSaveKey]boolValue] : YES;
         _model = psc.managedObjectModel;
         
         // There will be one sqlite store file for each user. The file name will be <username>-<APOptionCacheFileNameKey>
@@ -663,6 +666,8 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         }];
         if (localError) return nil;
     }
+    
+    if (self.syncOnSave) [self syncLocalCacheAllRemoteObjects:NO];
     
     return @[];
 }
