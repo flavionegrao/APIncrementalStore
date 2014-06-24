@@ -171,6 +171,9 @@ Use a test Parse App as it will include few additional classes needed for testin
 
 ###Version history
 
+####v.0.4.1
+- Automatic Sync is executed after each context save that hits the 'APIncrementalStore'. Can be turned of by passing APOptionSyncOnSaveKey set to NO when initializing the Store.
+
 ####v.0.4.0
 - Changed APParseConnector to APParseSyncOperation (NSOperation subclass - see WWDC CloudKit View to understand why)
 - Changed APObjectIsDeleted to APObjectStatus in order to achieve better control over objects sync process
