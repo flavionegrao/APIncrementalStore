@@ -501,7 +501,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 }
             }
             [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-                self.perObjectCompletionBlock(NO);
+                if (self.perObjectCompletionBlock) self.perObjectCompletionBlock(NO);
             }];
         }
     }];

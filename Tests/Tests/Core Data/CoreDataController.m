@@ -20,8 +20,10 @@
 #import "NSLogEmoji.h"
 #import "APCommon.h"
 
-NSString* const CoreDataControllerNotificationDidSync = @"CoreDataControllerNotificationDidSync";
-NSString* const CoreDataControllerNotificationDidResetTheCache = @"CoreDataControllerNotificationDidResetTheCache";
+NSString* const CoreDataControllerNotificationDidSync = @"com.apetis.apincrementalstore.coredatacontroller.notification.didsync";
+NSString* const CoreDataControllerNotificationDidSyncObject = @"com.apetis.apincrementalstore.coredatacontroller.notification.didsyncobject";
+NSString* const CoreDataControllerNotificationDidResetTheCache = @"com.apetis.apincrementalstore.coredatacontroller.notification.didresetthecache";
+NSString* const CoreDataControllerErrorKey = @"com.apetis.apincrementalstore.coredatacontroller.error.key";
 
 static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
 
@@ -70,14 +72,14 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
     
     [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheDidStartSync:) name:APNotificationStoreWillStartSync object:nil];
     [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheDidFinishSync:) name:APNotificationStoreDidFinishSync object:nil];
-    [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheDidReset:) name:APNotificationCacheDidFinishReset object:nil];
+    [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheDidReset:) name:APNotificationStoreDidFinishCacheReset object:nil];
 }
 
 - (void) dealloc {
     
     if (AP_DEBUG_METHODS) {MLog()}
     
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationCacheDidFinishReset object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationStoreDidFinishCacheReset object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationStoreDidFinishSync object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationStoreWillStartSync object:nil];
 }
@@ -145,7 +147,7 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
     
     self.isResetingTheCache = YES;
     [[NSOperationQueue mainQueue]addOperationWithBlock:^{
-        [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationCacheRequestReset object:self];
+        [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationStoreRequestCacheReset object:self];
     }];
 }
 
@@ -208,7 +210,7 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
 - (NSNotification*) notificationReplacingIDsWithManagedObjectsFromNotification:(NSNotification*) note
                                                              forManagedContext:(NSManagedObjectContext*) context {
     
-    NSMutableDictionary* userInfoWithManagedObjects = [note.userInfo mutableCopy];
+    NSMutableDictionary* userInfoWithManagedObjects = [note.userInfo[APNotificationSyncedObjectsKey] mutableCopy];
     [userInfoWithManagedObjects enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
         if ([key isEqualToString:NSInsertedObjectsKey] || [key isEqualToString:NSUpdatedObjectsKey] || [key isEqualToString:NSDeletedObjectsKey]) {
             NSArray* managedObjectIDs = (NSArray*) obj;

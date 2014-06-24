@@ -326,19 +326,19 @@ static NSString* const kBookName2 = @"A Clash of Kings";
 }
 
 
-/*
- During tests an issue happend when executing the following steps:
- 1) Create an author#1 on device#1
- 2) Sync device#1
- 3) Sync device#2 (the author#1 is synced on device#2)
- 4) On device#2 add book#1 to author#1
- 5) Sync device#2
- 6) Sync device#1
- 
- Issue: author#1 on device#1 doesn't get updated with book#1
- */
-
 - (void) testAddBookToAnAuthorCreatedOnAnotherDevice {
+   
+    /*
+     During tests an issue happend when executing the following steps:
+     1) Create an author#1 on device#1
+     2) Sync device#1
+     3) Sync device#2 (the author#1 is synced on device#2)
+     4) On device#2 add book#1 to author#1
+     5) Sync device#2
+     6) Sync device#1
+     
+     Issue: author#1 on device#1 doesn't get updated with book#1
+     */
    
     Author* author1 = [NSEntityDescription insertNewObjectForEntityForName:@"Author" inManagedObjectContext:self.coreDataController.mainContext];
     author1.name = @"Author#1";
@@ -349,8 +349,7 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     
     // Sync and wait untill it's finished
     [self.coreDataController requestSyncCache];
-    while (self.coreDataController.isSyncingTheCache &&
-           [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
+    while (self.coreDataController.isSyncingTheCache && WAIT_PATIENTLY);
     
     dispatch_group_async(self.group, self.queue, ^{
         
@@ -378,8 +377,7 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     
     // Sync and wait untill it's finished
     [self.coreDataController requestSyncCache];
-    while (self.coreDataController.isSyncingTheCache &&
-           [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
+    while (self.coreDataController.isSyncingTheCache && WAIT_PATIENTLY);
     
     XCTAssertTrue([author1.books count] == 1);
     
@@ -774,6 +772,52 @@ Expected Results:
      for (NSUInteger i = 0; i < [sortedNames count]; i++) {
          XCTAssertTrue([[fetchedAuthors[i] valueForKey:@"name"] isEqualToString:sortedNames[[sortedNames count] - i - 1]]);
      }
+}
+
+
+- (void) testFetchRequestOffsetAndLimit {
+    
+    NSArray* sortedNames = @[@"Author#10",@"Author#11",@"Author#12",@"Author#13"];
+    
+    dispatch_group_async(self.group, self.queue, ^{
+        NSError* saveError = nil;
+        for (NSUInteger i = 0; i < [sortedNames count]; i++) {
+            PFObject* author = [PFObject objectWithClassName:@"Author"];
+            [author setValue:sortedNames[i] forKey:@"name"];
+            author[APObjectStatusAttributeName] = @(APObjectStatusPopulated);
+            [author setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+            author[APObjectEntityNameAttributeName] = @"Author";
+            [author save:&saveError];
+            DLog(@"Author created: %@",[author valueForKeyPath:@"name"])
+            XCTAssertNil(saveError);
+        }
+    });
+    dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
+    
+    [self.coreDataController requestSyncCache];
+    while (self.coreDataController.isSyncingTheCache && WAIT_PATIENTLY);
+    
+    // Remove the first one created at SetUp
+    [self.coreDataController.mainContext deleteObject:[self fetchAuthor]];
+    
+    NSError* saveError = nil;
+    [self.coreDataController.mainContext save:&saveError];
+    XCTAssertNil(saveError);
+    
+    NSError* fetchError;
+    NSFetchRequest* fr = [NSFetchRequest fetchRequestWithEntityName:@"Author"];
+    [fr setFetchLimit: 1];
+    fr.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"name" ascending:YES]];
+    
+    for (NSUInteger i = 0; i < [sortedNames count]; i++) {
+        [fr setFetchOffset: i];
+        NSArray* results = [self.coreDataController.mainContext executeFetchRequest:fr error:&fetchError];
+        XCTAssertTrue([results count] == 1);
+        
+        Author* fetchedAuthor = [results lastObject];
+        XCTAssertNil(fetchError);
+        XCTAssertTrue([fetchedAuthor.name isEqualToString:sortedNames[i]]);
+    }
 }
 
 

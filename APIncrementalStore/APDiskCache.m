@@ -239,9 +239,6 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 }
 
 
-
-
-
 #pragma mark - Fetching
 
 - (NSArray*) fetchObjectRepresentations:(NSFetchRequest *)fetchRequest
