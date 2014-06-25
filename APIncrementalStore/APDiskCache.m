@@ -333,74 +333,20 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     if (AP_DEBUG_METHODS) { MLog()}
     
     NSFetchRequest* cacheFetchRequest = [fetchRequest copy];
-    [cacheFetchRequest setPredicate:[self cachePredicateFromPredicate:fetchRequest.predicate forEntityName:fetchRequest.entityName]];
+   
+    NSMutableArray* predicates = [NSMutableArray array];
+    
+    NSPredicate* translatedPredicate = [self cachePredicateFromPredicate:fetchRequest.predicate forEntityName:fetchRequest.entityName];
+    if (translatedPredicate) [predicates addObject:translatedPredicate];
+    
+    [predicates addObject:[self controlPropertiesPredicate]];
+    [cacheFetchRequest setPredicate:[NSCompoundPredicate andPredicateWithSubpredicates:predicates]];
+    
     return cacheFetchRequest;
 }
 
 
-// Translates a user submited predicate to a "translated" for local cache queries.
-- (NSPredicate*) cachePredicateFromPredicate:(NSPredicate *)predicate
-                               forEntityName:(NSString*) entityName {
-    
-    if (AP_DEBUG_METHODS) { MLog()}
-    
-    if (!predicate)return nil;
-    
-    NSPredicate *predicateToReturn = [predicate copy];
-    
-    if ([predicate isKindOfClass:[NSCompoundPredicate class]]) {
-        NSCompoundPredicate *compoundPredicate = (NSCompoundPredicate*)predicate;
-        NSArray *subpredicates = compoundPredicate.subpredicates;
-        NSMutableArray *newSubpredicates = [NSMutableArray arrayWithCapacity:[subpredicates count]];
-        
-        for (NSPredicate *subpredicate in subpredicates) {
-            [newSubpredicates addObject:[self cachePredicateFromPredicate:subpredicate forEntityName:entityName]];
-        }
-        predicateToReturn = [[NSCompoundPredicate alloc] initWithType:compoundPredicate.compoundPredicateType subpredicates:newSubpredicates];
-        
-    } else {
-        NSComparisonPredicate *comparisonPredicate = (NSComparisonPredicate *)predicate;
-        NSManagedObjectID *objectID;
-        NSManagedObjectID *cacheObjectID;
-        NSExpression *rightExpression = comparisonPredicate.rightExpression;
-        NSExpression *leftExpression = comparisonPredicate.leftExpression;
-        
-        if (comparisonPredicate.leftExpression.expressionType == NSConstantValueExpressionType) {
-            
-            if ([comparisonPredicate.leftExpression.constantValue isKindOfClass:[NSManagedObject class]]) {
-                objectID = [(NSManagedObject *)comparisonPredicate.leftExpression.constantValue objectID];
-                NSString *referenceObject = self.translateManagedObjectIDToObjectUIDBlock(objectID);
-                cacheObjectID = [self fetchManagedObjectIDForObjectUID:referenceObject entityName:[[objectID entity] name] createIfNeeded:NO];
-                
-            } else if ([comparisonPredicate.leftExpression.constantValue isKindOfClass:[NSManagedObjectID class]]) {
-                objectID = (NSManagedObjectID *)comparisonPredicate.leftExpression.constantValue;
-                NSString *referenceObject = self.translateManagedObjectIDToObjectUIDBlock(objectID);
-                cacheObjectID = [self fetchManagedObjectIDForObjectUID:referenceObject entityName:[[objectID entity] name] createIfNeeded:NO];
-            }
-            if (cacheObjectID) leftExpression = [NSExpression expressionForConstantValue:cacheObjectID];
-        }
-        
-        if (comparisonPredicate.rightExpression.expressionType == NSConstantValueExpressionType) {
-            
-            if ([comparisonPredicate.rightExpression.constantValue isKindOfClass:[NSManagedObject class]]) {
-                objectID = [(NSManagedObject *)comparisonPredicate.rightExpression.constantValue objectID];
-                NSString *referenceObject = self.translateManagedObjectIDToObjectUIDBlock(objectID);
-                cacheObjectID = [self fetchManagedObjectIDForObjectUID:referenceObject entityName:[[objectID entity] name] createIfNeeded:NO];
-                
-            } else if ([comparisonPredicate.rightExpression.constantValue isKindOfClass:[NSManagedObjectID class]]) {
-                objectID = (NSManagedObjectID *)comparisonPredicate.rightExpression.constantValue;
-                NSString *referenceObject = self.translateManagedObjectIDToObjectUIDBlock(objectID);
-                cacheObjectID = [self fetchManagedObjectIDForObjectUID:referenceObject entityName:[[objectID entity] name] createIfNeeded:NO];
-            }
-            if (cacheObjectID) rightExpression = [NSExpression expressionForConstantValue:cacheObjectID];
-        }
-        
-        predicateToReturn = [NSComparisonPredicate predicateWithLeftExpression:leftExpression
-                                                               rightExpression:rightExpression
-                                                                      modifier:comparisonPredicate.comparisonPredicateModifier
-                                                                          type:comparisonPredicate.predicateOperatorType
-                                                                       options:comparisonPredicate.options];
-    }
+- (NSPredicate*) controlPropertiesPredicate {
     
     // see -[APDiskCache setModel:] for a comprehensive explanation
     NSPredicate* lastModifiedDateIsNil = [NSPredicate predicateWithFormat:@"%K == nil",APObjectLastModifiedAttributeName];
@@ -409,9 +355,81 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     
     NSPredicate* hasLastModifiedDate = [NSPredicate predicateWithFormat:@"%K != nil",APObjectLastModifiedAttributeName];
     NSPredicate* hasLastModifiedDateOrWasCreatedLocally = [NSCompoundPredicate orPredicateWithSubpredicates:@[hasLastModifiedDate,wasCreatedLocally]];
+   
     NSPredicate* onlyPopulatedObjectsObjects = [NSPredicate predicateWithFormat:@"%K == %@",APObjectStatusAttributeName,@(APObjectStatusPopulated)];
     
-    return [NSCompoundPredicate andPredicateWithSubpredicates:@[predicateToReturn,onlyPopulatedObjectsObjects,hasLastModifiedDateOrWasCreatedLocally]];
+    return [NSCompoundPredicate andPredicateWithSubpredicates:@[onlyPopulatedObjectsObjects,hasLastModifiedDateOrWasCreatedLocally]];
+}
+
+
+// Translates a user submited predicate to a "translated" one used on local cache queries.
+- (NSPredicate*) cachePredicateFromPredicate:(NSPredicate *)predicate
+                               forEntityName:(NSString*) entityName {
+    
+    if (AP_DEBUG_METHODS) { MLog()}
+    
+    NSPredicate *adjustedPredicate;
+    
+    if (predicate) {
+
+        adjustedPredicate = [predicate copy];
+        
+        if ([predicate isKindOfClass:[NSCompoundPredicate class]]) {
+            NSCompoundPredicate *compoundPredicate = (NSCompoundPredicate*)predicate;
+            NSArray *subpredicates = [compoundPredicate subpredicates];
+            NSMutableArray *newSubpredicates = [NSMutableArray arrayWithCapacity:[subpredicates count]];
+            
+            for (NSPredicate *subpredicate in subpredicates) {
+                [newSubpredicates addObject:[self cachePredicateFromPredicate:subpredicate forEntityName:entityName]];
+            }
+            adjustedPredicate = [[NSCompoundPredicate alloc] initWithType:compoundPredicate.compoundPredicateType subpredicates:newSubpredicates];
+            
+        } else {
+            
+            NSComparisonPredicate *comparisonPredicate = (NSComparisonPredicate *)predicate;
+            NSManagedObjectID *objectID;
+            NSManagedObjectID *cacheObjectID;
+            NSExpression *rightExpression = comparisonPredicate.rightExpression;
+            NSExpression *leftExpression = comparisonPredicate.leftExpression;
+            
+            if (comparisonPredicate.leftExpression.expressionType == NSConstantValueExpressionType) {
+                
+                if ([comparisonPredicate.leftExpression.constantValue isKindOfClass:[NSManagedObject class]]) {
+                    objectID = [(NSManagedObject *)comparisonPredicate.leftExpression.constantValue objectID];
+                    NSString *referenceObject = self.translateManagedObjectIDToObjectUIDBlock(objectID);
+                    cacheObjectID = [self fetchManagedObjectIDForObjectUID:referenceObject entityName:[[objectID entity] name] createIfNeeded:NO];
+                    
+                } else if ([comparisonPredicate.leftExpression.constantValue isKindOfClass:[NSManagedObjectID class]]) {
+                    objectID = (NSManagedObjectID *)comparisonPredicate.leftExpression.constantValue;
+                    NSString *referenceObject = self.translateManagedObjectIDToObjectUIDBlock(objectID);
+                    cacheObjectID = [self fetchManagedObjectIDForObjectUID:referenceObject entityName:[[objectID entity] name] createIfNeeded:NO];
+                }
+                if (cacheObjectID) leftExpression = [NSExpression expressionForConstantValue:cacheObjectID];
+            }
+            
+            if (comparisonPredicate.rightExpression.expressionType == NSConstantValueExpressionType) {
+                
+                if ([comparisonPredicate.rightExpression.constantValue isKindOfClass:[NSManagedObject class]]) {
+                    objectID = [(NSManagedObject *)comparisonPredicate.rightExpression.constantValue objectID];
+                    NSString *referenceObject = self.translateManagedObjectIDToObjectUIDBlock(objectID);
+                    cacheObjectID = [self fetchManagedObjectIDForObjectUID:referenceObject entityName:[[objectID entity] name] createIfNeeded:NO];
+                    
+                } else if ([comparisonPredicate.rightExpression.constantValue isKindOfClass:[NSManagedObjectID class]]) {
+                    objectID = (NSManagedObjectID *)comparisonPredicate.rightExpression.constantValue;
+                    NSString *referenceObject = self.translateManagedObjectIDToObjectUIDBlock(objectID);
+                    cacheObjectID = [self fetchManagedObjectIDForObjectUID:referenceObject entityName:[[objectID entity] name] createIfNeeded:NO];
+                }
+                if (cacheObjectID) rightExpression = [NSExpression expressionForConstantValue:cacheObjectID];
+            }
+            
+            adjustedPredicate = [NSComparisonPredicate predicateWithLeftExpression:leftExpression
+                                                                   rightExpression:rightExpression
+                                                                          modifier:comparisonPredicate.comparisonPredicateModifier
+                                                                              type:comparisonPredicate.predicateOperatorType
+                                                                           options:comparisonPredicate.options];
+        }
+    }
+    return adjustedPredicate;
 }
 
 

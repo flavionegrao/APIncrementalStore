@@ -547,7 +547,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         // Allows us to always return object, faulted or not
         NSManagedObject* managedObject = [context objectWithID:managedObjectID];
         
-        if (![managedObject isFault]) {
+        if (![managedObject isFault] && [fetchRequest shouldRefreshRefetchedObjects]) {
             [self populateManagedObject:managedObject withRepresentation:cacheManagedObjectRep callingContext:context];
         }
         [results addObject:managedObject];

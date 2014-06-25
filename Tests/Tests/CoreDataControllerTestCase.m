@@ -977,6 +977,34 @@ Expected Results:
 }
 
 
+- (void) testFetchingDoesNotCauseManagedObjectIsUpdated {
+    /*
+     Background - An issue was observed when fetching objects from the APIncrementalStore, it was causing
+     the faulted in fetched objects to change their property isUpdated to YES. 
+     The result was that after saving the context those objects were marked as dirty and 
+     subsequently queued to be synced even without any change.
+     Solution - That was a bug with the APIncrementalStore class, fixed checking the property 
+     shouldRefreshRefetchedObjects from the incoming fetch request before populating already faulted in
+     objects.
+     */
+    
+    // Fetch
+    Book* book = [self fetchBook];
+    XCTAssertFalse([book isUpdated]);
+    
+    // Fault in
+    [book willAccessValueForKey:nil];
+     XCTAssertFalse([book isUpdated]);
+    
+    // Fetch again
+    book = [self fetchBook];
+    XCTAssertFalse([book isUpdated]);
+    
+    // FetchRequest has  setShouldRefreshRefetchedObjects = YES;
+    book = [self fetchBookRefreshObject];
+    XCTAssertTrue([book isUpdated]);
+}
+
 
 #pragma mark - Support Methods
 
@@ -987,10 +1015,17 @@ Expected Results:
     return [bookResults lastObject];
 }
 
+- (Book*) fetchBookRefreshObject {
+    NSFetchRequest* bookFetchRequest = [[NSFetchRequest alloc]initWithEntityName:@"Book"];
+    bookFetchRequest.predicate = [NSPredicate predicateWithFormat:@"name = %@",kBookName1];
+    [bookFetchRequest setShouldRefreshRefetchedObjects:YES];
+    NSArray* bookResults = [self.coreDataController.mainContext executeFetchRequest:bookFetchRequest error:nil];
+    return [bookResults lastObject];
+}
 
 - (Author*) fetchAuthor {
     NSFetchRequest* authorFetchRequest = [[NSFetchRequest alloc]initWithEntityName:@"Author"];
-    authorFetchRequest.predicate = [NSPredicate predicateWithFormat:@"name = %@",kAuthorName];
+   authorFetchRequest.predicate = [NSPredicate predicateWithFormat:@"name = %@",kAuthorName];
     NSArray* authorResults = [self.coreDataController.mainContext executeFetchRequest:authorFetchRequest error:nil];
     return [authorResults lastObject];
 }

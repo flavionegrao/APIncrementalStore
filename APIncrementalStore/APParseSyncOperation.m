@@ -141,7 +141,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 
 
 - (PFQuery*) syncQueryForEntity:(NSEntityDescription*) entityDescription
-                 maxUpdatedDate:(NSDate*) date
+                 minUpdatedDate:(NSDate*) minUpdatedDate
+                 maxUpdatedDate:(NSDate*) maxUpdatedDate
                          offset:(NSUInteger) offset {
     
     /*
@@ -155,16 +156,10 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     [query orderByAscending:@"updatedAt"];
     [query whereKey:APObjectEntityNameAttributeName equalTo:entityDescription.name];
     [query setLimit:APParseQueryFetchLimit];
+    [query setSkip:offset];
     
-    [query whereKey:@"updatedAt" lessThan:date];
-    
-    if (!self.fullSync) {
-        /* Fetch only what has been updated since we last sync */
-        NSDate* lastSync = self.latestObjectSyncedDates[entityDescription.name];
-        if (lastSync) {
-            [query whereKey:@"updatedAt" greaterThan:lastSync];
-        }
-    }
+    if (maxUpdatedDate) [query whereKey:@"updatedAt" lessThan:maxUpdatedDate];
+    if (minUpdatedDate) [query whereKey:@"updatedAt" greaterThan:minUpdatedDate];
     
     /* Fetch related objects when the relation is flagged as a Array via core data model metadata. */
     [entityDescription.relationshipsByName enumerateKeysAndObjectsUsingBlock:^(NSString* relationName, NSRelationshipDescription* relationDescription, BOOL *stop) {
@@ -217,6 +212,14 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             break;
         }
         
+        NSDate* lastSync;
+        if (!self.fullSync) {
+            /* Fetch only what has been updated since we last sync */
+            lastSync = self.latestObjectSyncedDates[entityDescription.name];
+        } else {
+            lastSync = nil;
+        }
+        
         NSUInteger skip = 0;
         BOOL thereAreObjectsToBeFetched = YES;
         
@@ -227,9 +230,10 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 if ([self isCancelled]) {
                     break;
                 }
-                NSLog(@"Remote changes: syncing batch of entities %@ (offset %@) with Parse",entityDescription.name,@(skip));
-                PFQuery* syncQuery = [self syncQueryForEntity:entityDescription maxUpdatedDate:parseServerTime offset:skip];
+               
+                PFQuery* syncQuery = [self syncQueryForEntity:entityDescription minUpdatedDate:lastSync maxUpdatedDate:parseServerTime offset:skip];
                 NSMutableArray* batchOfObjects = [[syncQuery findObjects:&localError] mutableCopy];
+                NSLog(@"Remote changes: syncing batch of entities %@ (count %lu - offset %@) with Parse",entityDescription.name,(unsigned long)[batchOfObjects count],@(skip));
                 
                 if ([syncQuery hasCachedResult]) {[syncQuery clearCachedResult];}
                 
@@ -251,13 +255,14 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                     }
                     
                     @autoreleasepool {
-                        
+
                         PFObject* parseObject = [batchOfObjects firstObject];
                         [batchOfObjects removeObjectAtIndex:0];
                         NSManagedObject* managedObject = [self managedObjectForObjectUID:[parseObject valueForKey:APObjectUIDAttributeName] entity:entityDescription inContext:self.context createIfNecessary:NO];
                         
                         if ([[managedObject valueForKey:APObjectLastModifiedAttributeName] isEqualToDate:parseObject.updatedAt]){
-                            //Object was inserted/updated during -[ParseConnector mergeManagedContext:onSyncObject:onSyncObject:error:] and remains the same
+                            //Object was inserted/updated during - mergeManagedContext:onSyncObject:onSyncObject:error: and remains the same
+                            [self setLatestObjectSyncedDate:parseObject.updatedAt forEntityName:entityDescription.name];
                             continue;
                         }
                         
@@ -382,7 +387,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     
     NSArray* dirtyManagedObjects = [self managedObjectsMarkedAsDirtyInContext:self.context];
     
-    NSLog(@"Local changes: Total objects to be synced: %d", [dirtyManagedObjects count]);
+    NSLog(@"Local changes - Total objects to be synced: %lu", (unsigned long)[dirtyManagedObjects count]);
     
     [dirtyManagedObjects enumerateObjectsUsingBlock:^(NSManagedObject* managedObject, NSUInteger idx, BOOL *stop) {
         
@@ -506,7 +511,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                     }
                 }
             }
-           NSLog(@"Local changes: entity %@ synced with Parse", managedObject.entity.name);
+           NSLog(@"Local changes - entity %@ synced with Parse", managedObject.entity.name);
             [[NSOperationQueue mainQueue] addOperationWithBlock:^{
                 if (self.perObjectCompletionBlock) self.perObjectCompletionBlock(NO);
             }];
@@ -1030,7 +1035,6 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             
             if (createIfNecessary) {
                 managedObject = [NSEntityDescription insertNewObjectForEntityForName:entity.name inManagedObjectContext:context];
-                if (AP_DEBUG_INFO) { DLog(@"New object created: %@",managedObject.objectID)}
                 [managedObject setValue:objectUID forKey:APObjectUIDAttributeName];
                 
                 NSError* permanentIdError = nil;

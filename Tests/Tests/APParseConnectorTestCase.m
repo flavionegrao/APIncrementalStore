@@ -73,6 +73,8 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     
     [super setUp];
     
+    AP_DEBUG_METHODS = YES;
+    
     if ([APParseApplicationID length] == 0 || [APParseClientKey length] == 0) {
         ELog(@"It seems that you haven't set the correct Parse Keys");
         return;
@@ -815,16 +817,18 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 
 #pragma mark  - Tests - Conflicts
 
-/*
- Scenario:
- - We merge an existing object from Parse that wasn't localy present before
- - Therefore the local kAPIncrementalStoreLastModifiedAttributeName gets populated.
- - The same object gets changed at Parse again consequentely updatedAt gets updated as well.
- 
-Expected Results:
- - The local kAPIncrementalStoreLastModifiedAttributeName should get the new date.
- */
 - (void) testModifiedDatesAfterMergeFromServer {
+    
+    /*
+     Scenario:
+     - We merge an existing object from Parse that wasn't localy present before
+     - Therefore the local kAPIncrementalStoreLastModifiedAttributeName gets populated.
+     - The same object gets changed at Parse again consequentely updatedAt gets updated as well.
+     
+     Expected Results:
+     - The local kAPIncrementalStoreLastModifiedAttributeName should get the new date.
+     */
+
     
     //Sync
     APParseSyncOperation* parseSyncOperation = [self newParseOperation];
@@ -1099,7 +1103,7 @@ Expected Results:
     while (done == NO && WAIT_PATIENTLY);
 }
 
-
+#pragma mark  - Tests - Inheritance
 - (void) testInheritanceMergeLocalCreatedSubEntityObject {
     
     EBook* newEBook = [NSEntityDescription insertNewObjectForEntityForName:@"EBook" inManagedObjectContext:self.testContext];
