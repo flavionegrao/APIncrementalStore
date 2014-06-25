@@ -97,6 +97,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         
         if (![self mergeLocalContextError:&localMergeError]) {
             
+            // Error syncing local objects
+            
             if (self.syncCompletionBlock) {
                 
                 [[NSOperationQueue mainQueue] addOperationWithBlock:^{
@@ -105,6 +107,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             }
             
         } else if (![self mergeRemoteObjectsError:&remoteMergeError]) {
+            
+             // Error syncing remote objects
             
             if (self.syncCompletionBlock) {
                 
@@ -115,6 +119,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             
         } else {
             
+            // All good, notifying error == nil
+            
             if (self.syncCompletionBlock) {
                 
                 [[NSOperationQueue mainQueue] addOperationWithBlock:^{
@@ -122,8 +128,6 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 }];
             }
         }
-        
-        
         
     } else {
         [[NSOperationQueue mainQueue] addOperationWithBlock:^{
@@ -223,7 +227,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 if ([self isCancelled]) {
                     break;
                 }
-                NSLog(@"Syncing: %@ offset: %@",entityDescription.name,@(skip));
+                NSLog(@"Remote changes: syncing batch of entities %@ (offset %@) with Parse",entityDescription.name,@(skip));
                 PFQuery* syncQuery = [self syncQueryForEntity:entityDescription maxUpdatedDate:parseServerTime offset:skip];
                 NSMutableArray* batchOfObjects = [[syncQuery findObjects:&localError] mutableCopy];
                 
@@ -378,6 +382,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     
     NSArray* dirtyManagedObjects = [self managedObjectsMarkedAsDirtyInContext:self.context];
     
+    NSLog(@"Local changes: Total objects to be synced: %d", [dirtyManagedObjects count]);
+    
     [dirtyManagedObjects enumerateObjectsUsingBlock:^(NSManagedObject* managedObject, NSUInteger idx, BOOL *stop) {
         
         if ([self isCancelled]) {
@@ -500,6 +506,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                     }
                 }
             }
+           NSLog(@"Local changes: entity %@ synced with Parse", managedObject.entity.name);
             [[NSOperationQueue mainQueue] addOperationWithBlock:^{
                 if (self.perObjectCompletionBlock) self.perObjectCompletionBlock(NO);
             }];
