@@ -172,7 +172,8 @@ Use a test Parse App as it will include few additional classes needed for testin
 ###Version history
 
 ####v.0.4.1
-- Automatic Sync is executed after each context save that hits the 'APIncrementalStore'. Can be turned of by passing APOptionSyncOnSaveKey set to NO when initializing the Store.
+- Automatic Sync is executed after each context save that hits the 'APIncrementalStore'. Can be turned off by passing APOptionSyncOnSaveKey set to NO when initializing the Store.
+- Bug Fix - When syncing a class that has its root class with a PFRelation that doesn't belong to this sincing class we should ignore it. This happens because Parse doesn't send not populated properties along with the fetched objects, which works great for inheritance and allows us to use only the root class to store all subclasses at Parse. The exception is for PFRelations, even being NULL Parse put it in the object. So we have to discaard it.
 
 ####v.0.4.0
 - Changed APParseConnector to APParseSyncOperation (NSOperation subclass - see WWDC CloudKit View to understand why)
