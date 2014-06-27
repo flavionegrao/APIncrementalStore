@@ -1068,28 +1068,40 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             
             /*
              In order to optimize the sync processm there are two scenarios where we don't need
-             to populate this relation:
+             to populate this relation when:
              
-             1) When the inverse relation is To-One
+             1) The PFRelation is part of the root entity so that doesn't belong to this entity.
+                This happens because Parse doesn't send not populated properties along with the 
+                fetched objects, which works great for inheritance and allows us to use only the
+                root class to store all subclasses at Parse. The exception is for PFRelations, even
+                being NULL Parse put it in the object. So we have to discaard it.
              
-             2) When the inverse is a Array. Here we can't differentiate solely evaluating our core
+             2) The inverse relation is To-One
+             
+             3) The inverse is a Array. Here we can't differentiate solely evaluating our core
              data model and tell if the inverse relation is a Array or a PFRelation.
              For that reason if the core data model has a key APParseRelationshipTypeUserInfoKey
              set with APParseRelationshipTypeArray we assume that Parse has a relation as the inverse
              relationship, therefore we can skip populating this relation.
+             
              */
             BOOL needToPopulateRelation = YES;
-            
-            NSAssert([entity.propertiesByName[key] isKindOfClass:[NSRelationshipDescription class]],@"Core Data model not matching Parse object");
             NSRelationshipDescription* relationshipDescription = entity.propertiesByName[key];
             
-            if (![relationshipDescription.inverseRelationship isToMany]) {
+            if (![relationshipDescription isKindOfClass:[NSRelationshipDescription class]]) {
+                // 1
                 needToPopulateRelation = NO;
-            }
-            
-            NSString* inverseRelationshipType = relationshipDescription.inverseRelationship.userInfo[APParseRelationshipTypeUserInfoKey];
-            if (inverseRelationshipType && [inverseRelationshipType integerValue] == APParseRelationshipTypeArray) {
+                
+            } else if (![relationshipDescription.inverseRelationship isToMany]) {
+                // 2
                 needToPopulateRelation = NO;
+                
+            } else {
+                // 3
+                NSString* inverseRelationshipType = relationshipDescription.inverseRelationship.userInfo[APParseRelationshipTypeUserInfoKey];
+                if (inverseRelationshipType && [inverseRelationshipType integerValue] == APParseRelationshipTypeArray) {
+                    needToPopulateRelation = NO;
+                }
             }
             
             if (needToPopulateRelation) {

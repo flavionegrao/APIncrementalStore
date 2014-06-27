@@ -134,7 +134,8 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
                                  options:@{APOptionAuthenticatedUserObjectKey:self.authenticatedUser,
                                            APOptionCacheFileNameKey:APLocalCacheFileName,
                                           // APIncrementalStoreOptionCacheFileReset:@NO,
-                                           APOptionMergePolicyKey:APOptionMergePolicyServerWins}
+                                           APOptionMergePolicyKey:APOptionMergePolicyServerWins,
+                                           APOptionSyncOnSaveKey:@NO}
                                    error:nil];
 }
 

@@ -506,6 +506,7 @@ Expected Results:
 */
 - (void) testCreateAThousandObjects_ENABLE_IT_ONDEMAND {
     
+    /*
     NSDate* start = [NSDate date];
     
     NSUInteger const numberOfAuthorsToBeCreated = 1000;
@@ -560,6 +561,7 @@ Expected Results:
     NSUInteger numberOfAuthorsFetched = [self.coreDataController.mainContext countForFetchRequest:fr error:&fetchError];
     XCTAssertNil(fetchError);
     XCTAssertTrue(numberOfAuthorsFetched == numberOfAuthorsCreated);
+     */
 }
 
 /*
