@@ -169,6 +169,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         }
     }];
     
+    if ([query hasCachedResult]) {[query clearCachedResult];}
+    
     return query;
 }
 
@@ -234,8 +236,6 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 PFQuery* syncQuery = [self syncQueryForEntity:entityDescription minUpdatedDate:lastSync maxUpdatedDate:parseServerTime offset:skip];
                 NSMutableArray* batchOfObjects = [[syncQuery findObjects:&localError] mutableCopy];
                 NSLog(@"Remote changes: syncing batch of entities %@ (count %lu - offset %@) with Parse",entityDescription.name,(unsigned long)[batchOfObjects count],@(skip));
-                
-                if ([syncQuery hasCachedResult]) {[syncQuery clearCachedResult];}
                 
                 if (localError) {
                     if (error) *error = localError;
@@ -949,8 +949,19 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     PFObject* parseObject;
     NSEntityDescription* rootEntity = [self rootEntityFromEntity:entity];
     PFQuery* query = [PFQuery queryWithClassName:rootEntity.name];
+    [query setCachePolicy:kPFCachePolicyNetworkOnly];
     [query whereKey:APObjectUIDAttributeName equalTo:objectUID];
     [query whereKey:APObjectEntityNameAttributeName equalTo:entity.name];
+    
+    /* Fetch related objects when the relation is flagged as a Array via core data model metadata. */
+    [entity.relationshipsByName enumerateKeysAndObjectsUsingBlock:^(NSString* relationName, NSRelationshipDescription* relationDescription, BOOL *stop) {
+        NSString* relationshipType = relationDescription.userInfo[APParseRelationshipTypeUserInfoKey];
+        if ((relationshipType && [relationshipType integerValue] == APParseRelationshipTypeArray) || [relationDescription isToMany] == NO) {
+            [query includeKey:relationName];
+        }
+    }];
+    
+    if ([query hasCachedResult]) {[query clearCachedResult];}
     
     NSError* error = nil;
     NSArray* results = [query findObjects:&error];
@@ -959,10 +970,10 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         if (AP_DEBUG_ERRORS) {ELog(@"Error finding objects at Parse: %@",error)}
         
     } else if ([results count] > 1) {
-        if (AP_DEBUG_ERRORS) {ELog(@"Error - WTF?? more than one object with the objectID: %@",objectUID)}
+        if (AP_DEBUG_ERRORS) {ELog(@"Error - WTF?? more than one object with the objectUID: %@",objectUID)}
         
     } else if ([results count] == 0) {
-        if (AP_DEBUG_ERRORS) {ELog(@"Error - There's no existing object using the objectID: %@",objectUID)}
+        if (AP_DEBUG_ERRORS) {ELog(@"Error - There's no existing object using the objectUID: %@",objectUID)}
         
     } else {
         parseObject = [results lastObject];
