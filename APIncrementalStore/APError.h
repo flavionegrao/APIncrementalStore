@@ -33,5 +33,8 @@ typedef NS_ENUM(NSInteger, APIncrementalStoreErrorCode) {
     APIncrementalStoreErrorCodeMergingLocalObjects = 2,
     APIncrementalStoreErrorCodeMergingRemoteObjects = 3,
     
-    APIncrementalStoreErrorSyncOperationWasCancelled = 100
+    APIncrementalStoreErrorSyncOperationWasCancelled = 100,
+    
+    APIncrementalStoreErrorSyncOperationDuplicatedObjectUID = 200,
+    APIncrementalStoreErrorSyncOperationObjectUIDNotFound = 201
 };

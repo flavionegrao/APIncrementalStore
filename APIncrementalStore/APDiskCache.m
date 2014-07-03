@@ -727,7 +727,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
             if (error) *error = localError;
             
         } else {
-            [self.mainContext reset];
+             if (reset) [self.mainContext reset];
             [self.privateContext performBlock:^{
                 
                 if (![self.privateContext save:&localError]) {
@@ -735,7 +735,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
                     success = NO;
                     if (error) *error = localError;
                 } else {
-                    [self.privateContext reset];
+                     if (reset) [self.privateContext reset];
                 }
             }];
         }
