@@ -666,6 +666,9 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                             NSString* relatedObjectUID = [dictParseObject valueForKey:APObjectUIDAttributeName];
                             NSString* relatedObjectEntityName = [dictParseObject valueForKey:APObjectEntityNameAttributeName];
                             NSEntityDescription* relatedObjectEntity = [NSEntityDescription entityForName:relatedObjectEntityName inManagedObjectContext:managedObject.managedObjectContext];
+                            if (!relatedObjectEntity) {
+                                [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Entity %@ (Parse) isn't present in the Managed Object Model",relatedObjectEntityName];
+                            }
                             
                             NSManagedObject* relatedManagedObject;
                             relatedManagedObject = [self managedObjectForObjectUID:relatedObjectUID entity:relatedObjectEntity inContext:managedObject.managedObjectContext createIfNecessary:NO];
@@ -1183,14 +1186,18 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             NSMutableArray* relatedObjects = [[NSMutableArray alloc]initWithCapacity:[value count]];
             
             for (PFObject* relatedParseObject in value) {
-                if (!relatedParseObject[APObjectUIDAttributeName]) {
-                    [NSException raise:APIncrementalStoreExceptionInconsistency format:@"%@ is missing APObjectUIDAttributeName", parseObject];
+                
+                // An empty Array can have NSNull objects...
+                if ([relatedParseObject isKindOfClass:[PFObject class]]) {
+                    if (!relatedParseObject[APObjectUIDAttributeName]) {
+                        [NSException raise:APIncrementalStoreExceptionInconsistency format:@"%@ is missing APObjectUIDAttributeName", parseObject];
+                    }
+                    if (!relatedParseObject[APObjectEntityNameAttributeName]) {
+                        [NSException raise:APIncrementalStoreExceptionInconsistency format:@"%@ is missing APObjectEntityNameAttributeName",parseObject];
+                    }
+                    [relatedObjects addObject:@{APObjectUIDAttributeName:         relatedParseObject[APObjectUIDAttributeName],
+                                                APObjectEntityNameAttributeName:  relatedParseObject[APObjectEntityNameAttributeName]}];
                 }
-                if (!relatedParseObject[APObjectEntityNameAttributeName]) {
-                    [NSException raise:APIncrementalStoreExceptionInconsistency format:@"%@ is missing APObjectEntityNameAttributeName",parseObject];
-                }
-                [relatedObjects addObject:@{APObjectUIDAttributeName:         relatedParseObject[APObjectUIDAttributeName],
-                                            APObjectEntityNameAttributeName:  relatedParseObject[APObjectEntityNameAttributeName]}];
             }
             
             dictionaryRepresentation[key] = relatedObjects;
