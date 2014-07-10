@@ -454,7 +454,6 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                          */
                         
                         if ([parseObject.updatedAt isEqualToDate:localObjectUpdatedAt] || localObjectUpdatedAt == nil) {
-                            NSError* localError = nil;
                             [self populateParseObject:parseObject withManagedObject:managedObject error:&blockError];
                             
                             if (blockError) {
