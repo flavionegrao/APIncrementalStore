@@ -90,10 +90,10 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     
     if (AP_DEBUG_INFO) {DLog(@"START")};
     
+    NSError* localMergeError = nil;
+    NSError* remoteMergeError = nil;
+    
     if (![self isCancelled]) {
-        
-        NSError* localMergeError = nil;
-        NSError* remoteMergeError = nil;
         
         if (![self mergeLocalContextError:&localMergeError]) {
             
@@ -507,7 +507,6 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                                 
                             } else if (self.mergePolicy == APMergePolicyServerWins) {
                                 if (AP_DEBUG_INFO) { DLog(@"APMergePolicyServerWins")}
-                                NSError* localError = nil;
                                 NSDictionary* serializeParseObject = [self serializeParseObject:parseObject forEntity:managedObject.entity error:&blockError];
                                 
                                 if (blockError) {
@@ -709,7 +708,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 }
 
 
-- (void) populateParseObject:(PFObject*) parseObject
+- (BOOL) populateParseObject:(PFObject*) parseObject
            withManagedObject:(NSManagedObject*) managedObject
                        error:(NSError *__autoreleasing*)error {
     
@@ -745,7 +744,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                     if (![self addACLData:propertyValue toParseObject:parseObject error:&localError]) {
                         if (AP_DEBUG_ERRORS) {ELog(@"Error saving file to Parse: %@",localError)}
                         if (error) *error = localError;
-                        return;
+                        *stop = YES;
                     }
                 }
                 
@@ -770,7 +769,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                         if (![file save:&localError]) {
                             if (AP_DEBUG_ERRORS) {ELog(@"Error saving file to Parse: %@",localError)}
                             if (error) *error = localError;
-                            return;
+                            *stop = YES;
                         }
                         [parseObject setValue:file forKey:propertyName];
                         
@@ -801,8 +800,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                         NSError* localError = nil;
                         PFObject* relatedParseObject = [self parseObjectFromManagedObject:relatedManagedObject error:&localError];
                         if (localError) {
-                            *error = localError;
-                            return;
+                            if (error) *error = localError;
+                            *stop = YES;
                         }
                         [relation addObject:relatedParseObject];
                     }
@@ -838,8 +837,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                         NSError* localError = nil;
                         PFObject* relatedParseObject = [self parseObjectFromManagedObject:relatedManagedObject error:&localError];
                         if (localError) {
-                            *error = localError;
-                            return;
+                            if (error) *error = localError;
+                            *stop = YES;
                         }
                         [relation addObject:relatedParseObject];
                     }
@@ -858,8 +857,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                     NSError* localError = nil;
                     PFObject* relatedParseObject = [self parseObjectFromManagedObject:relatedManagedObject error:&localError];
                     if (localError){
-                        *error = localError;
-                        return;
+                        if (error) *error = localError;
+                        *stop = YES;
                     }
                     [parseObject setValue:relatedParseObject ?: [NSNull null] forKey:propertyName];
                 }
@@ -867,6 +866,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             }
         }
     }];
+    return (*error) ? NO : YES;
 }
 
 
@@ -880,7 +880,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     NSDictionary* dictACL = [NSJSONSerialization JSONObjectWithData:ACLData options:0 error:&localError];
     if (localError) {
         if (AP_DEBUG_ERRORS) {ELog(@"Error saving file to Parse: %@",localError)}
-        *error = localError;
+        if (error) *error = localError;
         success = NO;
         
     } else {
@@ -905,10 +905,11 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 }
 
 
-- (void) insertOnParseManagedObject:(NSManagedObject*) managedObject
+- (BOOL) insertOnParseManagedObject:(NSManagedObject*) managedObject
                               error:(NSError *__autoreleasing*)error {
     
     NSError* localError = nil;
+    BOOL success = YES;
     
     NSEntityDescription* rootEntity = [self rootEntityFromEntity:managedObject.entity];
     PFObject* parseObject = [[PFObject alloc]initWithClassName:rootEntity.name];
@@ -923,9 +924,12 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             [managedObject setValue:@YES forKey:APObjectIsCreatedRemotelyAttributeName];
             
         } else {
-            *error = localError;
+            if (error) *error = localError;
+            success = NO;
         }
     }
+    
+    return success;
 }
 
 
@@ -948,7 +952,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         
         [parseObject save:&localError];
         if (localError) {
-            *error = localError;
+            if (error) *error = localError;
             return nil;
         }
         [managedObject setValue:parseObject.updatedAt forKey:APObjectLastModifiedAttributeName];
@@ -957,7 +961,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     } else {
         parseObject = [self parseObjectFromEntity:managedObject.entity objectUID:relatedObjectUID error:&localError];
         if (localError) {
-            *error = localError;
+            if (error) *error = localError;
             return nil;
         }
     }
@@ -1159,7 +1163,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 
                 if (localError) {
                     *stop = YES;
-                    *error = localError;
+                    if (error) *error = localError;
                     ELog(@"Error getting objects from To-Many relationship %@from Parse: %@",key,localError);
                     
                 } else {
@@ -1208,7 +1212,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             NSData* fileData = [file getData:&localError];
             if (localError) {
                 *stop = YES;
-                *error = localError;
+                if (error) *error = localError;
                 ELog(@"Error getting file from Parse: %@",localError);
             } else {
                 dictionaryRepresentation[key] = fileData;
@@ -1223,7 +1227,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             [relatedParseObject fetchIfNeeded:&localError];
             if (localError) {
                 *stop = YES;
-                *error = localError;
+                if (error) *error = localError;
                 ELog(@"Error getting parse object for To-One relationship %@ from Parse: %@",key,localError);
             } else {
                 dictionaryRepresentation[key] = @{APObjectUIDAttributeName:         relatedParseObject[APObjectUIDAttributeName],

@@ -124,7 +124,8 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
  kAPReferenceCountKey: referenceCount
  },
  {
- objectUUID: {kAPNSManagedObjectIDKey: objectID,
+ objectUUID: {
+ kAPNSManagedObjectIDKey: objectID,
  kAPReferenceCountKey: referenceCount
  },
  ...
@@ -675,6 +676,11 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
 
 #pragma mark - NSIncrementalStore Subclass Optional Methods
 
+// Both managedObjectContextDidRegisterObjectsWithIDs: and managedObjectContextDidUnregisterObjectsWithIDs:
+// could be enhanced to implement what Apple call row cache.
+// However as we are relying on CoreData to provide us with the caching engine we don't need to investing time
+// here.
+
 /*
  Once the incremental store registers a new managedObjectID we cache it and
  increment its reference count by 1
@@ -693,30 +699,16 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
             continue;
         }
         
-        NSMutableDictionary *objectIDsAndRefereceCountByObjectUID = self.mapBetweenManagedObjectIDsAndObjectUIDByEntityName[objectID.entity.name];
-        NSDictionary* objectUIDDictEntry;
+        NSMutableDictionary *objectIDsAndRefereceCountByObjectUID = self.mapBetweenManagedObjectIDsAndObjectUIDByEntityName[objectID.entity.name]?:[NSMutableDictionary dictionary];
         
-        if (!objectIDsAndRefereceCountByObjectUID) {
-            
-            /*
-             Entry: {objectID: refereceCount}
-             As the entry was present this is the first reference then @1
-             */
-            
-            objectIDsAndRefereceCountByObjectUID = [NSMutableDictionary dictionary];
-            objectUIDDictEntry = @{APManagedObjectIDKey:objectID,
-                                   APReferenceCountKey:@1};
+        NSDictionary* objectUIDDictEntry = objectIDsAndRefereceCountByObjectUID[objectUID];
+        
+        if (!objectUIDDictEntry) {
+            objectUIDDictEntry = @{APManagedObjectIDKey:objectID, APReferenceCountKey:@1};
             
         } else {
-            
-            /*
-             Entry: {objectID: refereceCount}
-             get existing entry and increment referece count by 1
-             */
-            
-            NSNumber* referenceCount = [objectIDsAndRefereceCountByObjectUID valueForKey:APReferenceCountKey];
-            objectUIDDictEntry = @{APManagedObjectIDKey:objectID,
-                                   APReferenceCountKey:@([referenceCount integerValue] + 1)};
+            NSNumber* referenceCount = objectUIDDictEntry[APReferenceCountKey];
+            objectUIDDictEntry = @{APManagedObjectIDKey:objectID, APReferenceCountKey:@([referenceCount integerValue] + 1)};
         }
         
         objectIDsAndRefereceCountByObjectUID[objectUID] = objectUIDDictEntry;
@@ -733,8 +725,6 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     
     if (AP_DEBUG_METHODS) {MLog()}
     
-    // [super managedObjectContextDidUnregisterObjectsWithIDs:objectIDs];
-    
     for (NSManagedObjectID *objectID in objectIDs) {
         id objectUID = [self referenceObjectForObjectID:objectID];
         
@@ -744,33 +734,35 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         }
         
         NSMutableDictionary *objectIDsAndRefereceCountByObjectUID = self.mapBetweenManagedObjectIDsAndObjectUIDByEntityName[objectID.entity.name];
-        NSDictionary* objectUIDDictEntry;
         
         if (!objectIDsAndRefereceCountByObjectUID) {
-            if (AP_DEBUG_ERRORS) { ELog(@"ObjectID: %@ isn't registred in self.mapBetweenObjectIDsAndObjectUIDByEntityName ??", objectID)}
+            if (AP_DEBUG_ERRORS) { ELog(@"Entity: %@ isn't registred in self.mapBetweenObjectIDsAndObjectUIDByEntityName ??", objectID.entity.name)}
             continue;
             
         } else {
             
-            /*
-             Entry: {objectID: refereceCount}
-             get existing entry and increment referece count by 1
-             */
+             // Entry: {objectID: refereceCount}
+             // get existing entry and increment referece count by 1
             
-            NSNumber* referenceCount = objectIDsAndRefereceCountByObjectUID[APReferenceCountKey];
+            NSMutableDictionary* objectUIDDictEntry = [objectIDsAndRefereceCountByObjectUID[objectUID]mutableCopy];
+            
+            if (!objectUIDDictEntry) {
+                if (AP_DEBUG_ERRORS) {ELog(@"Warning - Trying to unregister a not previously registered objectUID: %@ ", objectUID)}
+                continue;
+            }
+            
+            NSNumber* referenceCount = objectUIDDictEntry[APReferenceCountKey];
             
             if ([referenceCount integerValue] == 1) {
                 
-                /*
-                 No context holds reference for this managedObjectID anymore,
-                 we can remove it from objectIDsAndRefereceCountByObjectUUID
-                 */
+                 // No context holds reference for this managedObjectID anymore,
+                 // we can remove it from objectIDsAndRefereceCountByObjectUUID
                 
                 [objectIDsAndRefereceCountByObjectUID removeObjectForKey:objectUID];
                 
             } else {
-                objectUIDDictEntry = @{APManagedObjectIDKey:objectID,
-                                       APReferenceCountKey:@([referenceCount integerValue] - 1)};
+                objectUIDDictEntry[APReferenceCountKey] = @([referenceCount integerValue] - 1);
+                objectIDsAndRefereceCountByObjectUID[objectUID] = objectUIDDictEntry;
             }
         }
     }
