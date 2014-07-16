@@ -424,7 +424,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         
         if (comparisonPredicate.leftExpression.expressionType == NSConstantValueExpressionType) {
             id leftConstValue = [self cacheTranslatedConstantValueFromConstantValue:comparisonPredicate.leftExpression.constantValue];
-            leftExpression = [NSExpression expressionForConstantValue:leftExpression];
+            leftExpression = [NSExpression expressionForConstantValue:leftConstValue];
         }
         
         if (comparisonPredicate.rightExpression.expressionType == NSConstantValueExpressionType) {
@@ -457,12 +457,16 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     } else if ([constantValue isKindOfClass:[NSMutableSet class]]) {
         NSMutableSet* mutableSet = constantValue;
         NSMutableSet* cacheTranslatedSet = [[NSMutableSet alloc]initWithCapacity:[mutableSet count]];
+        
         [mutableSet enumerateObjectsUsingBlock:^(id obj, BOOL *stop) {
             NSManagedObjectID* objectID;
+            
             if ([obj isKindOfClass:[NSManagedObject class]]) {
                 objectID = [(NSManagedObject *)obj objectID];
+            
             } else if ([obj isKindOfClass:[NSManagedObjectID class]]) {
-                objectID = (NSManagedObject *)obj;
+                objectID = (NSManagedObjectID *)obj;
+            
             } else {
                 NSLog(@"Error - Predicate constant %@ not supported by APIncrementalStore yet",constantValue);
             }
@@ -470,7 +474,10 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         }];
         cacheTransletedConstantValue = cacheTranslatedSet;
         
-    } else if ([constantValue isKindOfClass:[NSString class]]) {
+    } else if ([constantValue isKindOfClass:[NSString class]] ||
+               [constantValue isKindOfClass:[NSNumber class]] ||
+               [constantValue isKindOfClass:[NSDate class]] ||
+                constantValue == nil) {
         cacheTransletedConstantValue = constantValue;
         
     } else {
