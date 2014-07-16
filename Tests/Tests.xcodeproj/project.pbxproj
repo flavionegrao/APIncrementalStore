@@ -25,6 +25,7 @@
 		72C74778193F61E0001C072F /* Page.m in Sources */ = {isa = PBXBuildFile; fileRef = 72C74777193F61E0001C072F /* Page.m */; };
 		72C7477B193F61E0001C072F /* Author.m in Sources */ = {isa = PBXBuildFile; fileRef = 72C7477A193F61E0001C072F /* Author.m */; };
 		72C7477E193F61E0001C072F /* EBook.m in Sources */ = {isa = PBXBuildFile; fileRef = 72C7477D193F61E0001C072F /* EBook.m */; };
+		72CF53BA1975C69B00402988 /* Publisher.m in Sources */ = {isa = PBXBuildFile; fileRef = 72CF53B91975C69B00402988 /* Publisher.m */; };
 		AD9302F55D25471BA10139E3 /* libPods-Tests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CD473713D4864E27AA702B74 /* libPods-Tests.a */; };
 /* End PBXBuildFile section */
 
@@ -59,6 +60,9 @@
 		72C7477A193F61E0001C072F /* Author.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Author.m; sourceTree = "<group>"; };
 		72C7477C193F61E0001C072F /* EBook.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EBook.h; sourceTree = "<group>"; };
 		72C7477D193F61E0001C072F /* EBook.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = EBook.m; sourceTree = "<group>"; };
+		72CF53B81975C69B00402988 /* Publisher.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Publisher.h; sourceTree = "<group>"; };
+		72CF53B91975C69B00402988 /* Publisher.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Publisher.m; sourceTree = "<group>"; };
+		72CF53BB197693BA00402988 /* Tests-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Tests-Bridging-Header.h"; sourceTree = "<group>"; };
 		CD473713D4864E27AA702B74 /* libPods-Tests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Tests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D16402A91FEF49BA9F08F855 /* Pods-Tests.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Tests.xcconfig"; path = "Pods/Pods-Tests.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -82,6 +86,8 @@
 			isa = PBXGroup;
 			children = (
 				72C7476C193F615B001C072F /* Model.xcdatamodeld */,
+				72CF53B81975C69B00402988 /* Publisher.h */,
+				72CF53B91975C69B00402988 /* Publisher.m */,
 				72C7477C193F61E0001C072F /* EBook.h */,
 				72C7477D193F61E0001C072F /* EBook.m */,
 				72C74779193F61E0001C072F /* Author.h */,
@@ -96,6 +102,7 @@
 				7245F145190834A0004D1304 /* Author+Transformable.m */,
 				7245F146190834A0004D1304 /* CoreDataController.h */,
 				7245F147190834A0004D1304 /* CoreDataController.m */,
+				72CF53BB197693BA00402988 /* Tests-Bridging-Header.h */,
 			);
 			path = "Core Data";
 			sourceTree = "<group>";
@@ -265,6 +272,7 @@
 				72A541D5190831F1004C11A7 /* APParseConnectorTestCase.m in Sources */,
 				72C7476F193F615B001C072F /* Model.xcdatamodeld in Sources */,
 				7245F148190834A0004D1304 /* Author+Transformable.m in Sources */,
+				72CF53BA1975C69B00402988 /* Publisher.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -335,9 +343,12 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				INFOPLIST_FILE = "Tests/Tests-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 7.1;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				SWIFT_OBJC_BRIDGING_HEADER = "Tests/Core Data/Tests-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				WRAPPER_EXTENSION = xctest;
 			};
 			name = Debug;
@@ -377,8 +388,10 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				INFOPLIST_FILE = "Tests/Tests-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 7.1;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				SWIFT_OBJC_BRIDGING_HEADER = "Tests/Core Data/Tests-Bridging-Header.h";
 				VALIDATE_PRODUCT = YES;
 				WRAPPER_EXTENSION = xctest;
 			};

@@ -27,6 +27,8 @@
 #import "Book.h"
 #import "Page.h"
 #import "EBook.h" // SubEntity of Book
+#import "Magazine.h"
+#import "Publisher.h"
 
 #import "UnitTestingCommon.h"
 
@@ -820,6 +822,64 @@ Expected Results:
         XCTAssertNil(fetchError);
         XCTAssertTrue([fetchedAuthor.name isEqualToString:sortedNames[i]]);
     }
+}
+
+
+- (void) testFetchUsing_IN_inThePredicate {
+ 
+    /* 
+     There's been a bug in the way APDiskCache translates the incoming predicate 
+     replacing the objectIDs to the equivalente ones in the cache store. However
+     it's not working as exepected when a predicated contains a IN statement.
+     Using the test to isolate e fix the issue.
+     */
+    
+    // Managed Objects
+    Author* author1 = [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass([Author class]) inManagedObjectContext:self.coreDataController.mainContext];
+    author1.name = @"Author#1";
+    
+    Author* author2 = [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass([Author class]) inManagedObjectContext:self.coreDataController.mainContext];
+    author2.name = @"Author#2";
+    
+    Author* author3 = [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass([Author class]) inManagedObjectContext:self.coreDataController.mainContext];
+    author3.name = @"Author#3";
+    
+    Magazine* mag1 = [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass([Magazine class]) inManagedObjectContext:self.coreDataController.mainContext];
+    mag1.name = @"Mag#1";
+    
+    Magazine* mag2 = [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass([Magazine class]) inManagedObjectContext:self.coreDataController.mainContext];
+    mag2.name = @"Mag#2";
+    
+    Magazine* mag3 = [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass([Magazine class]) inManagedObjectContext:self.coreDataController.mainContext];
+    mag3.name = @"Mag#3";
+
+    Publisher* pub1 = [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass([Publisher class]) inManagedObjectContext:self.coreDataController.mainContext];
+    pub1.name = @"Publisher#1";
+    
+    Publisher* pub2 = [NSEntityDescription insertNewObjectForEntityForName:NSStringFromClass([Publisher class]) inManagedObjectContext:self.coreDataController.mainContext];
+    pub2.name = @"Publisher#2";
+    
+    // Relations
+    [author1 addMagazinesObject:mag1];
+    [author2 addMagazinesObject:mag2];
+    [author3 addMagazinesObject:mag3];
+    
+    [pub1 addMagazinesObject:mag1];
+    [pub1 addMagazinesObject:mag2];
+    [pub2 addMagazinesObject:mag3];
+    
+    NSError* error = nil;
+    [self.coreDataController.mainContext save:&error];
+    XCTAssertNil(error);
+    
+    NSFetchRequest* fr = [NSFetchRequest fetchRequestWithEntityName:NSStringFromClass([Author class])];
+    fr.predicate = [NSPredicate predicateWithFormat:@"ANY magazines IN %@",pub1.magazines];
+    NSArray* results = [self.coreDataController.mainContext executeFetchRequest:fr error:&error];
+    XCTAssertNil(error);
+    XCTAssertNotNil(results);
+    XCTAssertTrue([results count] == 2);
+    XCTAssertTrue([[results firstObject]isKindOfClass:[Author class]]);
+    XCTAssertTrue([[results lastObject]isKindOfClass:[Author class]]);
 }
 
 
