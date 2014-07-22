@@ -335,9 +335,11 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
                 dictionaryRepresentationOfCacheObject[relationshipName] = [NSNull null];
                 
             } else {
-                NSRelationshipDescription* relationship = [[objectID entity] relationshipsByName][relationshipName];
+                //NSRelationshipDescription* relationship = [[objectID entity] relationshipsByName][relationshipName];
                 NSString* relatedObjectID = [[relationshipValue allValues]lastObject];
-                NSManagedObjectID *relationshipObjectID = [self managedObjectIDForEntity:relationship.destinationEntity withObjectUID:relatedObjectID];
+                NSString* relatedObjectEntityName = [[relationshipValue allKeys]lastObject];
+                NSEntityDescription* relatedObjectEntityDescription = [NSEntityDescription entityForName:relatedObjectEntityName inManagedObjectContext:context];
+                NSManagedObjectID *relationshipObjectID = [self managedObjectIDForEntity:relatedObjectEntityDescription withObjectUID:relatedObjectID];
                 dictionaryRepresentationOfCacheObject[relationshipName] = relationshipObjectID;
             }
         }
