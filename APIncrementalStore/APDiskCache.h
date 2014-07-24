@@ -40,6 +40,7 @@
         localStoreFileName:(NSString*) localStoreFileName
       shouldResetCacheFile:(BOOL) shouldResetCache;
 
+/// Context used for Syncing with WebService DB
 @property (nonatomic, readonly) NSManagedObjectContext* syncContext;
 
 @property (nonatomic, readonly) NSString* localStoreFileName;

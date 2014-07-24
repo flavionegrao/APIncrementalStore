@@ -547,8 +547,11 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         NSEntityDescription* entityDescription = [NSEntityDescription entityForName:entityName inManagedObjectContext:context];
         NSManagedObjectID* managedObjectID = [self managedObjectIDForEntity:entityDescription withObjectUID:objectUID];
         
-        // Allows us to always return object, faulted or not
-        NSManagedObject* managedObject = [context objectWithID:managedObjectID];
+        __block NSManagedObject* managedObject;
+        [context performBlockAndWait:^{
+            // Allows us to always return object, faulted or not
+            managedObject = [context objectWithID:managedObjectID];
+        }];
         
         if (![managedObject isFault] && [fetchRequest shouldRefreshRefetchedObjects]) {
             [self populateManagedObject:managedObject withRepresentation:cacheManagedObjectRep callingContext:context];
@@ -1074,7 +1077,11 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
                             [objectUIDs enumerateObjectsUsingBlock:^(NSString* objectUID, NSUInteger idx, BOOL *stop) {
                                 NSEntityDescription* relatedEntity = [NSEntityDescription entityForName:entityName inManagedObjectContext:context];
                                 NSManagedObjectID* relatedManagedObjectID = [self managedObjectIDForEntity:relatedEntity withObjectUID:objectUID];
-                                [relatedObjects addObject:[[managedObject managedObjectContext] objectWithID:relatedManagedObjectID]];
+                                __block NSManagedObject* relatedManagedObject;
+                                [context performBlockAndWait:^{
+                                    relatedManagedObject = [context objectWithID:relatedManagedObjectID];
+                                }];
+                                [relatedObjects addObject:relatedManagedObject];
                             }];
                         }];
                         [managedObject setPrimitiveValue:relatedObjects forKey:propertyName];
@@ -1092,7 +1099,12 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
                         NSString* relatedEntityName = [[dictionary[propertyName]allKeys]lastObject];
                         NSEntityDescription* relatedEntity = [NSEntityDescription entityForName:relatedEntityName inManagedObjectContext:context];
                         NSManagedObjectID* relatedManagedObjectID = [self managedObjectIDForEntity:relatedEntity withObjectUID:relatedObjectUID];
-                        NSManagedObject *relatedManagedObject = [[managedObject managedObjectContext] objectWithID:relatedManagedObjectID];
+                        
+                        __block NSManagedObject *relatedManagedObject;
+                        [context performBlockAndWait:^{
+                            relatedManagedObject = [context objectWithID:relatedManagedObjectID];
+                        }];
+                        
                         [managedObject setPrimitiveValue:relatedManagedObject forKey:propertyName];
                     }
                 }

@@ -36,10 +36,10 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 @property (nonatomic, strong) NSString* (^translateManagedObjectIDToObjectUIDBlock) (NSManagedObjectID*);
 
 // Context used for saving in BG
-@property (nonatomic, strong) NSManagedObjectContext* privateContext;
+@property (nonatomic, strong) NSManagedObjectContext* savingToPSCContext;
 
 // Context used for interacting with APincrementalStore
-@property (nonatomic, strong) NSManagedObjectContext* mainContext;
+@property (nonatomic, strong) NSManagedObjectContext* exposedContext;
 
 // Context used for Syncing with Remote DB
 @property (nonatomic, strong) NSManagedObjectContext* syncContext;
@@ -182,9 +182,16 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     
     if (!_syncContext) {
         _syncContext = [[NSManagedObjectContext alloc]initWithConcurrencyType:NSPrivateQueueConcurrencyType];
-        _syncContext.parentContext = self.mainContext;
+        _syncContext.parentContext = self.exposedContext;
         _syncContext.undoManager = nil;
-        // _syncContext.retainsRegisteredObjects = YES;
+        _syncContext.retainsRegisteredObjects = YES;
+        
+        NSString *reqSysVer = @"8";
+        NSString *currSysVer = [[UIDevice currentDevice] systemVersion];
+        if ([currSysVer compare:reqSysVer options:NSNumericSearch] != NSOrderedAscending) {
+            [_syncContext setValue:@"APIncrementalStore Sync Context" forKey:@"name"];
+        }
+        
     }
     return _syncContext;
 }
@@ -199,7 +206,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     
     self.psc = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:self.model];
     NSDictionary *options = @{ NSMigratePersistentStoresAutomaticallyOption: @YES,
-                               NSSQLitePragmasOption:@{@"journal_mode":@"DELETE"}, // DEBUG ONLY: Disable WAL mode to be able to visualize the content of the sqlite file.
+                               //NSSQLitePragmasOption:@{@"journal_mode":@"DELETE"}, // DEBUG ONLY: Disable WAL mode to be able to visualize the content of the sqlite file.
                                NSInferMappingModelAutomaticallyOption: @YES};
     
     NSURL *storeURL = [NSURL fileURLWithPath:[self pathToLocalStore]];
@@ -231,11 +238,11 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     
     if (AP_DEBUG_METHODS) { MLog()}
     
-    self.privateContext = [[NSManagedObjectContext alloc]initWithConcurrencyType:NSPrivateQueueConcurrencyType];
-    self.privateContext.persistentStoreCoordinator = self.psc;
+    self.savingToPSCContext = [[NSManagedObjectContext alloc]initWithConcurrencyType:NSPrivateQueueConcurrencyType];
+    self.savingToPSCContext.persistentStoreCoordinator = self.psc;
     
-    self.mainContext = [[NSManagedObjectContext alloc]initWithConcurrencyType:NSMainQueueConcurrencyType];
-    self.mainContext.parentContext = self.privateContext;
+    self.exposedContext = [[NSManagedObjectContext alloc]initWithConcurrencyType:NSPrivateQueueConcurrencyType];
+    self.exposedContext.parentContext = self.savingToPSCContext;
 }
 
 
@@ -245,9 +252,24 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
                                   error:(NSError *__autoreleasing*)error {
     
     if (AP_DEBUG_METHODS) { MLog()}
+    
+    __block NSError* localError = nil;
     NSFetchRequest* cacheFetchRequest = [self cacheFetchRequestFromFetchRequest:fetchRequest];
     
-    NSArray *cachedManagedObjects = [self.mainContext executeFetchRequest:cacheFetchRequest error:error];
+    __block NSArray *cachedManagedObjects;
+    [self.exposedContext performBlockAndWait:^{
+        NSError* fetchingError = nil;
+        cachedManagedObjects = [self.exposedContext executeFetchRequest:cacheFetchRequest error:&fetchingError];
+        if (fetchingError) {
+            localError = fetchingError;
+        }
+    }];
+    
+    if (localError) {
+        if (error) *error = localError;
+        return nil;
+    }
+    
     __block NSMutableArray* representations = [[NSMutableArray alloc]initWithCapacity:[cachedManagedObjects count]];
     
     [cachedManagedObjects enumerateObjectsUsingBlock:^(NSManagedObject* cacheObject, NSUInteger idx, BOOL *stop) {
@@ -262,8 +284,25 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     
     if (AP_DEBUG_METHODS) { MLog()}
     
+    __block NSError* localError = nil;
+    
     NSFetchRequest* cacheFetchRequest = [self cacheFetchRequestFromFetchRequest:fetchRequest];
-    return  [self.mainContext countForFetchRequest:cacheFetchRequest error:error];
+    
+    __block NSUInteger countObjects = 0;
+    [self.exposedContext performBlockAndWait:^{
+        NSError* fetchingError = nil;
+        countObjects = [self.exposedContext countForFetchRequest:cacheFetchRequest error:&fetchingError];
+        if (fetchingError) {
+            localError = fetchingError;
+        }
+    }];
+    
+    if (localError) {
+        if (error) *error = localError;
+        return 0;
+    } else {
+        return countObjects;
+    }
 }
 
 
@@ -379,10 +418,18 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     
     fetchRequest.predicate = [NSCompoundPredicate andPredicateWithSubpredicates:@[objectUIDPredicate,populatedObjectsPredicate]];
     
-    NSError *fetchError = nil;
-    NSArray *results = [self.mainContext executeFetchRequest:fetchRequest error:&fetchError];
+    __block NSArray *results;
+    __block NSError* localError;
     
-    if (fetchError || [results count] > 1) {
+    [self.exposedContext performBlockAndWait:^{
+        NSError *fetchingError = nil;
+        results = [self.exposedContext executeFetchRequest:fetchRequest error:&fetchingError];
+        if (fetchingError) {
+            localError = fetchingError;
+        }
+    }];
+   
+    if (localError || [results count] > 1) {
         // TODO handle error
         [NSException raise:APIncrementalStoreExceptionInconsistency format:@"It was supposed to fetch only one objects based on the objectUID: %@",objectUID];
         
@@ -509,8 +556,8 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     __block NSError *fetchError = nil;
     __block NSArray *results;
     
-    [self.mainContext performBlockAndWait:^{
-        results = [self.mainContext executeFetchRequest:fetchRequest error:&fetchError];
+    [self.exposedContext performBlockAndWait:^{
+        results = [self.exposedContext executeFetchRequest:fetchRequest error:&fetchError];
     }];
     
     if (fetchError || [results count] > 1) {
@@ -522,13 +569,13 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         
         __block NSError *permanentIdError = nil;
         
-        [self.mainContext performBlockAndWait:^{
+        [self.exposedContext performBlockAndWait:^{
             // Create new cache object
-            cacheObject = [NSEntityDescription insertNewObjectForEntityForName:entityName inManagedObjectContext:self.mainContext];
+            cacheObject = [NSEntityDescription insertNewObjectForEntityForName:entityName inManagedObjectContext:self.exposedContext];
             [cacheObject setValue:objectUID forKey:APObjectUIDAttributeName];
             
             NSError* permanentIdError = nil;
-            [self.mainContext obtainPermanentIDsForObjects:@[cacheObject] error:&permanentIdError];
+            [self.exposedContext obtainPermanentIDsForObjects:@[cacheObject] error:&permanentIdError];
             // Sanity check
             if (permanentIdError) {
                 [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Could not obtain permanent IDs for objects %@ with error %@", cacheObject, permanentIdError];
@@ -567,15 +614,18 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         NSString* entityName = representation[APObjectEntityNameAttributeName];
         NSManagedObjectID* managedObjectID = [self fetchManagedObjectIDForObjectUID:objectUID entityName:entityName createIfNeeded:NO];
         
-        NSManagedObject* managedObject;
+        __block NSManagedObject* managedObject;
         if (managedObjectID) {
             // Object was inserted previously, mos likely due to an insertion of an object that contained a relationship reference to this one.
-            managedObject = [self.mainContext objectWithID:managedObjectID];
+            [self.exposedContext performBlockAndWait:^{
+                managedObject = [self.exposedContext objectWithID:managedObjectID];
+            }];
+            
         } else {
-            managedObject = [NSEntityDescription insertNewObjectForEntityForName:entityName inManagedObjectContext:self.mainContext];
+            managedObject = [NSEntityDescription insertNewObjectForEntityForName:entityName inManagedObjectContext:self.exposedContext];
             
             NSError* permanentIdError = nil;
-            [self.mainContext obtainPermanentIDsForObjects:@[managedObject] error:&permanentIdError];
+            [self.exposedContext obtainPermanentIDsForObjects:@[managedObject] error:&permanentIdError];
             // Sanity check
             if (permanentIdError) {
                 [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Could not obtain permanent IDs for objects %@ with error %@", managedObject, permanentIdError];
@@ -611,7 +661,10 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         NSString* objectUID = [representation valueForKey:APObjectUIDAttributeName];
         NSString* entityName = representation[APObjectEntityNameAttributeName];
         NSManagedObjectID* managedObjectID = [self fetchManagedObjectIDForObjectUID:objectUID entityName:entityName createIfNeeded:NO];
-        NSManagedObject* managedObject = [self.mainContext objectWithID:managedObjectID];
+        __block NSManagedObject* managedObject;
+        [self.exposedContext performBlockAndWait:^{
+            managedObject = [self.exposedContext objectWithID:managedObjectID];
+        }];
         [self populateManagedObject:managedObject withRepresentation:representation];
         [managedObject setValue:@YES forKey:APObjectIsDirtyAttributeName];
     }];
@@ -639,7 +692,12 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         NSString* objectUID = [representation valueForKey:APObjectUIDAttributeName];
         NSString* entityName = representation[APObjectEntityNameAttributeName];
         NSManagedObjectID* managedObjectID = [self fetchManagedObjectIDForObjectUID:objectUID entityName:entityName createIfNeeded:NO];
-        NSManagedObject* managedObject = [self.mainContext objectWithID:managedObjectID];
+        
+        __block NSManagedObject* managedObject;
+        [self.exposedContext performBlockAndWait:^{
+            managedObject = [self.exposedContext objectWithID:managedObjectID];
+        }];
+        
         [managedObject setValue:@(APObjectStatusDeleted) forKey:APObjectStatusAttributeName];
         [managedObject setValue:@YES forKey:APObjectIsDirtyAttributeName];
     }];
@@ -688,7 +746,12 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
                         
                         [relatedObjectUIDs enumerateObjectsUsingBlock:^(NSString* objectUID, NSUInteger idx, BOOL *stop) {
                             NSManagedObjectID* relatedManagedObjectID = [self fetchManagedObjectIDForObjectUID:objectUID entityName:entityName createIfNeeded:YES];
-                            [relatedObjects addObject:[self.mainContext objectWithID:relatedManagedObjectID]];
+                            
+                            __block NSManagedObject* relatedObject;
+                            [self.exposedContext performBlockAndWait:^{
+                                relatedObject = [self.exposedContext objectWithID:relatedManagedObjectID];
+                            }];
+                            [relatedObjects addObject:relatedObject];
                         }];
                     }];
                     [managedObject setPrimitiveValue:relatedObjects forKey:propertyName];
@@ -704,7 +767,12 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
                     NSString* relatedEntityName = [[representation[propertyName]allKeys]lastObject];
                     NSString* relatedEntityObjectUID = [[representation[propertyName]allValues]lastObject];
                     NSManagedObjectID* relatedManagedObjectID = [self fetchManagedObjectIDForObjectUID:relatedEntityObjectUID entityName:relatedEntityName createIfNeeded:YES];
-                    NSManagedObject *relatedObject = [[managedObject managedObjectContext] objectWithID:relatedManagedObjectID];
+                    
+                    __block NSManagedObject *relatedObject;
+                    [self.exposedContext performBlockAndWait:^{
+                        relatedObject = [[managedObject managedObjectContext] objectWithID:relatedManagedObjectID];
+                    }];
+                    
                     [managedObject setPrimitiveValue:relatedObject forKey:propertyName];
                 }
             }
@@ -725,13 +793,14 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         [self.syncContext performBlockAndWait:^{
             
             if (![self.syncContext save:&localError]) {
-                if (AP_DEBUG_ERRORS) {ELog(@"Error saving sync context changes: %@",*error)}
+                if (AP_DEBUG_ERRORS) {ELog(@"Error saving sync context changes: %@",localError)}
                 success = NO;
                 if (error) *error = localError;
                 
             } else {
                 if (reset) [self.syncContext reset];
                 if (![self saveAndReset:reset mainContext:&localError]){
+                    if (AP_DEBUG_ERRORS) {ELog(@"Error saving sync context changes: %@",localError)}
                     success = NO;
                     if (error) *error = localError;
                 }
@@ -751,23 +820,23 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     __block NSError* localError = nil;
     
     // Save all contexts
-    [self.mainContext performBlockAndWait:^{
+    [self.exposedContext performBlockAndWait:^{
         
-        if (![self.mainContext save:&localError]) {
+        if (![self.exposedContext save:&localError]) {
             if (AP_DEBUG_ERRORS) { ELog(@"Error saving changes: %@",localError)}
             success = NO;
             if (error) *error = localError;
             
         } else {
-             if (reset) [self.mainContext reset];
-            [self.privateContext performBlock:^{
+             if (reset) [self.exposedContext reset];
+            [self.savingToPSCContext performBlock:^{
                 
-                if (![self.privateContext save:&localError]) {
+                if (![self.savingToPSCContext save:&localError]) {
                     if (AP_DEBUG_ERRORS) { ELog(@"Error saving changes: %@",localError)}
                     success = NO;
                     if (error) *error = localError;
                 } else {
-                     if (reset) [self.privateContext reset];
+                     if (reset) [self.savingToPSCContext reset];
                 }
             }];
         }
@@ -782,8 +851,8 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
     
     [self removeCacheStore];
     _syncContext = nil;
-    _mainContext = nil;
-    _privateContext = nil;
+    _exposedContext = nil;
+    _savingToPSCContext = nil;
     _psc = nil;
     
     [self configPersistentStoreCoordinator];
