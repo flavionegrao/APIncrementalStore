@@ -1068,6 +1068,38 @@ Expected Results:
 }
 
 
+- (void) testAssyncFetching {
+    
+    /* Assynchronous Fetching only available in iOS 8 onward */
+    
+    NSString *reqSysVer = @"8";
+    NSString *currSysVer = [[UIDevice currentDevice] systemVersion];
+    if ([currSysVer compare:reqSysVer options:NSNumericSearch] != NSOrderedAscending) {
+        
+        XCTestExpectation* expectation = [self expectationWithDescription:@"Book has been found"];
+        
+        NSFetchRequest* bookFr = [NSFetchRequest fetchRequestWithEntityName:@"Book"];
+        
+        NSAsynchronousFetchRequest *asyncBookFr = [[NSAsynchronousFetchRequest alloc]initWithFetchRequest:bookFr completionBlock:^(NSAsynchronousFetchResult *result) {
+            if(result.finalResult) {
+                Book* book = [result.finalResult lastObject];
+                XCTAssert([book.name isEqualToString:kBookName1]);
+            } else {
+                XCTAssert(NO);
+            }
+            
+            [expectation fulfill];
+        }];
+        
+        NSError* error = nil;
+        [self.coreDataController.mainContext executeRequest:asyncBookFr error:&error];
+        XCTAssertNil(error);
+        
+        [self waitForExpectationsWithTimeout:3.0 handler:nil];
+    }
+}
+
+
 #pragma mark - Support Methods
 
 - (Book*) fetchBook {

@@ -306,7 +306,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     NSString* objectUID = [self referenceObjectForObjectID:objectID];
     //if (AP_DEBUG_INFO) {DLog(@"New values for entity: %@ with id %@", objectID.entity.name, objectUID)}
     
-    NSDictionary *objectFromCache = [self.diskCache fetchObjectRepresentationForObjectUID:objectUID entityName:objectID.entity.name];
+    NSDictionary *objectFromCache = [self.diskCache fetchObjectRepresentationForObjectUID:objectUID requestContext:context entityName:objectID.entity.name];
     
     if (!objectFromCache) {
         //        [NSException raise:APIncrementalStoreExceptionIncompatibleRequest format:@"Cache object with managed objectUID %@ not found.", objectUID];
@@ -375,7 +375,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     fr.predicate = [NSPredicate predicateWithFormat:@"%K == %@", APObjectUIDAttributeName, objectUID];
     
     NSError *fetchError = nil;
-    NSArray *results = [self.diskCache fetchObjectRepresentations:fr error:&fetchError];
+    NSArray *results = [self.diskCache fetchObjectRepresentations:fr requestContext:context error:&fetchError];
     
     if (fetchError || [results count] > 1) {
         // TODO handle error
@@ -530,7 +530,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     if (AP_DEBUG_METHODS) { MLog() }
     
     NSError *localCacheError = nil;
-    NSArray *cacheRepresentations = [self.diskCache fetchObjectRepresentations:fetchRequest error:&localCacheError];
+    NSArray *cacheRepresentations = [self.diskCache fetchObjectRepresentations:fetchRequest requestContext:context error:&localCacheError];
     
     if (localCacheError != nil) {
         if (error != NULL) {
@@ -828,12 +828,16 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     
     [self.syncOperation setPerObjectCompletionBlock:^(BOOL isRemote) {
         
-        /* Saving and reseting the sync context for every remote object synced 
+        /* Saving and reseting the sync context for every remote object synced
          to avoid unecessary high memory usage. This is particulary true for an initial sync when many
-         objects are likely to be fetched from the webservice (i.e. 10K objects). Without reseting the context 
-         the app may potentlialy go over the iOS memory threshold and get terminated 
+         objects are likely to be fetched from the webservice (i.e. 10K objects). Without reseting the context
+         the app may potentlialy go over the iOS memory threshold and get terminated
          Perhaps with iOS 8 it might be changed and the APDiskcache be able to save directly to the SQLite database
          without having to materilaize ManagedObjects in memory....*/
+        
+        if ([NSThread isMainThread]) {
+            [NSException raise:APIncrementalStoreExceptionInconsistency format:@"It should be called in s background Thread"];
+        }
         
         NSError* saveSyncContextError = nil;
         BOOL shouldResetSyncContext = (isRemote) ? YES : NO;
@@ -844,11 +848,17 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         NSString* userInfoKey = (isRemote)? APNotificationNumberOfRemoteObjectsSyncedKey: APNotificationNumberOfLocalObjectsSyncedKey;
         NSDictionary* userInfo = @{userInfoKey: @1};
         
-        [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationStoreDidSyncObject object:weakSelf userInfo:userInfo];
+        [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+            [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationStoreDidSyncObject object:weakSelf userInfo:userInfo];
+        }];
         
     }];
     
     [self.syncOperation setSyncCompletionBlock:^(NSDictionary* mergedObjectsUIDsNestedByEntityName, NSError* operationError) {
+        
+        if (![NSThread isMainThread]) {
+            [NSException raise:APIncrementalStoreExceptionInconsistency format:@"It should be called in the main thread"];
+        }
         
         if (!operationError) {
             

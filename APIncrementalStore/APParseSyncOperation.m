@@ -363,15 +363,9 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                                 if (![entityEntry[NSInsertedObjectsKey] containsObject:[parseObject valueForKey:APObjectUIDAttributeName]]) {
                                     NSArray* mergedObjectUIDs = entityEntry[objectStatus] ?: [[NSArray alloc]init];
                                     entityEntry[objectStatus] = [mergedObjectUIDs arrayByAddingObject:[parseObject valueForKey:APObjectUIDAttributeName]];
-                                    
                                     self.mergedObjectsUIDsNestedByEntityName[entityDescription.name] = entityEntry;
-                                    
                                     [self setLatestObjectSyncedDate:parseObject.updatedAt forEntityName:entityDescription.name];
-                                    if (self.perObjectCompletionBlock) {
-                                        [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-                                            self.perObjectCompletionBlock(YES);
-                                        }];
-                                    }
+                                    if (self.perObjectCompletionBlock) self.perObjectCompletionBlock(YES);
                                 }
                             }
                             parseObject = nil;
@@ -547,9 +541,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                     }
                 }
                 NSLog(@"Local changes - entity %@ synced with Parse", managedObject.entity.name);
-                [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-                    if (self.perObjectCompletionBlock) self.perObjectCompletionBlock(NO);
-                }];
+                if (self.perObjectCompletionBlock) self.perObjectCompletionBlock(NO);
             }
         }];
     }];

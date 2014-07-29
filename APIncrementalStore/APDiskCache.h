@@ -78,12 +78,14 @@
  @returns Array of representations or nil if error occurs
  */
 - (NSArray*) fetchObjectRepresentations:(NSFetchRequest *)fetchRequest
+                         requestContext:(NSManagedObjectContext*) requestContext
                                   error:(NSError *__autoreleasing*)error;
 
 - (NSUInteger) countObjectRepresentations:(NSFetchRequest *)fetchRequest
                                     error:(NSError *__autoreleasing*)error;
 
 - (NSDictionary*) fetchObjectRepresentationForObjectUID:(NSString*) objectUID
+                                         requestContext:(NSManagedObjectContext*) requestContext
                                              entityName:(NSString*) entityName;
 
 - (BOOL)inserteObjectRepresentations:(NSArray*) insertedObjects

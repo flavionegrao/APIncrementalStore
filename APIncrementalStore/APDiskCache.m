@@ -249,12 +249,13 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 #pragma mark - Fetching
 
 - (NSArray*) fetchObjectRepresentations:(NSFetchRequest *)fetchRequest
+                         requestContext:(NSManagedObjectContext*) requestContext
                                   error:(NSError *__autoreleasing*)error {
     
     if (AP_DEBUG_METHODS) { MLog()}
     
     __block NSError* localError = nil;
-    NSFetchRequest* cacheFetchRequest = [self cacheFetchRequestFromFetchRequest:fetchRequest];
+    NSFetchRequest* cacheFetchRequest = [self cacheFetchRequestFromFetchRequest:fetchRequest requestContext:requestContext];
     
     __block NSArray *cachedManagedObjects;
     [self.exposedContext performBlockAndWait:^{
@@ -280,13 +281,14 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 
 
 - (NSUInteger) countObjectRepresentations:(NSFetchRequest *)fetchRequest
+                           requestContext:(NSManagedObjectContext*) requestContext
                                     error:(NSError *__autoreleasing*)error {
     
     if (AP_DEBUG_METHODS) { MLog()}
     
     __block NSError* localError = nil;
     
-    NSFetchRequest* cacheFetchRequest = [self cacheFetchRequestFromFetchRequest:fetchRequest];
+    NSFetchRequest* cacheFetchRequest = [self cacheFetchRequestFromFetchRequest:fetchRequest requestContext:requestContext];
     
     __block NSUInteger countObjects = 0;
     [self.exposedContext performBlockAndWait:^{
@@ -373,7 +375,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 #pragma mark - Translate Predicates
 
 // Translates a user submited fetchRequest to a "translated" for local cache queries.
-- (NSFetchRequest*) cacheFetchRequestFromFetchRequest:(NSFetchRequest*) fetchRequest {
+- (NSFetchRequest*) cacheFetchRequestFromFetchRequest:(NSFetchRequest*) fetchRequest requestContext:(NSManagedObjectContext*) requestContext {
     
     if (AP_DEBUG_METHODS) { MLog()}
     
@@ -381,7 +383,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
    
     NSMutableArray* predicates = [NSMutableArray array];
     
-    NSPredicate* translatedPredicate = [self cachePredicateFromPredicate:fetchRequest.predicate forEntityName:fetchRequest.entityName];
+    NSPredicate* translatedPredicate = [self cachePredicateFromPredicate:fetchRequest.predicate requestContext:requestContext forEntityName:fetchRequest.entityName];
     if (translatedPredicate) [predicates addObject:translatedPredicate];
     
     [predicates addObject:[self controlPropertiesPredicate]];
@@ -408,6 +410,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 
 
 - (NSDictionary*) fetchObjectRepresentationForObjectUID:(NSString*) objectUID
+                                         requestContext:(NSManagedObjectContext*) requestContext
                                              entityName:(NSString*) entityName {
     
     if (AP_DEBUG_METHODS) { MLog()}
@@ -447,6 +450,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 
 // Translates a user submited predicate to a "translated" one used on local cache queries.
 - (NSPredicate*) cachePredicateFromPredicate:(NSPredicate *)predicate
+                              requestContext:(NSManagedObjectContext*) requestContext
                                forEntityName:(NSString*) entityName {
     
     if (AP_DEBUG_METHODS) { MLog()}
@@ -463,7 +467,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         NSMutableArray *newSubpredicates = [NSMutableArray arrayWithCapacity:[subpredicates count]];
         
         for (NSPredicate *subpredicate in subpredicates) {
-            [newSubpredicates addObject:[self cachePredicateFromPredicate:subpredicate forEntityName:entityName]];
+            [newSubpredicates addObject:[self cachePredicateFromPredicate:subpredicate requestContext:requestContext  forEntityName:entityName]];
         }
         adjustedPredicate = [[NSCompoundPredicate alloc] initWithType:compoundPredicate.compoundPredicateType subpredicates:newSubpredicates];
         
@@ -474,12 +478,12 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         NSExpression *leftExpression = comparisonPredicate.leftExpression;
         
         if (comparisonPredicate.leftExpression.expressionType == NSConstantValueExpressionType) {
-            id leftConstValue = [self cacheTranslatedConstantValueFromConstantValue:comparisonPredicate.leftExpression.constantValue];
+            id leftConstValue = [self cacheTranslatedConstantValueFromConstantValue:comparisonPredicate.leftExpression.constantValue requestContext:requestContext];
             leftExpression = [NSExpression expressionForConstantValue:leftConstValue];
         }
         
         if (comparisonPredicate.rightExpression.expressionType == NSConstantValueExpressionType) {
-            id rightConstValue = [self cacheTranslatedConstantValueFromConstantValue:comparisonPredicate.rightExpression.constantValue];
+            id rightConstValue = [self cacheTranslatedConstantValueFromConstantValue:comparisonPredicate.rightExpression.constantValue requestContext:requestContext];
             rightExpression = [NSExpression expressionForConstantValue:rightConstValue];
         }
         
@@ -493,7 +497,7 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
 }
 
 
-- (id) cacheTranslatedConstantValueFromConstantValue:(id) constantValue {
+- (id) cacheTranslatedConstantValueFromConstantValue:(id) constantValue requestContext:(NSManagedObjectContext*) requestContext {
     
     id cacheTransletedConstantValue;
     
@@ -507,21 +511,28 @@ static NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalS
         
     } else if ([constantValue isKindOfClass:[NSMutableSet class]]) {
         NSMutableSet* mutableSet = constantValue;
-        NSMutableSet* cacheTranslatedSet = [[NSMutableSet alloc]initWithCapacity:[mutableSet count]];
         
-        [mutableSet enumerateObjectsUsingBlock:^(id obj, BOOL *stop) {
-            NSManagedObjectID* objectID;
+        __block NSMutableSet* cacheTranslatedSet;
+        __block NSInteger capacity = 0;
+        
+        [requestContext performBlockAndWait:^{
+            capacity = [mutableSet count];
+            cacheTranslatedSet = [[NSMutableSet alloc]initWithCapacity:capacity];
             
-            if ([obj isKindOfClass:[NSManagedObject class]]) {
-                objectID = [(NSManagedObject *)obj objectID];
-            
-            } else if ([obj isKindOfClass:[NSManagedObjectID class]]) {
-                objectID = (NSManagedObjectID *)obj;
-            
-            } else {
-                NSLog(@"Error - Predicate constant %@ not supported by APIncrementalStore yet",constantValue);
-            }
-            [cacheTranslatedSet addObject:[self cachedManagedObjectIDFromObjectID:objectID]];
+            [mutableSet enumerateObjectsUsingBlock:^(id obj, BOOL *stop) {
+                NSManagedObjectID* objectID;
+                
+                if ([obj isKindOfClass:[NSManagedObject class]]) {
+                    objectID = [(NSManagedObject *)obj objectID];
+                    
+                } else if ([obj isKindOfClass:[NSManagedObjectID class]]) {
+                    objectID = (NSManagedObjectID *)obj;
+                    
+                } else {
+                    NSLog(@"Error - Predicate constant %@ not supported by APIncrementalStore yet",constantValue);
+                }
+                [cacheTranslatedSet addObject:[self cachedManagedObjectIDFromObjectID:objectID]];
+            }];
         }];
         cacheTransletedConstantValue = cacheTranslatedSet;
         
