@@ -408,7 +408,7 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
             }
         }
         
-        _testContext = [[NSManagedObjectContext alloc]initWithConcurrencyType:NSPrivateQueueConcurrencyType];
+        _testContext = [[NSManagedObjectContext alloc]initWithConcurrencyType:NSMainQueueConcurrencyType];
         _testContext.persistentStoreCoordinator = psc;
     }
     return _testContext;

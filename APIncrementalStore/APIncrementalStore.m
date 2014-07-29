@@ -816,9 +816,13 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     
     self.syncOperation = [[APParseSyncOperation alloc]initWithMergePolicy:self.mergePolicy authenticatedParseUser:self.authenticatedUser];
     [self.syncOperation setEnvID:[NSString stringWithFormat:@"%@-%@",self.diskCache.localStoreFileName,self.authenticatedUser.username]];
-    [self.diskCache.syncContext reset];
     self.syncOperation.context = self.diskCache.syncContext;
     self.syncOperation.fullSync = allRemoteObjects;
+    
+    // Turn all objects into fault before start syncing
+    [self.diskCache.syncContext performBlockAndWait:^{
+        [self.diskCache.syncContext reset];
+    }];
     
     __weak  typeof(self) weakSelf = self;
     
