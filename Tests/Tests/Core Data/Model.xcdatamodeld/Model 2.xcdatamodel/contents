@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<model userDefinedModelVersionIdentifier="2" type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="6198" systemVersion="13E28" minimumToolsVersion="Xcode 4.3" macOSVersion="Automatic" iOSVersion="Automatic">
+<model userDefinedModelVersionIdentifier="2" type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="6208.6" systemVersion="13E28" minimumToolsVersion="Xcode 4.3" macOSVersion="Automatic" iOSVersion="Automatic">
     <entity name="Author" representedClassName="Author" syncable="YES">
         <attribute name="name" optional="YES" attributeType="String" syncable="YES"/>
         <attribute name="photo" optional="YES" attributeType="Transformable" syncable="YES"/>
@@ -7,6 +7,7 @@
         <relationship name="magazines" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Magazine" inverseName="authors" inverseEntity="Magazine" syncable="YES"/>
     </entity>
     <entity name="Book" representedClassName="Book" syncable="YES">
+        <attribute name="createdDate" optional="YES" attributeType="Date" syncable="YES"/>
         <attribute name="name" optional="YES" attributeType="String" syncable="YES"/>
         <attribute name="picture" optional="YES" attributeType="Binary" allowsExternalBinaryDataStorage="YES" syncable="YES"/>
         <relationship name="author" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Author" inverseName="books" inverseEntity="Author" syncable="YES"/>
@@ -35,7 +36,7 @@
     </entity>
     <elements>
         <element name="Author" positionX="-9" positionY="-270" width="128" height="103"/>
-        <element name="Book" positionX="207" positionY="-342" width="128" height="103"/>
+        <element name="Book" positionX="207" positionY="-342" width="128" height="118"/>
         <element name="EBook" positionX="205" positionY="-441" width="128" height="58"/>
         <element name="Magazine" positionX="205" positionY="-162" width="128" height="103"/>
         <element name="Page" positionX="412" positionY="-243" width="128" height="73"/>

@@ -597,7 +597,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     if (AP_DEBUG_METHODS) { MLog() }
     
     NSError *localCacheError = nil;
-    NSUInteger localCacheCount = [self.diskCache countObjectRepresentations:fetchRequest error:&localCacheError];
+    NSUInteger localCacheCount = [self.diskCache countObjectRepresentations:fetchRequest requestContext:context error:&localCacheError];
     
     // Error check
     if (localCacheError != nil) {

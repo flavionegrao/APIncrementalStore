@@ -2,7 +2,7 @@
 //  Book.h
 //  Tests
 //
-//  Created by Flavio Negrão Torres on 6/4/14.
+//  Created by Flavio Negrão Torres on 7/30/14.
 //
 //
 
@@ -15,6 +15,7 @@
 
 @property (nonatomic, retain) NSString * name;
 @property (nonatomic, retain) NSData * picture;
+@property (nonatomic, retain) NSDate * createdDate;
 @property (nonatomic, retain) Author *author;
 @property (nonatomic, retain) NSSet *pages;
 @end

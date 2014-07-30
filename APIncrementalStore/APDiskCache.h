@@ -82,6 +82,7 @@
                                   error:(NSError *__autoreleasing*)error;
 
 - (NSUInteger) countObjectRepresentations:(NSFetchRequest *)fetchRequest
+                           requestContext:(NSManagedObjectContext*) requestContext
                                     error:(NSError *__autoreleasing*)error;
 
 - (NSDictionary*) fetchObjectRepresentationForObjectUID:(NSString*) objectUID

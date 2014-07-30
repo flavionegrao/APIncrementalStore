@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		7245F148190834A0004D1304 /* Author+Transformable.m in Sources */ = {isa = PBXBuildFile; fileRef = 7245F145190834A0004D1304 /* Author+Transformable.m */; };
 		7245F149190834A0004D1304 /* CoreDataController.m in Sources */ = {isa = PBXBuildFile; fileRef = 7245F147190834A0004D1304 /* CoreDataController.m */; };
+		72A2EB8F19899DAE00E3C408 /* Book.m in Sources */ = {isa = PBXBuildFile; fileRef = 72A2EB8E19899DAE00E3C408 /* Book.m */; };
 		72A541B319082E13004C11A7 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72A541B219082E13004C11A7 /* XCTest.framework */; };
 		72A541B519082E13004C11A7 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72A541B419082E13004C11A7 /* Foundation.framework */; };
 		72A541B719082E13004C11A7 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72A541B619082E13004C11A7 /* UIKit.framework */; };
@@ -21,7 +22,6 @@
 		72A541DD19083209004C11A7 /* Sample_495KB.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 72A541DB19083209004C11A7 /* Sample_495KB.jpg */; };
 		72C7476F193F615B001C072F /* Model.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 72C7476C193F615B001C072F /* Model.xcdatamodeld */; };
 		72C74772193F61DF001C072F /* Magazine.m in Sources */ = {isa = PBXBuildFile; fileRef = 72C74771193F61DF001C072F /* Magazine.m */; };
-		72C74775193F61E0001C072F /* Book.m in Sources */ = {isa = PBXBuildFile; fileRef = 72C74774193F61E0001C072F /* Book.m */; };
 		72C74778193F61E0001C072F /* Page.m in Sources */ = {isa = PBXBuildFile; fileRef = 72C74777193F61E0001C072F /* Page.m */; };
 		72C7477B193F61E0001C072F /* Author.m in Sources */ = {isa = PBXBuildFile; fileRef = 72C7477A193F61E0001C072F /* Author.m */; };
 		72C7477E193F61E0001C072F /* EBook.m in Sources */ = {isa = PBXBuildFile; fileRef = 72C7477D193F61E0001C072F /* EBook.m */; };
@@ -34,6 +34,8 @@
 		7245F145190834A0004D1304 /* Author+Transformable.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "Author+Transformable.m"; sourceTree = "<group>"; };
 		7245F146190834A0004D1304 /* CoreDataController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CoreDataController.h; sourceTree = "<group>"; };
 		7245F147190834A0004D1304 /* CoreDataController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CoreDataController.m; sourceTree = "<group>"; };
+		72A2EB8D19899DAE00E3C408 /* Book.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Book.h; sourceTree = "<group>"; };
+		72A2EB8E19899DAE00E3C408 /* Book.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Book.m; sourceTree = "<group>"; };
 		72A541AF19082E13004C11A7 /* Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		72A541B219082E13004C11A7 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = Library/Frameworks/XCTest.framework; sourceTree = DEVELOPER_DIR; };
 		72A541B419082E13004C11A7 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
@@ -52,8 +54,6 @@
 		72C7476E193F615B001C072F /* Model.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Model.xcdatamodel; sourceTree = "<group>"; };
 		72C74770193F61DF001C072F /* Magazine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Magazine.h; sourceTree = "<group>"; };
 		72C74771193F61DF001C072F /* Magazine.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Magazine.m; sourceTree = "<group>"; };
-		72C74773193F61E0001C072F /* Book.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Book.h; sourceTree = "<group>"; };
-		72C74774193F61E0001C072F /* Book.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Book.m; sourceTree = "<group>"; };
 		72C74776193F61E0001C072F /* Page.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Page.h; sourceTree = "<group>"; };
 		72C74777193F61E0001C072F /* Page.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Page.m; sourceTree = "<group>"; };
 		72C74779193F61E0001C072F /* Author.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Author.h; sourceTree = "<group>"; };
@@ -86,6 +86,8 @@
 			isa = PBXGroup;
 			children = (
 				72C7476C193F615B001C072F /* Model.xcdatamodeld */,
+				72A2EB8D19899DAE00E3C408 /* Book.h */,
+				72A2EB8E19899DAE00E3C408 /* Book.m */,
 				72CF53B81975C69B00402988 /* Publisher.h */,
 				72CF53B91975C69B00402988 /* Publisher.m */,
 				72C7477C193F61E0001C072F /* EBook.h */,
@@ -94,8 +96,6 @@
 				72C7477A193F61E0001C072F /* Author.m */,
 				72C74776193F61E0001C072F /* Page.h */,
 				72C74777193F61E0001C072F /* Page.m */,
-				72C74773193F61E0001C072F /* Book.h */,
-				72C74774193F61E0001C072F /* Book.m */,
 				72C74770193F61DF001C072F /* Magazine.h */,
 				72C74771193F61DF001C072F /* Magazine.m */,
 				7245F144190834A0004D1304 /* Author+Transformable.h */,
@@ -260,10 +260,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				72A2EB8F19899DAE00E3C408 /* Book.m in Sources */,
 				72A541D4190831F1004C11A7 /* APDiskCacheTestCase.m in Sources */,
 				7245F149190834A0004D1304 /* CoreDataController.m in Sources */,
 				72C7477B193F61E0001C072F /* Author.m in Sources */,
-				72C74775193F61E0001C072F /* Book.m in Sources */,
 				72A541D9190831FC004C11A7 /* UnitTestingCommon.m in Sources */,
 				72C74772193F61DF001C072F /* Magazine.m in Sources */,
 				72C7477E193F61E0001C072F /* EBook.m in Sources */,

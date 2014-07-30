@@ -2,7 +2,7 @@
 //  Book.m
 //  Tests
 //
-//  Created by Flavio Negrão Torres on 6/4/14.
+//  Created by Flavio Negrão Torres on 7/30/14.
 //
 //
 
@@ -15,6 +15,7 @@
 
 @dynamic name;
 @dynamic picture;
+@dynamic createdDate;
 @dynamic author;
 @dynamic pages;
 

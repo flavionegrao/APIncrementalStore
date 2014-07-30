@@ -384,6 +384,38 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 
 }
 
+- (void) testDateProperties {
+    
+    NSDate* now = [NSDate date];
+    
+    // Create a local Book and insert it on Parse
+    Book* book = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.testContext];
+    [book setValue:@YES forKey:APObjectIsDirtyAttributeName];
+    [book setValue:[self createObjectUID] forKey:APObjectUIDAttributeName];
+    book.name = kBookNameLocal1;
+    book.createdDate = now;
+    
+    APParseSyncOperation* parseSyncOperation2 = [self newParseOperation];
+    [self.syncQueue addOperation:parseSyncOperation2];
+    [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
+        XCTAssertNil(operationError);
+    }];
+    while ([parseSyncOperation2 isFinished] == NO && WAIT_PATIENTLY);
+    
+    PFQuery* bookQuery = [PFQuery queryWithClassName:@"Book"];
+    [bookQuery whereKey:@"name" containsString:kBookNameLocal1];
+    __block PFObject* fetchedBook;
+    __block BOOL done = NO;
+    [bookQuery getFirstObjectInBackgroundWithBlock:^(PFObject *object, NSError *error) {
+        fetchedBook = object;
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    XCTAssertNotNil(fetchedBook);
+    NSDate* fetchedDateProperty = [fetchedBook valueForKey:@"createdDate"];
+    XCTAssertTrue([fetchedDateProperty timeIntervalSinceDate:now] < 1.0);
+}
 
 #pragma mark  - Tests - Objects created locally
 
