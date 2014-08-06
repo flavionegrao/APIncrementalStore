@@ -36,20 +36,24 @@ Two new columns are necessary on each Parse class that will sync with your Core 
 3) *apObjectEntityName*: through this attribute the `APIncrementalStore` adds support to Core Data Entity Inheritance. Only the root entities will be created at Parse, all remaining subentieis will be identified by this attribute. Therefore all attributes and relationships from the root class and its sub-entities will share the same Parse Class.
 
 ###Parse Relationships
-Please be mindful that relationships are being represented as Parse Pointers for Core Data To-One and Parse Relationships for Core Data To-Many relationships by default. All relationships have its inverse reflected at Parse as well for consistency sake.
+Please be mindful that relationships are being represented as Parse Pointers for Core Data To-One and Parse Relationships or Parse Array for Core Data To-Many relationships. 
 
 #### Performance considerations
 To-Many with a To-One as inverse are fine as the APParseConnector uses only the To-One side of the relationship to populate the local cache and rely on Core Data to fulfil the inverse relation (To-Many).
-The problem surfaces when we are dealing with Many-To-Many, there's a huge bottleneck when syncing a large amount of objects, the reason is that in order to keep consistency fetched from the webservice (i.e. Parse) it is necessary to create and execute another query for every relationship that it contains. That means we are able to fetch in batches of say 1000 objects for Parse but then multiples queries subsequentely are necessary for each object fetched. That's how PFRelation (Parse) works, we can't ask for the related objects when executing the fetch, perhaps another baas provider might have a better solution but for now we need to put up with that. There's an alternative for PFRelation, wich is the Array, we may read more about the differences [Parse Relationship Documentation](https://www.parse.com/docs/relations_guide).
+The problem surfaces when we are dealing with PFRelation, there's a huge bottleneck when syncing a large amount of objects, the reason is that in order to keep consistency fetched from the webservice (i.e. Parse) it is necessary to create and execute another query for every object that it contains. That means we are able to fetch in batches of say 1000 objects for Parse but then multiples queries subsequentely are necessary for each object fetched. That's how PFRelation (Parse) works, we can't ask for the related objects when executing the fetch, perhaps another baas provider might have a better solution but for now we need to put up with that. There's an alternative for PFRelation, wich is the Array, we may read more about the differences [Parse Relationship Documentation](https://www.parse.com/docs/relations_guide).
 With Array it is possible to ask for the related objects to come along with the fetched objects, therefore there's no need for the further queries as explained above. There's a significant performance enhancement when changing from PFRelation to Array, however the objects can become large enough to hit de Parse 128K limit per object. So when architecturing your Model take it into account. The recommendation is to use Array on the side where you have less objects and PFRelation on the inverse.
 The only way I was able to figure out how to let the Core Data Model be aware about when to use Array or PFRelation for the To-Many relations was to include some meta data directly into the model.
 
-Include the key `APParseRelationshipType` in the relationship user info with the values:
+You MUST include the key `APParseRelationshipType` in the Core Data Model for every relationship user info with the values:
 ```
-0 - PFRelation (default)
-1 - Array
+typedef NS_ENUM(NSUInteger, APParseRelationshipType) {
+    APParseRelationshipTypeNonExistent = 0,
+    APParseRelationshipTypeArray = 1,
+    APParseRelationshipTypePFRelation = 2,
+    
+};
 ```
-If no key is provided the `APIncrementalStore` will assume PFRelation.
+If no key is provided the `APIncrementalStore` will raise an Exception. Have a look at the `Tests/Model.xcdatamodeld` to see how it's implemented.
 
 
 ###Installation
@@ -174,6 +178,8 @@ Use a test Parse App as it will include few additional classes needed for testin
 ####v.0.4.2
 - Bug fixes as usual
 - Better support for Core Data predicates
+- SyncOperation uses a second PersistantStoreCoordinator to enable the IncrementalStore to continue reading while the store is syncing.
+- Migrate to single side relationship at Parse. All CoreData To-Many relationships need to include a key named APParseRelationshipTypeUserInfoKey under its userInfo Dictionary. PFRelation is disencourage to be used due to its complecity in the sync process, use Parse Array as much as possible.
 
 ####v.0.4.1
 - Automatic Sync is executed after each context save that hits the 'APIncrementalStore'. Can be turned off by passing APOptionSyncOnSaveKey set to NO when initializing the Store.
