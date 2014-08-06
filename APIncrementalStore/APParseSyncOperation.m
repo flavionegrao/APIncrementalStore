@@ -130,6 +130,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         } else {
             _psc = psc;
         }
+        
+        _mergedObjectsUIDsNestedByEntityName = [NSMutableDictionary dictionary];
     }
     return self;
 }
@@ -455,8 +457,6 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         NSManagedObjectModel* model = self.context.persistentStoreCoordinator.managedObjectModel;
         NSArray* sortedEntities = [[model entities]sortedArrayUsingDescriptors:@[[NSSortDescriptor sortDescriptorWithKey:@"name" ascending:YES]]];
         
-        self.mergedObjectsUIDsNestedByEntityName = [NSMutableDictionary dictionary];
-        
         for (NSEntityDescription* entityDescription in sortedEntities) {
             
             if ([self isCancelled]) {
@@ -551,7 +551,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                                     }
                                     
                                     [self populateManagedObject:managedObject withSerializedParseObject:serializeParseObject onInsertedRelatedObject:nil];
-                                    
+                                }
+                                
                                 } else {
                                     
                                     // Existing local object
@@ -597,7 +598,6 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                     }
                 }//@autoreleasepool
             }
-        }
     }];
     
     if (localError) {
@@ -827,10 +827,10 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 }
             }
             
-            //[managedObject willChangeValueForKey:propertyName];
-            //[managedObject setPrimitiveValue:managedObjectValue forKey:propertyName];
-            //[managedObject didChangeValueForKey:propertyName];
-              [managedObject setValue:managedObjectValue forKey:propertyName];
+            [managedObject willChangeValueForKey:propertyName];
+            [managedObject setPrimitiveValue:managedObjectValue forKey:propertyName];
+            [managedObject didChangeValueForKey:propertyName];
+              //[managedObject setValue:managedObjectValue forKey:propertyName];
         }
     }];
 }
