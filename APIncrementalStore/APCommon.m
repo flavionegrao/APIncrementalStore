@@ -23,6 +23,7 @@ NSString* const APObjectUIDAttributeName = @"apObjectUID";
 NSString* const APObjectIsDeletedAttributeName = @"apObjectIsDeleted";
 NSString* const APObjectStatusAttributeName = @"apObjectStatus";
 NSString* const APObjectEntityNameAttributeName = @"apObjectEntityName";
+NSString* const APIncrementalStorePrivateAttributeKey = @"kAPIncrementalStorePrivateAttribute";
 
 NSString* const APObjectLastModifiedAttributeName = @"apObjectLastModified";
 NSString* const APObjectIsDirtyAttributeName = @"apObjectIsDirty";

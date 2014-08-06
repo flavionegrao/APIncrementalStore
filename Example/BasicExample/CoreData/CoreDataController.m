@@ -16,7 +16,7 @@
  */
 
 #import "CoreDataController.h"
-#import "APIncrementalStore.h"
+#import <
 #import "NSLogEmoji.h"
 #import "APCommon.h"
 
@@ -96,7 +96,7 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
 - (void) setAuthenticatedUser:(id)authenticatedUser {
     
     _authenticatedUser = authenticatedUser;
-    [self configPersistantStoreCoordinator];
+    [self configPersistentStoreCoordinator];
 }
 
 
@@ -116,7 +116,7 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
 }
 
 
-- (void) configPersistantStoreCoordinator {
+- (void) configPersistentStoreCoordinator {
     
     /* Turn on/off to enable different levels of debugging */
     AP_DEBUG_METHODS = NO;

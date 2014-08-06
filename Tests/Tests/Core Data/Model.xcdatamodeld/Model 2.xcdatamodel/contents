@@ -1,17 +1,29 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<model userDefinedModelVersionIdentifier="2" type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="6208.6" systemVersion="13E28" minimumToolsVersion="Xcode 4.3" macOSVersion="Automatic" iOSVersion="Automatic">
+<model userDefinedModelVersionIdentifier="2" type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="6220.8" systemVersion="13E28" minimumToolsVersion="Xcode 4.3" macOSVersion="Automatic" iOSVersion="Automatic">
     <entity name="Author" representedClassName="Author" syncable="YES">
         <attribute name="name" optional="YES" attributeType="String" syncable="YES"/>
         <attribute name="photo" optional="YES" attributeType="Transformable" syncable="YES"/>
-        <relationship name="books" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Book" inverseName="author" inverseEntity="Book" syncable="YES"/>
-        <relationship name="magazines" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Magazine" inverseName="authors" inverseEntity="Magazine" syncable="YES"/>
+        <relationship name="books" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Book" inverseName="author" inverseEntity="Book" syncable="YES">
+            <userInfo>
+                <entry key="APParseRelationshipType" value="0"/>
+            </userInfo>
+        </relationship>
+        <relationship name="magazines" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Magazine" inverseName="authors" inverseEntity="Magazine" syncable="YES">
+            <userInfo>
+                <entry key="APParseRelationshipType" value="0"/>
+            </userInfo>
+        </relationship>
     </entity>
     <entity name="Book" representedClassName="Book" syncable="YES">
         <attribute name="createdDate" optional="YES" attributeType="Date" syncable="YES"/>
         <attribute name="name" optional="YES" attributeType="String" syncable="YES"/>
         <attribute name="picture" optional="YES" attributeType="Binary" allowsExternalBinaryDataStorage="YES" syncable="YES"/>
         <relationship name="author" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Author" inverseName="books" inverseEntity="Author" syncable="YES"/>
-        <relationship name="pages" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Page" inverseName="book" inverseEntity="Page" syncable="YES"/>
+        <relationship name="pages" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Page" inverseName="book" inverseEntity="Page" syncable="YES">
+            <userInfo>
+                <entry key="APParseRelationshipType" value="0"/>
+            </userInfo>
+        </relationship>
     </entity>
     <entity name="EBook" representedClassName="EBook" parentEntity="Book" syncable="YES">
         <attribute name="format" optional="YES" attributeType="String" syncable="YES"/>
@@ -23,7 +35,11 @@
                 <entry key="APParseRelationshipType" value="1"/>
             </userInfo>
         </relationship>
-        <relationship name="pages" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Page" inverseName="magazine" inverseEntity="Page" syncable="YES"/>
+        <relationship name="pages" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Page" inverseName="magazine" inverseEntity="Page" syncable="YES">
+            <userInfo>
+                <entry key="APParseRelationshipType" value="0"/>
+            </userInfo>
+        </relationship>
         <relationship name="publisher" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Publisher" inverseName="magazines" inverseEntity="Publisher" syncable="YES"/>
     </entity>
     <entity name="Page" representedClassName="Page" syncable="YES">
@@ -32,7 +48,11 @@
     </entity>
     <entity name="Publisher" representedClassName="Publisher" syncable="YES">
         <attribute name="name" optional="YES" attributeType="String" syncable="YES"/>
-        <relationship name="magazines" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Magazine" inverseName="publisher" inverseEntity="Magazine" syncable="YES"/>
+        <relationship name="magazines" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Magazine" inverseName="publisher" inverseEntity="Magazine" syncable="YES">
+            <userInfo>
+                <entry key="APParseRelationshipType" value="0"/>
+            </userInfo>
+        </relationship>
     </entity>
     <elements>
         <element name="Author" positionX="-9" positionY="-270" width="128" height="103"/>

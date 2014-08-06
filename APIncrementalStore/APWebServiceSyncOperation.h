@@ -13,8 +13,8 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
     APMergePolicyClientWins = 1
 };
 
-@interface APWebServiceSyncOperation : NSOperation
 
+@interface APWebServiceSyncOperation : NSOperation
 
 /**
  @param user A already authenticated user
@@ -23,8 +23,6 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
 - (instancetype)initWithMergePolicy:(APMergePolicy) policy;
 
 @property (nonatomic, assign) BOOL fullSync;
-
-@property (nonatomic, strong) NSManagedObjectContext* context;
 
 @property (nonatomic, copy) NSString* envID;
 

@@ -94,12 +94,12 @@ extern NSString *const APNotificationSyncErrorKey;
 
 /// Post this message to request the disk cache to recreate the local sqlite db as well as its psc and mocs
 extern NSString* const APNotificationStoreRequestCacheReset;
-extern NSString* const APNotificationCacheRequestReset __attribute__((deprecated("use APNotificationStoreRequestCacheReset. First deprecated in 0.4")));;
+extern NSString* const APNotificationCacheRequestReset __attribute__((deprecated("use APNotificationStoreRequestCacheReset. First deprecated in 0.4")));;\
 
 
 /// APIncrementalStore will post this message once it finished the disk cache reset process
 extern NSString* const APNotificationStoreDidFinishCacheReset;
-extern NSString* const APNotificationCacheDidFinishReset __attribute__((deprecated("use APNotificationStoreDidFinishCacheReset. First deprecated in 0.4")));;
+extern NSString* const APNotificationCacheDidFinishReset __attribute__((deprecated("use APNotificationStoreDidFinishCacheReset. First deprecated in 0.4")));
 
 
 
@@ -126,12 +126,12 @@ extern NSString* const APOptionSyncOnSaveKey;
 /// The name of the disk cache store file.
 extern NSString* const APOptionCacheFileNameKey;
 
-/// Whether or not an existing sqlite file should be removed a a new one creted before the persistant store start using it
-extern NSString* const APOptionCacheFileResetKey;
+/// Whether or not an existing sqlite file should be removed a a new one creted before the persistent store start using it
+extern NSString* const APOptionCacheFileResetKey __attribute__((deprecated("First deprecated in 0.42")));
 
 /**
- When adding the this class to a persistant store coordinator use this option
- to control which object will get persistant when a conflict is detected between
+ When adding the this class to a persistent store coordinator use this option
+ to control which object will get persistent when a conflict is detected between
  cached and webservice objects:
  APIncrementalStoreMergePolicyServerWins - webservice object overwrite cached object (DEFAULT)
  APIncrementalStoreMergePolicyClientWins - cached object overwrite webservice object

@@ -15,19 +15,20 @@
  * limitations under the License.
  */
 
-#import <Foundation/Foundation.h>
 #import "APWebServiceSyncOperation.h"
-#import <Parse-iOS-SDK/Parse.h>
 
-#import "APError.h"
-#import "APCommon.h"
+
+@class PFUser;
 
 extern NSString* const APParseRelationshipTypeUserInfoKey;
 
 typedef NS_ENUM(NSUInteger, APParseRelationshipType) {
-    APParseRelationshipTypePFRelation = 0, //Default
+    APParseRelationshipTypeNonExistent = 0,
     APParseRelationshipTypeArray = 1,
+    APParseRelationshipTypePFRelation = 2,
+    
 };
+
 
 @interface APParseSyncOperation : APWebServiceSyncOperation
 
@@ -37,7 +38,8 @@ typedef NS_ENUM(NSUInteger, APParseRelationshipType) {
  @param the managed context to be synced
  */
 - (instancetype)initWithMergePolicy:(APMergePolicy) policy
-             authenticatedParseUser:(PFUser*) authenticatedUser;
+             authenticatedParseUser:(PFUser*) authenticatedUser
+         persistentStoreCoordinator:(NSPersistentStoreCoordinator *)psc;
 
 @property (nonatomic, strong) PFUser* authenticatedUser;
 

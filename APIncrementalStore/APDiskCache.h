@@ -19,8 +19,6 @@
  * Guide as "The Disk Cache".
  * https://developer.apple.com/library/mac/documentation/DataManagement/Conceptual/IncrementalStorePG/Introduction/Introduction.html#//apple_ref/doc/uid/TP40010706
  *
- * The cache is only populated assyncronously through the method -[APDiskCache syncAllObjects:onCountingObjects:onSyncObject:onCompletion:],
- * so that fetching the cache will not triger any network operation.
  */
 
 @import CoreData;
@@ -37,16 +35,15 @@
  */
 - (id)initWithManagedModel:(NSManagedObjectModel*) model
  translateToObjectUIDBlock:(NSString* (^)(NSManagedObjectID*)) translateBlock
-        localStoreFileName:(NSString*) localStoreFileName
-      shouldResetCacheFile:(BOOL) shouldResetCache;
+        localStoreFileName:(NSString*) localStoreFileName;
 
-/// Context used for Syncing with WebService DB
-@property (nonatomic, readonly) NSManagedObjectContext* syncContext;
+///// Context used for Syncing with WebService DB
+//@property (nonatomic, readonly) NSManagedObjectContext* syncContext;
 
 @property (nonatomic, readonly) NSString* localStoreFileName;
 
-- (BOOL) saveAndReset:(BOOL) reset
-          syncContext:(NSError *__autoreleasing*) error;
+//- (BOOL) saveAndReset:(BOOL) reset
+//          syncContext:(NSError *__autoreleasing*) error;
 
 
 /**
@@ -101,6 +98,8 @@
 // entityName:(NSString*) entityName
                               error:(NSError *__autoreleasing *)error;
 
+- (void) ap_willRemoveFromPersistentStoreCoordinator;
+
 /**
  Permanent objectIDs are only allocated when the objects are syncronized with the remote webservice. Before that
  we must allocate a temporary objectID to allow for unique identification of objects between the APIncrementalStore
@@ -110,5 +109,7 @@
 - (NSString*) createObjectUID;
 
 - (void) resetCache;
+
+- (NSString *)pathToLocalStore;
 
 @end

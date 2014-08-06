@@ -36,5 +36,7 @@ typedef NS_ENUM(NSInteger, APIncrementalStoreErrorCode) {
     APIncrementalStoreErrorSyncOperationWasCancelled = 100,
     
     APIncrementalStoreErrorSyncOperationDuplicatedObjectUID = 200,
-    APIncrementalStoreErrorSyncOperationObjectUIDNotFound = 201
+    APIncrementalStoreErrorSyncOperationObjectUIDNotFound = 201,
+    
+    APIncrementalStoreErrorUnknownRequestType = 300,
 };

@@ -39,6 +39,7 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
 
 @implementation CoreDataController
 
+
 + (instancetype)sharedInstance {
     
     if (AP_DEBUG_METHODS) {MLog()}
@@ -58,9 +59,8 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
     self = [super init];
     
     if (self) {
-        self.isSyncingTheCache = NO;
-        self.isResetingTheCache = NO;
-        [self registreForNotifications];
+        _isSyncingTheCache = NO;
+        _isResetingTheCache = NO;
     }
     return self;
 }
@@ -70,18 +70,26 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
     
     if (AP_DEBUG_METHODS) {MLog()}
     
+    //id persistantStore = [self.psc.persistentStores firstObject];
+    
     [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheDidStartSync:) name:APNotificationStoreWillStartSync object:nil];
     [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheDidFinishSync:) name:APNotificationStoreDidFinishSync object:nil];
     [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(didReceiveNotificationCacheDidReset:) name:APNotificationStoreDidFinishCacheReset object:nil];
 }
 
-- (void) dealloc {
+- (void) unregistreForNotifications {
     
     if (AP_DEBUG_METHODS) {MLog()}
+    
+   // id persistantStore = [self.psc.persistentStores firstObject];
     
     [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationStoreDidFinishCacheReset object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationStoreDidFinishSync object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:APNotificationStoreWillStartSync object:nil];
+}
+
+- (void) dealloc {
+    [self unregistreForNotifications];
 }
 
 
@@ -90,37 +98,44 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
 - (void) setAuthenticatedUser:(id)authenticatedUser {
     
     _authenticatedUser = authenticatedUser;
-    [self configPersistantStoreCoordinator];
+    [self configPersistentStoreCoordinator];
+    [self registreForNotifications];
 }
 
 
-- (NSManagedObjectContext*) mainContext {
+- (void) configMainContext {
     
-    if (!_mainContext) {
+    if (!self.authenticatedUser) {
+        ELog(@"Please set remoteDBAuthenticatedUser before starting using the managedContext");
         
-        if (!self.authenticatedUser) {
-            ELog(@"Please set remoteDBAuthenticatedUser before starting using the managedContext");
-            
-        } else {
-            _mainContext = [[NSManagedObjectContext alloc]initWithConcurrencyType:NSMainQueueConcurrencyType];
-            _mainContext.persistentStoreCoordinator = self.psc;
-        }
+    } else {
+        self.mainContext = [[NSManagedObjectContext alloc]initWithConcurrencyType:NSMainQueueConcurrencyType];
+        self.mainContext.persistentStoreCoordinator = self.psc;
+        [self.mainContext setStalenessInterval:0];
     }
-    return _mainContext;
 }
 
 
-- (void) configPersistantStoreCoordinator {
+- (void) configPersistentStoreCoordinator {
     
     /* Turn on/off to enable different levels of debugging */
-    AP_DEBUG_METHODS = NO;
+    AP_DEBUG_METHODS = YES;
     AP_DEBUG_ERRORS = YES;
     AP_DEBUG_INFO = YES;
     
     if (AP_DEBUG_METHODS) {MLog()}
     
     // Set it to nil, if we are changing users existing contexts will be invalid
-    self.mainContext = nil;
+    //self.mainContext = nil;
+    
+    // Remove any previously registred store.
+    [self.psc.persistentStores enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
+        NSError* error;
+        if (![self.psc removePersistentStore:obj error:&error]) {
+            NSAssert(NO, @"Can't remove existent store from its PSC: %@",obj);
+        }
+        //obj = nil;
+    }];
     
     [NSPersistentStoreCoordinator registerStoreClass:[APIncrementalStore class] forStoreType:[APIncrementalStore type]];
     
@@ -137,6 +152,9 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
                                            APOptionMergePolicyKey:APOptionMergePolicyServerWins,
                                            APOptionSyncOnSaveKey:@NO}
                                    error:nil];
+    [self.mainContext reset];
+    self.mainContext = nil;
+    [self configMainContext];
 }
 
 
@@ -156,6 +174,9 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
 - (void) didReceiveNotificationCacheDidReset:(NSNotification*) note {
     
     if (AP_DEBUG_METHODS) {MLog()}
+    
+    [self unregistreForNotifications];
+    [self registreForNotifications];
     
     self.isResetingTheCache = NO;
     [[NSOperationQueue mainQueue]addOperationWithBlock:^{
@@ -194,7 +215,7 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
      However when a coredata stack is set under iCloud, the ubiquity store sends a similar message when it finishes the import process
      NSPersistentStoreDidImportUbiquitousContentChangesNotification (@"com.apple.coredata.ubiquity.importer.didfinishimport") and that
      contains managed object IDs. I've tested changing the message name to match it and the context identify it correctly and merge it
-     using only managed object IDs. I don't belive this class can get away using apple message name, so it's going to first replace all
+     using only managed object IDs. I don't belive this class can get away using iCloud's notification name, so it's going to first replace all
      object IDs with managed objects before request the context to merge it.
      */
     NSNotification* adjustedNote = [self notificationReplacingIDsWithManagedObjectsFromNotification:note forManagedContext:self.mainContext];
@@ -211,13 +232,18 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
 - (NSNotification*) notificationReplacingIDsWithManagedObjectsFromNotification:(NSNotification*) note
                                                              forManagedContext:(NSManagedObjectContext*) context {
     
+    
     NSMutableDictionary* userInfoWithManagedObjects = [note.userInfo[APNotificationSyncedObjectsKey] mutableCopy];
     [userInfoWithManagedObjects enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
         if ([key isEqualToString:NSInsertedObjectsKey] || [key isEqualToString:NSUpdatedObjectsKey] || [key isEqualToString:NSDeletedObjectsKey]) {
             NSArray* managedObjectIDs = (NSArray*) obj;
             NSMutableArray* managedObjects = [[NSMutableArray alloc]initWithCapacity:[managedObjectIDs count]];
             [managedObjectIDs enumerateObjectsUsingBlock:^(NSManagedObjectID* managedObjectID, NSUInteger idx, BOOL *stop) {
-                [managedObjects addObject:[context objectWithID:managedObjectID]];
+                if ([context.persistentStoreCoordinator.persistentStores containsObject:managedObjectID.persistentStore]) {
+                    [managedObjects addObject:[context objectWithID:managedObjectID]];
+                } else {
+                    NSLog(@"Warning - notification has objectIDs that don't belong the current managed context's persistantStoreCoordinator");
+                }
             }];
             userInfoWithManagedObjects[key] = managedObjects;
         }

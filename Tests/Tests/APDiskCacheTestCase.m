@@ -50,7 +50,7 @@ static NSString* const kMagazineObjectUIDLocal1 = @"__tempkMagazineObjectUIDLoca
 
 static NSString* const APNSManagedObjectIDKey = @"kAPNSManagedObjectIDKey";
 
-/* Test core data persistant store file name */
+/* Test core data persistent store file name */
 static NSString* const APCacheSqliteFile = @"APCacheStore.sqlite";
 static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
 
@@ -85,13 +85,13 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
     
     self.localCache = [[APDiskCache alloc]initWithManagedModel:[self testModel]
                                      translateToObjectUIDBlock:translateBlock
-                                            localStoreFileName:APCacheSqliteFile
-                                          shouldResetCacheFile:YES];
+                                            localStoreFileName:APCacheSqliteFile];
 }
 
 
 - (void)tearDown {
     
+    [self.localCache resetCache];
     // Put teardown code here. This method is called after the invocation of each test method in the class.
     [super tearDown];
 }
@@ -511,10 +511,86 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
     
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
     NSManagedObjectModel* model = [NSManagedObjectModel mergedModelFromBundles:@[bundle]];
-    return model;
+    
+    NSManagedObjectModel *cacheModel = [model copy];
+    
+    /*
+     Adding support properties
+     kAPIncrementalStoreUIDAttributeName, APObjectLastModifiedAttributeName and APObjectIsDeletedAttributeName
+     for each entity present on model, then we don't need to mess up with the user coredata model
+     */
+    
+    for (NSEntityDescription *entity in cacheModel.entities) {
+        
+        /*
+         It's necessary to change all properties to be optional due to the possibility of the
+         APWebServiceConnector creates a new placeholder managed object for a relationship of a object
+         being synced that doesn't exist localy at the moment. That new placeholder object will
+         only contain the APObjectUIDAttributeName and will be populated when the APWebServiceConnector
+         fetches it equivavalent representation from theWeb Service. If we have any optional property set to NO
+         it will not be possible to save it. This situation may happen when APWebServiceConnector say syncs
+         a Entity A and while it's syncing Entity B another client insert a new object A and B, if A has a relationship
+         to B a placeholder will be created localy to keep the model concistent untill the next sync
+         when the placeholder object A will be populated.
+         */
+        
+        [[entity propertiesByName] enumerateKeysAndObjectsUsingBlock:^(NSString* propertyName, NSPropertyDescription* description, BOOL *stop) {
+            [description setOptional:YES];
+        }];
+        
+        // Don't add properties for sub-entities, as they already exist in the super-entity
+        if ([entity superentity]) {
+            continue;
+        }
+        
+        NSMutableArray* additionalProperties = [NSMutableArray array];
+        
+        NSAttributeDescription *uidProperty = [[NSAttributeDescription alloc] init];
+        [uidProperty setName:APObjectUIDAttributeName];
+        [uidProperty setAttributeType:NSStringAttributeType];
+        [uidProperty setIndexed:YES];
+        [uidProperty setOptional:NO];
+        [uidProperty setUserInfo:@{APIncrementalStorePrivateAttributeKey:@NO}];
+        [additionalProperties addObject:uidProperty];
+        
+        NSAttributeDescription *lastModifiedProperty = [[NSAttributeDescription alloc] init];
+        [lastModifiedProperty setName:APObjectLastModifiedAttributeName];
+        [lastModifiedProperty setAttributeType:NSDateAttributeType];
+        [lastModifiedProperty setIndexed:NO];
+        [lastModifiedProperty setUserInfo:@{APIncrementalStorePrivateAttributeKey:@YES}];
+        [additionalProperties addObject:lastModifiedProperty];
+        
+        NSAttributeDescription *statusProperty = [[NSAttributeDescription alloc] init];
+        [statusProperty setName:APObjectStatusAttributeName];
+        [statusProperty setAttributeType:NSInteger16AttributeType];
+        [statusProperty setIndexed:NO];
+        [statusProperty setOptional:NO];
+        [statusProperty setDefaultValue:@(APObjectStatusCreated)];
+        [statusProperty setUserInfo:@{APIncrementalStorePrivateAttributeKey:@YES}];
+        [additionalProperties addObject:statusProperty];
+        
+        NSAttributeDescription *isDirtyProperty = [[NSAttributeDescription alloc] init];
+        [isDirtyProperty setName:APObjectIsDirtyAttributeName];
+        [isDirtyProperty setAttributeType:NSBooleanAttributeType];
+        [isDirtyProperty setIndexed:NO];
+        [isDirtyProperty setOptional:NO];
+        [isDirtyProperty setDefaultValue:@NO];
+        [isDirtyProperty setUserInfo:@{APIncrementalStorePrivateAttributeKey:@YES}];
+        [additionalProperties addObject:isDirtyProperty];
+        
+        NSAttributeDescription *createdRemotelyProperty = [[NSAttributeDescription alloc] init];
+        [createdRemotelyProperty setName:APObjectIsCreatedRemotelyAttributeName];
+        [createdRemotelyProperty setAttributeType:NSBooleanAttributeType];
+        [createdRemotelyProperty setIndexed:NO];
+        [createdRemotelyProperty setOptional:NO];
+        [createdRemotelyProperty setDefaultValue:@NO];
+        [createdRemotelyProperty setUserInfo:@{APIncrementalStorePrivateAttributeKey:@YES}];
+        [additionalProperties addObject:createdRemotelyProperty];
+        
+        [entity setProperties:[entity.properties arrayByAddingObjectsFromArray:additionalProperties]];
+    }
+    return cacheModel;
 }
 
-                    
-                    
 
 @end

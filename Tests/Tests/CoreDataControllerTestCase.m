@@ -93,7 +93,7 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     /* Create the objects and its relationships
      
      ----------       --------
-     | Author |<---->>| Book |
+     | Author |<------| Book |
      ----------       --------
      
      */
@@ -115,9 +115,9 @@ static NSString* const kBookName2 = @"A Clash of Kings";
         author[APObjectUIDAttributeName] = [self createObjectUID];
         [author save:&saveError];
         
-        // Relation (To-Many)
-        [[author relationForKey:@"books"] addObject:book];
-        [author save:&saveError];
+//        // Relation (To-Many)
+//        [[author relationForKey:@"books"] addObject:book];
+//        [author save:&saveError];
         
         // Pointer (To-One)
         book[@"author"] = author;
@@ -146,10 +146,10 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     });
     dispatch_group_wait(self.group, DISPATCH_TIME_FOREVER);
     
-    [self.coreDataController requestResetCache];
-    while (self.coreDataController.isResetingTheCache &&
-           [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
-    DLog(@"Cache is reset");
+//    [self.coreDataController requestResetCache];
+//    while (self.coreDataController.isResetingTheCache &&
+//           [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
+//    DLog(@"Cache is reset");
     
     self.coreDataController = nil;
     
@@ -303,8 +303,8 @@ static NSString* const kBookName2 = @"A Clash of Kings";
         [book2 save:&error];
         
         PFObject* author = [[PFQuery queryWithClassName:@"Author"]getFirstObject];
-        [[author relationForKey:@"books"] addObject:book2];
-        [author save:&error];
+//        [[author relationForKey:@"books"] addObject:book2];
+//        [author save:&error];
         
         book2[@"author"] = author;
         [book2 save:&error];
@@ -367,8 +367,8 @@ static NSString* const kBookName2 = @"A Clash of Kings";
         [authorQuery whereKey:@"name" containsString:@"Author#1"];
         PFObject* author = [authorQuery getFirstObject];
         
-        [[author relationForKey:@"books"] addObject:book1];
-        [author save:&error];
+//        [[author relationForKey:@"books"] addObject:book1];
+//        [author save:&error];
         
         book1[@"author"] = author;
         [book1 save:&error];
@@ -381,6 +381,9 @@ static NSString* const kBookName2 = @"A Clash of Kings";
     [self.coreDataController requestSyncCache];
     while (self.coreDataController.isSyncingTheCache && WAIT_PATIENTLY);
     
+    //[self.coreDataController.mainContext refreshObject:author1 mergeChanges:YES];
+    
+    //Lembrete: não esta recebendo updated na Notification que o Core Data Controller recebe.
     XCTAssertTrue([author1.books count] == 1);
     
     Book* relatedBook = [author1.books anyObject];
@@ -445,6 +448,7 @@ Expected Results:
     NSError* error = nil;
     [self.coreDataController.mainContext save:&error];
     XCTAssertNil(error);
+    
     [self.coreDataController requestSyncCache];
     while (self.coreDataController.isSyncingTheCache && WAIT_PATIENTLY);
     
@@ -696,10 +700,7 @@ Expected Results:
     NSError* savingError;
     [self.coreDataController.mainContext save:&savingError];
     
-    // Recreate Coredata stack
-    self.coreDataController = nil;
-    self.coreDataController = [[CoreDataController alloc]init];
-    self.coreDataController.authenticatedUser = [PFUser currentUser];
+    [self.coreDataController.mainContext refreshObject:book mergeChanges:NO];
     
     // Check is the updated book has been saved to disk properly.
     NSFetchRequest* bookFetchRequest = [[NSFetchRequest alloc]initWithEntityName:@"Book"];
@@ -731,9 +732,7 @@ Expected Results:
            [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
     
     // Recreate Coredata stack
-    self.coreDataController = nil;
-    self.coreDataController = [[CoreDataController alloc]init];
-    self.coreDataController.authenticatedUser = [PFUser currentUser];
+    [self.coreDataController.mainContext refreshObject:author mergeChanges:NO];
     
     // Check is the updated book has been saved to disk properly.
     Author* authorReFetched = [self fetchAuthor];
@@ -937,8 +936,8 @@ Expected Results:
         [newEBook save:&error];
         
         PFObject* author = [[PFQuery queryWithClassName:@"Author"]getFirstObject];
-        [[author relationForKey:@"books"] addObject:newEBook];
-        [author save:&error];
+//        [[author relationForKey:@"books"] addObject:newEBook];
+//        [author save:&error];
         
         newEBook[@"author"] = author;
         [newEBook save:&error];
@@ -994,8 +993,8 @@ Expected Results:
         [newEBook save:&error];
         
         PFObject* author = [[PFQuery queryWithClassName:@"Author"]getFirstObject];
-        [[author relationForKey:@"books"] addObject:newEBook];
-        [author save:&error];
+//        [[author relationForKey:@"books"] addObject:newEBook];
+//        [author save:&error];
         
         newEBook[@"author"] = author;
         [newEBook save:&error];
@@ -1119,7 +1118,7 @@ Expected Results:
 
 - (Author*) fetchAuthor {
     NSFetchRequest* authorFetchRequest = [[NSFetchRequest alloc]initWithEntityName:@"Author"];
-   authorFetchRequest.predicate = [NSPredicate predicateWithFormat:@"name = %@",kAuthorName];
+    authorFetchRequest.predicate = [NSPredicate predicateWithFormat:@"name = %@",kAuthorName];
     NSArray* authorResults = [self.coreDataController.mainContext executeFetchRequest:authorFetchRequest error:nil];
     return [authorResults lastObject];
 }
