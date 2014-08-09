@@ -20,6 +20,7 @@
 
 #import "APDiskCache.h"
 #import "APParseSyncOperation.h"
+#import "APParseJSONSyncOperation.h"
 
 #import "NSArray+Enumerable.h"
 #import "APCommon.h"
@@ -827,6 +828,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         }
         
         NSDictionary *options = @{ NSMigratePersistentStoresAutomaticallyOption: @YES,
+                                   NSSQLitePragmasOption:@{@"journal_mode":@"DELETE"},
                                    NSInferMappingModelAutomaticallyOption: @YES};
         
         NSURL *storeURL = [NSURL fileURLWithPath:[self.diskCache pathToLocalStore]];
@@ -839,6 +841,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
             [NSException raise:APIncrementalStoreExceptionLocalCacheStore format:@"Error creating sqlite persistent store: %@", error];
         }
         
+       // APWebServiceSyncOperation* syncOperation = [[APParseJSONSyncOperation alloc]initWithMergePolicy:self.mergePolicy authenticatedParseUser:self.authenticatedUser persistentStoreCoordinator:syncPSC];
         APWebServiceSyncOperation* syncOperation = [[APParseSyncOperation alloc]initWithMergePolicy:self.mergePolicy authenticatedParseUser:self.authenticatedUser persistentStoreCoordinator:syncPSC];
         NSString* username = [self.authenticatedUser valueForKey:@"username"];
         [syncOperation setEnvID:[NSString stringWithFormat:@"%@-%@",self.diskCache.localStoreFileName,username]];

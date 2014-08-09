@@ -842,8 +842,6 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     
     if (AP_DEBUG_METHODS) {MLog()}
     
-    NSDate* start = [NSDate date];
-    
     NSMutableDictionary* mutableProperties = [[managedObject.entity propertiesByName]mutableCopy];
     
     // Remove properties that won't be sent to Parse
@@ -996,14 +994,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             }
         }
         
-        //Debug
-        NSDate* end = [NSDate date];
-        NSLog(@"    Parse entity %@ -  property %@ populated in %f seconds",managedObject.entity.name, propertyName, [end timeIntervalSinceDate:start]);
     }];
-    
-    //Debug
-    NSDate* end = [NSDate date];
-    NSLog(@"Parse entity %@ -  populated in %f seconds",managedObject.entity.name, [end timeIntervalSinceDate:start]);
 
     return (*error) ? NO : YES;
 }
