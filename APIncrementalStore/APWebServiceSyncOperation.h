@@ -29,7 +29,7 @@ typedef NS_ENUM(NSInteger, APMergePolicy) {
 /// Default is APMergePolicyServerWins
 @property (nonatomic, assign) APMergePolicy mergePolicy;
 
-@property (nonatomic, copy) void (^perObjectCompletionBlock) (BOOL isRemote);
+@property (nonatomic, copy) void (^perObjectCompletionBlock) (BOOL isRemote, NSString* entityName);
 
 @property (nonatomic, copy) void (^syncCompletionBlock) (
                                     NSDictionary* mergedObjectsUIDsNestedByEntityName,

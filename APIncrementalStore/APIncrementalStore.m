@@ -51,6 +51,7 @@ NSString* const APNotificationStoreDidFinishSync = @"com.apetis.apincrementalsto
 
 NSString* const APNotificationNumberOfLocalObjectsSyncedKey = @"com.apetis.apincrementalstore.diskcache.numberoflocalobjectssynced.key";
 NSString* const APNotificationNumberOfRemoteObjectsSyncedKey = @"com.apetis.apincrementalstore.diskcache.numberofremoteobjectssynced.key";
+NSString* const APNotificationObjectEntityNameKey = @"com.apetis.apincrementalstore.diskcache.objectentityname.key";
 
 
 /****Deprecated************/
@@ -849,15 +850,14 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         
         __weak  typeof(self) weakSelf = self;
         
-        [syncOperation setPerObjectCompletionBlock:^(BOOL isRemote) {
+        [syncOperation setPerObjectCompletionBlock:^(BOOL isRemote, NSString* entityName) {
             
             if (![NSThread isMainThread]) {
                 [NSException raise:APIncrementalStoreExceptionInconsistency format:@"It should be called in the main thread"];
+            
             } else if (weakSelf ) {
-                
-                NSString* userInfoKey = (isRemote)? APNotificationNumberOfRemoteObjectsSyncedKey: APNotificationNumberOfLocalObjectsSyncedKey;
-                NSDictionary* userInfo = @{userInfoKey: @1};
-                
+                NSString* userInfoKey = (isRemote) ? APNotificationNumberOfRemoteObjectsSyncedKey: APNotificationNumberOfLocalObjectsSyncedKey;
+                NSDictionary* userInfo = @{userInfoKey: @1, APNotificationObjectEntityNameKey:entityName};
                 [[NSNotificationCenter defaultCenter]postNotificationName:APNotificationStoreDidSyncObject object:weakSelf userInfo:userInfo];
             }
         }];

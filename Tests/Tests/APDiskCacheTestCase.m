@@ -83,15 +83,18 @@ static NSString* const APTestSqliteFile = @"APTestStore.sqlite";
         return weakSelf.mapManagedObjectIDToObjectUID[objectID];
     };
     
+    NSNumber* rand = @(arc4random());
+    NSString* localSQLiteFileName = [NSString stringWithFormat:@"%@%@",APCacheSqliteFile,[rand stringValue]];
     self.localCache = [[APDiskCache alloc]initWithManagedModel:[self testModel]
                                      translateToObjectUIDBlock:translateBlock
-                                            localStoreFileName:APCacheSqliteFile];
+                                        localStoreFileName:localSQLiteFileName];
 }
 
 
 - (void)tearDown {
     
     [self.localCache resetCache];
+    self.localCache = nil;
     // Put teardown code here. This method is called after the invocation of each test method in the class.
     [super tearDown];
 }

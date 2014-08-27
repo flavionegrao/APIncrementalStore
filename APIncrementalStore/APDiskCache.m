@@ -77,7 +77,7 @@
             [self configPersistentStoreCoordinator];
             [self configManagedContexts];
             
-            if (AP_DEBUG_INFO) {DLog(@"Disk cache using local store name: %@",localStoreFileName)}
+            if (AP_DEBUG_INFO) {DLog(@"Disk cache using local store name: %@",[self pathToLocalStore])}
             
         } else {
             if (AP_DEBUG_ERRORS) { ELog(@"Can't init")}
@@ -92,9 +92,9 @@
     
     if (AP_DEBUG_METHODS) { MLog() }
     
-    [self deleteCacheStore];
+     [[NSNotificationCenter defaultCenter] removeObserver:self.contextObserver];
     
-    [[NSNotificationCenter defaultCenter] removeObserver:self.contextObserver];
+    [self deleteCacheStore];
     
     _mainContext = nil;
     _savingToPSCContext = nil;
@@ -192,24 +192,26 @@
                             usingBlock:^(NSNotification* note) {
                                 NSManagedObjectContext* savingContext = (NSManagedObjectContext*) note.object;
                                 
-                                NSArray* savingContextStores = savingContext.persistentStoreCoordinator.persistentStores;
+                                NSPersistentStoreCoordinator* psc = savingContext.persistentStoreCoordinator;
+                                NSArray* savingContextStores = psc.persistentStores;
                                 NSAssert([savingContextStores count] == 1, @"Can't handle multiple stores");
-                                id savingContextStore = [savingContextStores firstObject];
+                                NSURL* savingContextStoreURL = [psc URLForPersistentStore:[savingContextStores firstObject]];
                                 
-                                NSArray* myContextStores = self.savingToPSCContext.persistentStoreCoordinator.persistentStores;
+                                NSPersistentStoreCoordinator* myPSC = self.savingToPSCContext.persistentStoreCoordinator;
+                                NSArray* myContextStores = myPSC.persistentStores;
                                 NSAssert([myContextStores count] == 1, @"Can't handle multiple stores");
-                                id myContextStore = [myContextStores firstObject];
+                                NSURL* myContextStoreURL = [myPSC URLForPersistentStore:[myContextStores firstObject]];
                                 
-                                if (savingContext != self.savingToPSCContext) {
-                                    if (savingContextStore == myContextStore) {
-                                        [self.savingToPSCContext performBlockAndWait:^{
-                                            [self.savingToPSCContext mergeChangesFromContextDidSaveNotification:note];
-                                        }];
-                                    }
-                                }
-                                
-                                if (savingContext != self.mainContext) {
-                                    if (savingContextStore == myContextStore) {
+                                if ([savingContextStoreURL isEqual:myContextStoreURL]) {
+                                    
+                                    if (savingContext != self.mainContext) {
+                                        
+                                        if (savingContext != self.savingToPSCContext) {
+                                            [self.savingToPSCContext performBlockAndWait:^{
+                                                [self.savingToPSCContext mergeChangesFromContextDidSaveNotification:note];
+                                            }];
+                                        }
+                                        
                                         [self.mainContext performBlock:^{
                                             [self.mainContext mergeChangesFromContextDidSaveNotification:note];
                                         }];

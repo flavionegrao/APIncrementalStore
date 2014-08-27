@@ -257,6 +257,39 @@ static NSString* const kBookName2 = @"A Clash of Kings";
 }
 
 
+- (void) testChangeAuthorNameRemotelyAndMerge {
+    
+    Author* fetchedAuthor = [self fetchAuthor];
+    XCTAssertTrue([fetchedAuthor.name isEqualToString:kAuthorName]);
+    
+    
+    PFQuery* authorQuery = [PFQuery queryWithClassName:@"Author"];
+    [authorQuery whereKey:@"name" containsString:kAuthorName];
+    
+    __block BOOL done = NO;
+    __block PFObject* fetchedBookFromParse;
+    [authorQuery getFirstObjectInBackgroundWithBlock:^(PFObject *object, NSError *error) {
+        XCTAssertNil(error);
+        fetchedBookFromParse = object;
+        done = YES;
+    }];
+    while (done == NO && WAIT_PATIENTLY);
+    
+    fetchedBookFromParse[@"name"] = @"new name";
+    
+    done = NO;
+    [fetchedBookFromParse saveInBackgroundWithBlock:^(BOOL succeeded, NSError *error) {
+        XCTAssertNil(error);
+    }];
+    
+    // Sync and wait
+    [self.coreDataController requestSyncCache];
+    while (self.coreDataController.isSyncingTheCache && WAIT_PATIENTLY);
+    
+    XCTAssertTrue([fetchedAuthor.name isEqualToString:@"new name"]);
+    
+}
+
 - (void) testAddAnotherBookToTheAuthor {
     
     Book* book2 = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:self.coreDataController.mainContext];
@@ -1064,6 +1097,23 @@ Expected Results:
     // FetchRequest has  setShouldRefreshRefetchedObjects = YES;
     book = [self fetchBookRefreshObject];
     XCTAssertTrue([book isUpdated]);
+}
+
+
+- (void) testManagedObjectFromChildContext {
+    
+    NSManagedObjectContext* childContext = [[NSManagedObjectContext alloc]initWithConcurrencyType:NSMainQueueConcurrencyType];
+    childContext.parentContext = [self.coreDataController mainContext];
+    Book* childBook = [NSEntityDescription insertNewObjectForEntityForName:@"Book" inManagedObjectContext:childContext];
+    childBook.name = @"child book";
+    
+    NSError* error = nil;
+    if (![childContext save:&error]){
+        XCTAssert(NO);
+    } else {
+        Book* mainBook = (Book*) [self.coreDataController.mainContext objectWithID:[childBook objectID]];
+        XCTAssert([childBook.name isEqualToString:mainBook.name]);
+    }
 }
 
 

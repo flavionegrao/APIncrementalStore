@@ -16,7 +16,7 @@
  */
 
 // Less interferences
-#define NSLog(FORMAT, ...) printf("%s\n", [[NSString stringWithFormat:FORMAT, ##__VA_ARGS__] UTF8String]);
+//#define NSLog(FORMAT, ...) printf("%s\n", [[NSString stringWithFormat:FORMAT, ##__VA_ARGS__] UTF8String]);
 
 // Debug
 #define DLog(fmt, ...) NSLog((@"ℹ️ %@ [L:%d] - " fmt),NSStringFromClass([self class]), __LINE__, ##__VA_ARGS__);

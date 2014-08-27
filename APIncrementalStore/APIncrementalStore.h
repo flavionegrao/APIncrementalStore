@@ -70,12 +70,18 @@ extern NSString *const APNotificationCacheNumberOfLocalObjectsKey __attribute__(
 /** 
  APIncrementalStore will include this key when the APNotificationCacheWillStartSync 
  is sent showing how many remote objects will be merged localy.
- When object couting is not fully supported by the webservice the value will be -1.
+ When object counting is not fully supported by the webservice the value will be -1.
  It will be also be included in APNotificationStoreDidSyncObject with value set to 1.
  */
 extern NSString *const APNotificationNumberOfRemoteObjectsSyncedKey;
 extern NSString *const APNotificationCacheNumberOfRemoteObjectsKey __attribute__((deprecated("use APNotificationNumberOfRemoteObjectsSyncedKey. First deprecated in 0.4")));
 
+/**
+ APIncrementalStore will include this key when the APNotificationCacheWillStartSync
+ is sent showing the enntity name being merged.
+ It will be also be included in APNotificationStoreDidSyncObject with value set to 1.
+ */
+extern NSString *const APNotificationObjectEntityNameKey;
 
 /** 
  Along with APNotificationStoreDidFinishSync notificaiton this key will contain all objects 
