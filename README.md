@@ -177,9 +177,10 @@ Use a test Parse App as it will include few additional classes needed for testin
 
 ####v.0.4.2
 - Bug fixes as usual
+- APParseSyncOperation sending Push Notification "content-available" through PFPush whenever a local updated object is merged. 
 - Better support for Core Data predicates
 - SyncOperation uses a second PersistantStoreCoordinator to enable the IncrementalStore to continue reading while the store is syncing.
-- Migrate to single side relationship at Parse. All CoreData To-Many relationships need to include a key named APParseRelationshipTypeUserInfoKey under its userInfo Dictionary. PFRelation is disencourage to be used due to its complecity in the sync process, use Parse Array as much as possible.
+- Migrate to single side relationship at Parse. All CoreData To-Many relationships need to include a key named APParseRelationshipTypeUserInfoKey under its userInfo Dictionary. PFRelation is disencourage to be used due to its complexity in the sync process, use Parse Array as much as possible.
 
 ####v.0.4.1
 - Automatic Sync is executed after each context save that hits the 'APIncrementalStore'. Can be turned off by passing APOptionSyncOnSaveKey set to NO when initializing the Store.
