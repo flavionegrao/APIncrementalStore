@@ -843,7 +843,11 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         }
         
        // APWebServiceSyncOperation* syncOperation = [[APParseJSONSyncOperation alloc]initWithMergePolicy:self.mergePolicy authenticatedParseUser:self.authenticatedUser persistentStoreCoordinator:syncPSC];
-        APWebServiceSyncOperation* syncOperation = [[APParseSyncOperation alloc]initWithMergePolicy:self.mergePolicy authenticatedParseUser:self.authenticatedUser persistentStoreCoordinator:syncPSC];
+        APWebServiceSyncOperation* syncOperation = [[APParseSyncOperation alloc]initWithMergePolicy:self.mergePolicy
+                                                                             authenticatedParseUser:self.authenticatedUser
+                                                                         persistentStoreCoordinator:syncPSC
+                                                                              sendPushNotifications:YES];
+        
         NSString* username = [self.authenticatedUser valueForKey:@"username"];
         [syncOperation setEnvID:[NSString stringWithFormat:@"%@-%@",self.diskCache.localStoreFileName,username]];
         syncOperation.fullSync = allRemoteObjects;

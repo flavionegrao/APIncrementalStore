@@ -92,6 +92,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 @property (nonatomic, strong) NSMutableDictionary* mergedObjectsUIDsNestedByEntityName;
 @property (nonatomic, strong) NSPersistentStoreCoordinator* psc;
 @property (nonatomic, strong) NSManagedObjectContext* context;
+@property (nonatomic, assign, getter=isPushNotificationEnable) BOOL pushNotificationEnable;
+
 @property (nonatomic, strong) id contextDidSaveNotificationObserver;
 
 @end
@@ -101,7 +103,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 
 - (instancetype)initWithMergePolicy:(APMergePolicy) policy
              authenticatedParseUser:(PFUser*) authenticatedUser
-         persistentStoreCoordinator:(NSPersistentStoreCoordinator *)psc {
+         persistentStoreCoordinator:(NSPersistentStoreCoordinator *)psc
+               sendPushNotifications:(BOOL) pushNotification {
     
     if (AP_DEBUG_METHODS) { MLog()}
     
@@ -124,6 +127,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             //if (AP_DEBUG_INFO) {DLog(@"Using authenticated user: %@",authenticatedUser)}
             _authenticatedUser = authenticatedUser;
         }
+        
+        _pushNotificationEnable = pushNotification;
         
         if (!psc) {
             [NSException raise:APIncrementalStoreExceptionInconsistency format:@"can't init, psc is nil"];
@@ -248,6 +253,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         if (error) *error = localError;
         return NO;
     }
+    
+    __block NSUInteger numberOfDirtyObjectsSynced = 0;
     
     [self.context performBlockAndWait:^{
         
@@ -418,11 +425,28 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                     }];
                 }
             }
+            numberOfDirtyObjectsSynced++;
         }];
+        
     }];
     
+   
+    
+    if (success)  {
+        DLog(@"Local changes - All changes are in Sync");
+        
+        if (numberOfDirtyObjectsSynced > 0 && self.isPushNotificationEnable) {
+            PFQuery * pushQuery = [PFInstallation query];
+            [pushQuery whereKey:@"deviceType" equalTo:@"ios"];
+            [pushQuery whereKey:@"installationId" notEqualTo:[PFInstallation currentInstallation].installationId];
+            if (![PFPush sendPushDataToQuery:pushQuery withData:@{@"content-available":@"1"} error:&localError]) {
+                ELog(@"Error sending push notification");
+                success = NO;
+            }
+        }
+    }
+    
     if (error) *error = localError;
-    if (success)  NSLog(@"Local changes - All changes are in Sync");
     return success;
 }
 

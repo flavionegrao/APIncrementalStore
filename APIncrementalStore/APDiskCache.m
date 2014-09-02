@@ -484,8 +484,9 @@
         NSManagedObjectID* objectID = (NSManagedObjectID *)constantValue;
         cacheTransletedConstantValue = [self cachedManagedObjectIDFromObjectID:objectID];
         
-    } else if ([constantValue isKindOfClass:[NSMutableSet class]]) {
-        NSMutableSet* mutableSet = constantValue;
+    //} else if ([constantValue isKindOfClass:[NSMutableSet class]]) {
+    } else if ([constantValue isKindOfClass:[NSSet class]]) {
+        NSSet* mutableSet = constantValue;
         
         __block NSMutableSet* cacheTranslatedSet;
         __block NSInteger capacity = 0;
@@ -495,6 +496,33 @@
             cacheTranslatedSet = [[NSMutableSet alloc]initWithCapacity:capacity];
             
             [mutableSet enumerateObjectsUsingBlock:^(id obj, BOOL *stop) {
+                NSManagedObjectID* objectID;
+                
+                if ([obj isKindOfClass:[NSManagedObject class]]) {
+                    objectID = [(NSManagedObject *)obj objectID];
+                    
+                } else if ([obj isKindOfClass:[NSManagedObjectID class]]) {
+                    objectID = (NSManagedObjectID *)obj;
+                    
+                } else {
+                    NSLog(@"Error - Predicate constant %@ not supported by APIncrementalStore yet",constantValue);
+                }
+                [cacheTranslatedSet addObject:[self cachedManagedObjectIDFromObjectID:objectID]];
+            }];
+        }];
+        cacheTransletedConstantValue = cacheTranslatedSet;
+        
+    } else if ([constantValue isKindOfClass:[NSArray class]]) {
+        NSArray* array = constantValue;
+        
+        __block NSMutableArray* cacheTranslatedSet;
+        __block NSInteger capacity = 0;
+        
+        [requestContext performBlockAndWait:^{
+            capacity = [array count];
+            cacheTranslatedSet = [[NSMutableArray alloc]initWithCapacity:capacity];
+            
+            [array enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
                 NSManagedObjectID* objectID;
                 
                 if ([obj isKindOfClass:[NSManagedObject class]]) {
