@@ -20,7 +20,7 @@
 #import "APParseSyncOperation.h"
 
 #import "NSLogEmoji.h"
-#import <Parse-iOS-SDK/Parse.h>
+#import <Parse/Parse.h>
 #import "APError.h"
 #import "APCommon.h"
 
@@ -512,7 +512,9 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                     PFQuery* syncQuery = [self syncQueryForEntity:entityDescription minUpdatedDate:lastSync maxUpdatedDate:parseServerTime offset:skip];
                     NSMutableArray* batchOfObjects = [[syncQuery findObjects:&localError] mutableCopy];
                     
-                    NSLog(@"Remote changes: syncing batch of entities %@ (count %lu - offset %@) with Parse",entityDescription.name,(unsigned long)[batchOfObjects count],@(skip));
+                    if ([batchOfObjects count] > 0) {
+                        NSLog(@"Remote changes: syncing batch of entities %@ (count %lu - offset %@) with Parse",entityDescription.name,(unsigned long)[batchOfObjects count],@(skip));
+                    }
                     
                     if (localError) {
                         success = NO;
@@ -708,7 +710,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     //    return numberOfObjects;
 }
 
-
+ 
 #pragma mark - Track Last Object Sync Date Methods
 
 - (void) setEnvID:(NSString *)envID {
@@ -1048,27 +1050,29 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 - (BOOL) insertOnParseManagedObject:(NSManagedObject*) managedObject
                               error:(NSError *__autoreleasing*)error {
     
-    NSError* localError = nil;
     BOOL success = YES;
     
     NSEntityDescription* rootEntity = [self rootEntityFromEntity:managedObject.entity];
     PFObject* parseObject = [[PFObject alloc]initWithClassName:rootEntity.name];
-    [self populateParseObject:parseObject withManagedObject:managedObject error:&localError];
     
-    if (!localError) {
+    NSError __autoreleasing * populateObjectError = nil;
+    if (![self populateParseObject:parseObject withManagedObject:managedObject error:&populateObjectError]) {
+        if (error) *error = populateObjectError;
+        success = NO;
         
-        if ([parseObject save:&localError]) {
+    } else {
+        NSError __autoreleasing * saveError = nil;
+        if (![parseObject save:&saveError]) {
+            if (error) *error = saveError;
+            success = NO;
             
+        } else {
             /* Parse sets the objectId and updatedAt for a new object only after we save it. */
             [managedObject setValue:parseObject.updatedAt forKey:APObjectLastModifiedAttributeName];
             [managedObject setValue:@YES forKey:APObjectIsCreatedRemotelyAttributeName];
-            
-        } else {
-            if (error) *error = localError;
-            success = NO;
         }
+        
     }
-    
     return success;
 }
 
@@ -1383,8 +1387,10 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 *stop = YES;
                 ELog(@"Error getting parse object for To-One relationship %@ from Parse: %@",key,localError);
             
-            } else if (relatedParseObject[APObjectUIDAttributeName] == nil || relatedParseObject[APObjectEntityNameAttributeName] == nil) {
-                
+//            } else if (relatedParseObject[APObjectUIDAttributeName] == nil || relatedParseObject[APObjectEntityNameAttributeName] == nil) {
+            } else if ([[relatedParseObject allKeys] containsObject:APObjectUIDAttributeName] == NO ||
+                       [[relatedParseObject allKeys] containsObject:APObjectEntityNameAttributeName] == NO) {
+            
                 // Missing things
                 
                 *stop = YES;
@@ -1427,7 +1433,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         dictionaryRepresentation[APObjectLastModifiedAttributeName] == nil ||
         dictionaryRepresentation[APObjectStatusAttributeName] == nil) {
         
-        [NSException raise:APIncrementalStoreExceptionInconsistency format:@"%@ is an incompatible object, please ensure all objects imported have the mandatory APIncrementalStore attributes set",parseObject];
+        [NSException raise:APIncrementalStoreExceptionInconsistency format:@"%@ is an incompatible object, please ensure all objects imported have the mandatory APIncrementalStore attributes set and your Core Data Model matches what is created at Parse",parseObject];
     }
     if (!localError) {
         return dictionaryRepresentation;

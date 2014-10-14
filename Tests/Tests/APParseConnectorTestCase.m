@@ -1491,7 +1491,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     
     APParseSyncOperation* parseConnector = [[APParseSyncOperation alloc]initWithMergePolicy:APMergePolicyServerWins
                                                                      authenticatedParseUser:[PFUser currentUser]
-                                                                 persistentStoreCoordinator:self.syncPSC];
+                                                                 persistentStoreCoordinator:self.syncPSC sendPushNotifications:NO];
     return parseConnector;
 }
 

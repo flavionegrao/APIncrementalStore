@@ -16,7 +16,7 @@
  */
 
 #import "AppDelegate.h"
-#import <Parse-iOS-SDK/Parse.h>
+#import <Parse/Parse.h>
 
 static NSString* const APParsepApplicationId = @"";
 static NSString* const APParseClientKey =  @"";

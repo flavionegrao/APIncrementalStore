@@ -37,13 +37,8 @@
  translateToObjectUIDBlock:(NSString* (^)(NSManagedObjectID*)) translateBlock
         localStoreFileName:(NSString*) localStoreFileName;
 
-///// Context used for Syncing with WebService DB
-//@property (nonatomic, readonly) NSManagedObjectContext* syncContext;
 
 @property (nonatomic, readonly) NSString* localStoreFileName;
-
-//- (BOOL) saveAndReset:(BOOL) reset
-//          syncContext:(NSError *__autoreleasing*) error;
 
 
 /**
@@ -55,7 +50,7 @@
  "AttributeName1": provertyValue1,
  "AttributeName2": provertyValue2,
  "AttributeData1": NSData,
- "RelationshipToOneName": obectUIDValue,
+ "RelationshipToOneName": obectUID,
  "RelationshipToMany":
  [
  obectUID,
@@ -85,6 +80,10 @@
 - (NSDictionary*) fetchObjectRepresentationForObjectUID:(NSString*) objectUID
                                          requestContext:(NSManagedObjectContext*) requestContext
                                              entityName:(NSString*) entityName;
+
+- (NSArray*) fetchDictionaryRepresentations:(NSFetchRequest *)fetchRequest
+                              requestContext:(NSManagedObjectContext*) requestContext
+                                       error:(NSError *__autoreleasing*)error;
 
 - (BOOL)inserteObjectRepresentations:(NSArray*) insertedObjects
 // entityName:(NSString*) entityName

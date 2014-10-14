@@ -12,7 +12,7 @@ Pod::Spec.new do |s|
   s.framework  = 'CoreData'
 
   s.ios.deployment_target = '6.0'
-  s.ios.dependency 'Parse-iOS-SDK'
+  s.ios.dependency 'Parse'
 
   s.requires_arc = true
 

@@ -516,7 +516,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
             break;
             
         case NSDictionaryResultType:
-            [NSException raise:APIncrementalStoreExceptionIncompatibleRequest format:@"Unimplemented result type requested."];
+            return [self AP_fetchDictionary:request withContext:context error:error];
             break;
             
         case NSCountResultType:
@@ -616,6 +616,24 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     }
     
     return @[@(localCacheCount)];
+}
+
+- (NSArray *) AP_fetchDictionary:(NSFetchRequest *)fetchRequest
+                withContext:(NSManagedObjectContext *)context
+                      error:(NSError * __autoreleasing *)error {
+    
+    if (AP_DEBUG_METHODS) { MLog() }
+    
+    NSError *localCacheError = nil;
+    NSArray* objects = [self.diskCache fetchDictionaryRepresentations:fetchRequest requestContext:context error:&localCacheError];
+    
+    // Error check
+    if (localCacheError != nil) {
+        *error = localCacheError;
+        return nil;
+    }
+    
+    return objects;
 }
 
 
@@ -829,7 +847,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         }
         
         NSDictionary *options = @{ NSMigratePersistentStoresAutomaticallyOption: @YES,
-                                   NSSQLitePragmasOption:@{@"journal_mode":@"DELETE"},
+                                   /*NSSQLitePragmasOption:@{@"journal_mode":@"DELETE"},*/
                                    NSInferMappingModelAutomaticallyOption: @YES};
         
         NSURL *storeURL = [NSURL fileURLWithPath:[self.diskCache pathToLocalStore]];

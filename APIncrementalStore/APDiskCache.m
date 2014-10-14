@@ -141,7 +141,7 @@
     
     if (AP_DEBUG_METHODS) { MLog() }
     
-    // Remove any previously registred store.
+    // Remove any previously registred store
     [self.psc.persistentStores enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
         NSError* error;
         if (![self.psc removePersistentStore:obj error:&error]) {
@@ -160,7 +160,7 @@
     
     self.psc = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:self.model];
     NSDictionary *options = @{ NSMigratePersistentStoresAutomaticallyOption: @YES,
-                               NSSQLitePragmasOption:@{@"journal_mode":@"DELETE"}, // DEBUG ONLY: Disable WAL mode to be able to visualize the content of the sqlite file.
+                               /*NSSQLitePragmasOption:@{@"journal_mode":@"DELETE"}, // DEBUG ONLY: Disable WAL mode to be able to visualize the content of the sqlite file.*/
                                NSInferMappingModelAutomaticallyOption: @YES};
     
     NSURL *storeURL = [NSURL fileURLWithPath:[self pathToLocalStore]];
@@ -282,6 +282,33 @@
     }
 }
 
+- (NSArray*) fetchDictionaryRepresentations:(NSFetchRequest *)fetchRequest
+                                requestContext:(NSManagedObjectContext*) requestContext
+                                         error:(NSError *__autoreleasing*)error {
+    
+    if (AP_DEBUG_METHODS) { MLog()}
+    
+    __block NSError* localError = nil;
+    
+    NSFetchRequest* cacheFetchRequest = [self cacheFetchRequestFromFetchRequest:fetchRequest requestContext:requestContext];
+    
+    __block NSArray* objects;
+    [self.mainContext performBlockAndWait:^{
+        NSError* fetchingError = nil;
+        objects = [self.mainContext executeFetchRequest:cacheFetchRequest error:&fetchingError];
+        if (fetchingError) {
+            localError = fetchingError;
+        }
+    }];
+    
+    if (localError) {
+        if (error) *error = localError;
+        return 0;
+    } else {
+        return objects;
+    }
+}
+
 
 - (NSDictionary*) representationFromManagedObject: (NSManagedObject*) cacheObject {
     if (AP_DEBUG_METHODS) { MLog()}
@@ -314,12 +341,15 @@
                     NSManagedObject* relatedObject = [cacheObject primitiveValueForKey:propertyName];
                     [relatedObject willAccessValueForKey:propertyName];
                     
-                    if ([relatedObject valueForKey:APObjectUIDAttributeName]) {
-                        representation[propertyName] = @{relatedObject.entity.name:[relatedObject valueForKey:APObjectUIDAttributeName]};
+                    if ([relatedObject valueForKey:APObjectUIDAttributeName] &&
+                        [[relatedObject valueForKey:APObjectStatusAttributeName] isEqualToNumber:@(APObjectStatusPopulated)]) {
+                        
+                            representation[propertyName] = @{relatedObject.entity.name:[relatedObject valueForKey:APObjectUIDAttributeName]};
                         
                     } else {
                         representation[propertyName] =  [NSNull null];
                     }
+                    
                     [relatedObject didAccessValueForKey:propertyName];
                     
                 } else {
@@ -327,16 +357,22 @@
                     // To-Many
                     
                     NSSet* relatedObjects = [cacheObject primitiveValueForKey:propertyName];
-                    __block NSMutableDictionary* relatedObjectsRepresentation = [[NSMutableDictionary alloc] initWithCapacity:[relatedObjects count]];
+                    __block NSMutableDictionary* relatedObjectsRepresentation = [NSMutableDictionary dictionary];
                     
                     [relatedObjects enumerateObjectsUsingBlock:^(NSManagedObject* relatedObject, BOOL *stop) {
                         [relatedObject willAccessValueForKey:propertyName];
-                        NSMutableArray* relatedObjectsUID = [[relatedObjectsRepresentation valueForKey:relatedObject.entity.name]mutableCopy] ?: [NSMutableArray arrayWithCapacity:1];
-                        [relatedObjectsUID addObject:[relatedObject valueForKey:APObjectUIDAttributeName]];
-                        [relatedObjectsRepresentation setValue:relatedObjectsUID forKey:relatedObject.entity.name];
+                        
+                        if ([relatedObject valueForKey:APObjectUIDAttributeName] &&
+                            [[relatedObject valueForKey:APObjectStatusAttributeName] isEqualToNumber:@(APObjectStatusPopulated)]) {
+                            
+                            NSMutableArray* relatedObjectsUID = [[relatedObjectsRepresentation valueForKey:relatedObject.entity.name]mutableCopy] ?: [NSMutableArray arrayWithCapacity:1];
+                            [relatedObjectsUID addObject:[relatedObject valueForKey:APObjectUIDAttributeName]];
+                            [relatedObjectsRepresentation setValue:relatedObjectsUID forKey:relatedObject.entity.name];
+                        }
+                        
                         [relatedObject didAccessValueForKey:propertyName];
                     }];
-                    representation[propertyName] = relatedObjectsRepresentation ?: [NSNull null];
+                    representation[propertyName] = relatedObjectsRepresentation; //?: [NSNull null];
                 }
             }
             [cacheObject didAccessValueForKey:propertyName];
@@ -539,14 +575,14 @@
         }];
         cacheTransletedConstantValue = cacheTranslatedSet;
         
-    } else if ([constantValue isKindOfClass:[NSString class]] ||
+    } else /*if ([constantValue isKindOfClass:[NSString class]] ||
                [constantValue isKindOfClass:[NSNumber class]] ||
                [constantValue isKindOfClass:[NSDate class]] ||
-                constantValue == nil) {
+                constantValue == nil)*/ {
         cacheTransletedConstantValue = constantValue;
         
-    } else {
-        NSLog(@"Error - Predicate constant %@ not supported by APIncrementalStore yet",constantValue);
+   /* } else {
+        NSLog(@"Error - Predicate constant %@ not supported by APIncrementalStore yet",constantValue);*/
     }
     
     return cacheTransletedConstantValue;

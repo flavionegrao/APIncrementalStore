@@ -16,7 +16,7 @@
  */
 
 #import <Foundation/Foundation.h>
-#import <Parse-iOS-SDK/Parse.h>
+#import <Parse/Parse.h>
 
 /* Parse config */
 

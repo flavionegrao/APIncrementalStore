@@ -23,7 +23,7 @@
 #import "Author+Transformable.h"
 #import "Book.h"
 
-#import <Parse-iOS-SDK/Parse.h>
+#import <Parse/Parse.h>
 #import <MBProgressHUD/MBProgressHUD.h>
 #import "APCommon.h"
 #import "NSLogEmoji.h"
