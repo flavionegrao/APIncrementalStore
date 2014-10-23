@@ -27,7 +27,7 @@
 // Method call
 #define MLog(fmt, ...) NSLog((@"🆔 %@ [L:%d] %s" fmt),NSStringFromClass([self class]), __LINE__, __PRETTY_FUNCTION__, ##__VA_ARGS__);
 
-// Atention call
+// Attention call
 #define ALog(fmt, ...) NSLog((@"‼️ %@ [L:%d] %s - " fmt),NSStringFromClass([self class]), __LINE__, __PRETTY_FUNCTION__, ##__VA_ARGS__);
 
 // Use XCode Shortcut to jump to a specific line CMD+L :-)

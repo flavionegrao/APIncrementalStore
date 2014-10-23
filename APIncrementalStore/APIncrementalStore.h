@@ -36,7 +36,7 @@ extern NSString *const APNotificationRequestCacheFullSync;
 
 /** 
  APIncrementalStore will post this message before it starts the disk cache sync process. 
- Also the NSNotification userinfo will be keyed with APNotificationCacheNumberOfLocalObjectsKey 
+ Also the NSNotification userInfo will be keyed with APNotificationCacheNumberOfLocalObjectsKey
  and APNotificationCacheNumberOfRemoteObjectsKey showing the TOTAL number of objects that will 
  be synced, the value will be -1 if couting is not supported.
  */
@@ -46,14 +46,14 @@ extern NSString *const APNotificationCacheWillStartSync __attribute__((deprecate
 
 /** 
  APIncrementalStore will post this message once it synced a single object. Also the NSNotification 
- userinfo will be keyed with APNotificationCacheNumberOfLocalObjectsKey and 
+ userInfo will be keyed with APNotificationCacheNumberOfLocalObjectsKey and
  APNotificationCacheNumberOfRemoteObjectsKey showing the number of objects that were synced.
  */
 extern NSString *const APNotificationStoreDidSyncObject;
 extern NSString *const APNotificationCacheDidSyncObject __attribute__((deprecated("use APNotificationStoreDidSyncObject. First deprecated in 0.4")));
 
 
-/// APIncrementalStore will post this message once it finished the disk cache sync process.
+/// APIncrementalStore will post this message once it finishes the disk cache sync process.
 extern NSString *const APNotificationStoreDidFinishSync;
 extern NSString *const APNotificationCacheDidFinishSync __attribute__((deprecated("use APNotificationStoreDidSyncObject. First deprecated in 0.4")));
 
@@ -61,7 +61,7 @@ extern NSString *const APNotificationCacheDidFinishSync __attribute__((deprecate
 /**
  APIncrementalStore will include this key when the APNotificationCacheWillStartSync 
  is sent showing how many cached objects will be synced.
- When object couting is not fully supported by the webservice the value will be -1. 
+ When object counting is not fully supported by the webservice the value will be -1.
  It will be also be included in APNotificationStoreDidSyncObject with value set to 1.
  */
 extern NSString *const APNotificationNumberOfLocalObjectsSyncedKey;
@@ -69,7 +69,7 @@ extern NSString *const APNotificationCacheNumberOfLocalObjectsKey __attribute__(
 
 /** 
  APIncrementalStore will include this key when the APNotificationCacheWillStartSync 
- is sent showing how many remote objects will be merged localy.
+ is sent showing how many remote objects will be merged locally.
  When object counting is not fully supported by the webservice the value will be -1.
  It will be also be included in APNotificationStoreDidSyncObject with value set to 1.
  */
@@ -78,13 +78,13 @@ extern NSString *const APNotificationCacheNumberOfRemoteObjectsKey __attribute__
 
 /**
  APIncrementalStore will include this key when the APNotificationCacheWillStartSync
- is sent showing the enntity name being merged.
+ is sent showing the entity name being merged.
  It will be also be included in APNotificationStoreDidSyncObject with value set to 1.
  */
 extern NSString *const APNotificationObjectEntityNameKey;
 
 /** 
- Along with APNotificationStoreDidFinishSync notificaiton this key will contain all objects 
+ Along with APNotificationStoreDidFinishSync notification this key will contain all objects
  successfuly merged nested by entity name and objectID. Use it to refresh current in memory core 
  data objects.
  */
@@ -103,7 +103,7 @@ extern NSString* const APNotificationStoreRequestCacheReset;
 extern NSString* const APNotificationCacheRequestReset __attribute__((deprecated("use APNotificationStoreRequestCacheReset. First deprecated in 0.4")));;\
 
 
-/// APIncrementalStore will post this message once it finished the disk cache reset process
+/// APIncrementalStore will post this message once the disk cache reset process is finished
 extern NSString* const APNotificationStoreDidFinishCacheReset;
 extern NSString* const APNotificationCacheDidFinishReset __attribute__((deprecated("use APNotificationStoreDidFinishCacheReset. First deprecated in 0.4")));
 
@@ -111,7 +111,7 @@ extern NSString* const APNotificationCacheDidFinishReset __attribute__((deprecat
 
 #pragma mark - Incremental Store Options
 /*
- Use below options to configure few parameters related to this NSIncremental store subclass
+ Use below options to configure a few parameters related to this NSIncremental store subclass
  Example:
      [self.psc addPersistentStoreWithType:[APIncrementalStore type]
                             configuration:nil
@@ -132,26 +132,26 @@ extern NSString* const APOptionSyncOnSaveKey;
 /// The name of the disk cache store file.
 extern NSString* const APOptionCacheFileNameKey;
 
-/// Whether or not an existing sqlite file should be removed a a new one creted before the persistent store start using it
+/// Whether or not an existing sqlite file should be removed and a new one created before the persistent store starts using it
 extern NSString* const APOptionCacheFileResetKey __attribute__((deprecated("First deprecated in 0.42")));
 
 /**
- When adding the this class to a persistent store coordinator use this option
- to control which object will get persistent when a conflict is detected between
+ When adding this class to a persistent store coordinator use this option
+ to control which object will get persisted when a conflict is detected between
  cached and webservice objects:
- APIncrementalStoreMergePolicyServerWins - webservice object overwrite cached object (DEFAULT)
- APIncrementalStoreMergePolicyClientWins - cached object overwrite webservice object
+ APIncrementalStoreMergePolicyServerWins - webservice object overwrites cached object (DEFAULT)
+ APIncrementalStoreMergePolicyClientWins - cached object overwrites webservice object
  */
 extern NSString* const APOptionMergePolicyKey;
 
 /**
- Server object overwrite cached object (DEFAULT)
+ Server object overwrites cached object (DEFAULT)
  @see APOptionMergePolicy
  */
 extern NSString* const APOptionMergePolicyServerWins;
 
 /**
- Cached object overwrite webservice object
+ Cached object overwrites webservice object
  @see APOptionMergePolicy
  */
 extern NSString* const APOptionMergePolicyClientWins;

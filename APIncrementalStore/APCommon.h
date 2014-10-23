@@ -18,7 +18,7 @@
 
 #pragma mark - Cache Support Attribute Key Names
 
-/// Cached objects will be uniquely identified by this attribute. It won't be propageted to the user's context.
+/// Cached objects will be uniquely identified by this attribute. It won't be propagated to the user's context.
 extern NSString* const APObjectUIDAttributeName;
 
 /// Cached objects will have this attribute to enable conflict identification when merging objects from the webservice provider.
@@ -27,14 +27,14 @@ extern NSString* const APObjectLastModifiedAttributeName;
 /// Cached objects set with YES for this attribute will be merged with the BaaS provider objects.
 extern NSString* const APObjectIsDirtyAttributeName;
 
-/// When the user context requests that an object has to be deleted, when the user context is saved the equivalent cache object is marked as deleted via this attribute. We have this approach to allow for the other devices merging the same object be able to indentify that this object has been deleted.
+/// When the user context requests that an object has to be deleted, when the user context is saved the equivalent cache object is marked as deleted via this attribute. We have this approach to allow for the other devices merging the same object be able to identify that this object has been deleted.
 extern NSString* const APObjectIsDeletedAttributeName __attribute__((deprecated("use APObjectStatus attribute. First deprecated in 0.3.1")));
 
 /**
  During the sync process, the webservice database may become inconsistent if the sync process of a
  given client gets interrupted before all objects are populated. The algorithm used by the ParseConnector
- class enumarates all classes, populate its Parse objects and creates placeholders for the relationships
- if the related object doesn't exist. Problem may happen if any object doesn't get populated and other
+ class enumerates all classes, populates its Parse objects and creates placeholders for the relationships
+ if the related object doesn't exist. Problems may happen if any object doesn't get populated and another
  client syncs it to its cache. Objects with the status APObjectStatusCreated will not be returned by this
  Store to the Persistent Coordinator until it becomes APObjectStatusPopulated.
  
@@ -51,13 +51,13 @@ typedef NS_ENUM(NSUInteger, APObjectStatus)  {
     APObjectStatusDeleted = 3
 };
 
-/// Through this attribute the APParseConnector is able to identify which class it should insert a new object comming from the webservice provider. This is the case when a entity inheritance is enployed in the model. At the webservice database only the root entities will be create and subentities will be identified by this attribute.
+/// Through this attribute the APParseConnector is able to identify which class it should insert a new object coming from the webservice provider. This is the case when entity inheritance is enployed in the model. At the webservice database only the root entities will be created and subentities will be identified by this attribute.
 extern NSString* const APObjectEntityNameAttributeName;
 
 /// Whether or not an object is created remotely.
 extern NSString* const APObjectIsCreatedRemotelyAttributeName;
 
-/// If a NSEnitityDescription has this key set to NO on its userInfo propriety then it will be included in the representation of a cached managed object that is passed to APIncrementalstore
+/// If an NSEnitityDescription has this key set to NO on its userInfo propriety then it will be included in the representation of a cached managed object that is passed to APIncrementalStore
 extern NSString* const APIncrementalStorePrivateAttributeKey;
 
 /**
@@ -83,12 +83,12 @@ extern NSString* const APCoreDataACLAttributeName;
 
 #pragma mark - Logs
 
-/// Set it to YES to see at the console a message everytime that a method from an instance is called
+/// Set it to YES to see at the console a message every time that a method from an instance is called
 extern BOOL AP_DEBUG_METHODS;
 
 /// Set it to YES to see at the console a message error messages
 extern BOOL AP_DEBUG_ERRORS;
 
-/// Set it to YES to see at the console a informative messages to support debugging
+/// Set it to YES to see at the console an informative message to support debugging
 extern BOOL AP_DEBUG_INFO;
 

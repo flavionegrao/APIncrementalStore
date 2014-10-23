@@ -27,9 +27,9 @@
 @interface APDiskCache : NSObject
 
 /**
- Designated Initializar
+ Designated Initializer
  @param model
- @param translateBlock block that translates ManagedObjectID to reference ObjectUID, usually implemented by -[NSIncrementalStore referenceObjectForObjectID:]. This class use it to translate the predicates to ones complatible for query the local cache.
+ @param translateBlock block that translates ManagedObjectID to reference ObjectUID, usually implemented by -[NSIncrementalStore referenceObjectForObjectID:]. This class uses it to translate the predicates to ones compatible for querying the local cache.
  @param incrementalStore the NSIncrementalStore subclass that this instance is providing cache support
  @param localStoreURL the name of the SQLite store to be used by this class
  */
@@ -47,26 +47,26 @@
  {
  "APObjectUIDAttributeName": objectUID,
  "APObjectEntityNameAttributeName": entityName,
- "AttributeName1": provertyValue1,
- "AttributeName2": provertyValue2,
+ "AttributeName1": propertyValue1,
+ "AttributeName2": propertyValue2,
  "AttributeData1": NSData,
- "RelationshipToOneName": obectUID,
+ "RelationshipToOneName": objectUID,
  "RelationshipToMany":
  [
- obectUID,
- obectUID,
- obectUID,
+ objectUID,
+ objectUID,
+ objectUID,
  ]
  },
  ...
  ]
  
- If         PropertyName is a to-one relationhip then propertyValue has the related object objectUID
- Else If    PropertyName is a to-many relationhip then propertyValue has a array of related objectsUID
- Else       PropertyName is a attribute then propertyValue has the value of its attribute
+ If         PropertyName is a to-one relationship then propertyValue has the related object objectUID
+ Else If    PropertyName is a to-many relationship then propertyValue has a array of related objectsUID
+ Else       PropertyName is an attribute then propertyValue has the value of its attribute
  
  @param fetchRequest the fetchRequest requested (same requested by the NSIncremental Store)
- @param error case something goes wrong, this will have more info about the problem
+ @param error in case something goes wrong, this will have more info about the problem
  @returns Array of representations or nil if error occurs
  */
 - (NSArray*) fetchObjectRepresentations:(NSFetchRequest *)fetchRequest
@@ -85,7 +85,7 @@
                               requestContext:(NSManagedObjectContext*) requestContext
                                        error:(NSError *__autoreleasing*)error;
 
-- (BOOL)inserteObjectRepresentations:(NSArray*) insertedObjects
+- (BOOL)insertObjectRepresentations:(NSArray*) insertedObjects
 // entityName:(NSString*) entityName
                                error:(NSError *__autoreleasing *)error;
 

@@ -40,7 +40,7 @@ BOOL AP_DEBUG_INFO = NO;
 static NSString* const APLatestObjectSyncedKey = @"com.apetis.apincrementalstore.parseconnector.request.latestobjectsynced.key";
 
 /*
- It specifies the maximum number of objects that a single parse query should return when executed.
+ It specifies the maximum number of objects that a single Parse query should return when executed.
  If there are more objects than this limit it will be fetched in batches.
  Parse specifies that 100 is the default but it can be increased to maximum 1000.
  */
@@ -51,7 +51,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 @implementation NSRelationshipDescription (APParseSyncOperation)
 
 - (APParseRelationshipType) relationshipType {
-    NSAssert(self.userInfo[APParseRelationshipTypeUserInfoKey], @"It seems that there are a missconfigured userinfo key APParseRelationshipType in the model to-many relationship to enable the APIncremental Store to determine how to syncronize it proeprly against Parse distincty kinds os relationships");
+    NSAssert(self.userInfo[APParseRelationshipTypeUserInfoKey], @"Please configure a userinfo key APParseRelationshipType in the model for all to-many relationships to enable the APIncremental Store to determine how to syncronize it properly with Parse");
     return [self.userInfo[APParseRelationshipTypeUserInfoKey]integerValue];
 }
 
@@ -467,9 +467,9 @@ static NSUInteger const APParseQueryFetchLimit = 100;
     /*
      The reason we fetch only the objects that have been updated up to now is to avoid the situation
      when say a class A has been synced then we start syncing class B, an object from class B holds a
-     reference to a object from class A that we have not brought earlier.
+     reference to a object from class A that we have not brought in earlier.
      Such situation may happen if a object in class B gets updated after we have synced class A and
-     before we ask for the objects in class B. Quite unlike but possible.
+     before we ask for the objects in class B. Quite unlikely but possible.
      */
     NSDate* parseServerTime = [self getParseServerTime:&localError];
     if (localError) {
@@ -656,7 +656,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 }
 
 /*
- As stated by a Parse techincian: We currently limit count operations to 160 api requests within a
+ As stated by a Parse technician: We currently limit count operations to 160 api requests within a
  one minute period for each application. We may have to adjust this in the future
  depending on database performance.
  https://parse.com/questions/code-154the-number-of-count-operations-in-progress-has-reached-its-limit-code-154-version-1125
@@ -672,7 +672,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 
 
 /*
- As stated by a Parse techincian: We currently limit count operations to 160 api requests within a
+ As stated by a Parse technician: We currently limit count operations to 160 api requests within a
  one minute period for each application. We may have to adjust this in the future
  depending on database performance.
  https://parse.com/questions/code-154the-number-of-count-operations-in-progress-has-reached-its-limit-code-154-version-1125
@@ -948,7 +948,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                     } else if ([relationshipDescription isRelationAtParse]) {
                         
                         /*
-                         Would be nice if there was a method to empty a relationship easiser or check
+                         Would be nice if there was a method to easily empty a relationship or check
                          what objects are in the relation without querying Parse.
                          The only way I was able to make it work was to query all objects and
                          remove them one by one... awesome!
@@ -967,7 +967,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                         
                         /*
                          Now fetch the equivalent Parse object from the local related managed object
-                         and add them all to the parse relation
+                         and add them all to the Parse relation
                          */
                         for (NSManagedObject* relatedManagedObject in relatedManagedObjects) {
                             NSError* localError = nil;
@@ -1275,8 +1275,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         if ([value isKindOfClass:[PFRelation class]]) {
             
             /*
-             In order to optimize the sync processm there are two scenarios where we don't need
-             to populate this relation when:
+             In order to optimize the sync process there are three scenarios where we don't need
+             to populate this relation:
              
              1) The PFRelation is part of the root entity so that doesn't belong to this entity.
              This happens because Parse doesn't send not populated properties along with the
@@ -1286,9 +1286,9 @@ static NSUInteger const APParseQueryFetchLimit = 100;
              
              2) The inverse relation is To-One
              
-             3) The inverse is a Array. Here we can't differentiate solely evaluating our core
-             data model and tell if the inverse relation is a Array or a PFRelation.
-             For that reason if the core data model has a key APParseRelationshipTypeUserInfoKey
+             3) The inverse is an Array. Here we can't differentiate solely evaluating our Core
+             Data model and tell if the inverse relation is an Array or a PFRelation.
+             For that reason if the Core Data model has a key APParseRelationshipTypeUserInfoKey
              set with APParseRelationshipTypeArray we assume that Parse has a relation as the inverse
              relationship, therefore we can skip populating this relation.
              
@@ -1310,7 +1310,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             }
             
             if (needToPopulateRelation) {
-                // To-Many relationsship (need to create an Array of Dictionaries including only the ObjectId
+                // To-Many relationship (need to create an Array of Dictionaries including only the ObjectId
                 
                 PFRelation* relation = (PFRelation*) value;
                 PFQuery* queryForRelatedObjects = [relation query];
@@ -1341,7 +1341,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             }
             
         } else if ([value isKindOfClass:[NSArray class]]) {
-            // To-Many relationsship (need to create an Array of Dictionaries including only the ObjectUId
+            // To-Many relationship (need to create an Array of Dictionaries including only the ObjectUId
             NSMutableArray* relatedObjects = [[NSMutableArray alloc]initWithCapacity:[value count]];
             
             for (PFObject* relatedParseObject in value) {
@@ -1412,7 +1412,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             
             /*
              PFACL object doesn't show which users/roles are associated with it,
-             unless you know it IDs/RoleNames beforehand.
+             unless you know the IDs/RoleNames beforehand.
              I haven't figured out a way to extract that information to enable the serialization
              of that into the managed object.
              Via REST it is possible to see it, I'm trying to stay away from interacting via REST at the moment...
@@ -1532,7 +1532,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
         if ([localError.domain isEqualToString:@"Parse"] && localError.code == kPFScriptError) {
             
             if ([localError.userInfo[@"error"] isEqualToString:@"function not found"]) {
-                NSString* msg = @"You likely don't have Parse Cloud Code configured properly, add a method named \"getTime\" in order to enable APIncrementalStore to retrieve Parse time. Check https://github.com/flavionegrao/APIncrementalStore how to set it up correctly.";
+                NSString* msg = @"You likely don't have Parse Cloud Code configured properly, add a method named \"getTime\" in order to enable APIncrementalStore to retrieve Parse time. Check https://github.com/flavionegrao/APIncrementalStore to see how to set it up correctly.";
                 [NSException raise:APIncrementalStoreExceptionInconsistency format:@"%@",msg];
                 
             } else {

@@ -33,9 +33,9 @@ typedef NS_ENUM(NSUInteger, APParseRelationshipType) {
 @interface APParseSyncOperation : APWebServiceSyncOperation
 
 /**
- @param authenticatedUser A already authenticated user
+ @param authenticatedUser An already authenticated user
  @param policy one of defined APMergePolicy options
- @param psc the persistant store coordinator to be used for this sync process. Use a separete one to avoid blocking the app's psc.
+ @param psc the persistent store coordinator to be used for this sync process. Use a separete one to avoid blocking the app's psc.
  @param pushNotification set it to YES if you want that a PFPush be sent out with a @{@"content-available":@"1"} whenever a local object is synced with Parse.
  */
 - (instancetype)initWithMergePolicy:(APMergePolicy) policy

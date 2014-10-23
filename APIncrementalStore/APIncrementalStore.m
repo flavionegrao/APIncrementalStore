@@ -667,7 +667,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         
         [insertedObjectRepresentations enumerateKeysAndObjectsUsingBlock:^(NSString* entityName, NSArray* representations, BOOL *stop) {
             
-            if (![self.diskCache inserteObjectRepresentations:representations error:&localError]) {
+            if (![self.diskCache insertObjectRepresentations:representations error:&localError]) {
                 *stop = YES;
                 *error = localError;
             }
