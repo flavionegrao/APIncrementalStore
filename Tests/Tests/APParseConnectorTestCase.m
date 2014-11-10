@@ -189,7 +189,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 
 - (void) testMergeRemoteObjectsReturn {
     
-    APParseSyncOperation* parseSyncOperation1 = [self newParseSyncOperation];
+    APParseSyncOperation* parseSyncOperation1 = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     
     [parseSyncOperation1 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         
@@ -208,7 +208,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
        
     // Sync again - should bring an empty result.
     
-    APParseSyncOperation* parseSyncOperation2 = [self newParseSyncOperation];
+    APParseSyncOperation* parseSyncOperation2 = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         XCTAssertNil(operationError, @"Sync error:%@",operationError);
         XCTAssertTrue([mergedObjectsUIDsNestedByEntityName count] == 0);
@@ -227,7 +227,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 
 - (void) testMergeRemoteObjects {
     
-    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperation];
+    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     
     [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         
@@ -260,7 +260,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     __block PFObject* book3;
     __block PFObject* author;
     
-    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperation];
+    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [self.syncQueue addOperation:parseSyncOperation];
     
     while ([parseSyncOperation isFinished] == NO && WAIT_PATIENTLY);
@@ -294,7 +294,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     }];
     while (done == NO && WAIT_PATIENTLY);
     
-    APParseSyncOperation* parseSyncOperation2 = [self newParseSyncOperation];
+    APParseSyncOperation* parseSyncOperation2 = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     
     [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         
@@ -325,7 +325,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 
 - (void) testMergeRemoteCreatedRelationshipToMany {
     
-    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperation];
+    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [self.syncQueue addOperation:parseSyncOperation];
     while ([parseSyncOperation isFinished] == NO && WAIT_PATIENTLY);
     
@@ -346,7 +346,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 
 - (void) testMergeRemoteDeletedObjects {
     
-    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperation];
+    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [self.syncQueue addOperation:parseSyncOperation];
     while ([parseSyncOperation isFinished] == NO && WAIT_PATIENTLY);
     
@@ -368,7 +368,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     }];
     while (done == NO && WAIT_PATIENTLY);
     
-    APParseSyncOperation* parseSyncOperation2 = [self newParseSyncOperation];
+    APParseSyncOperation* parseSyncOperation2 = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [self.syncQueue addOperation:parseSyncOperation2];
     while ([parseSyncOperation2 isFinished] == NO && WAIT_PATIENTLY);
     
@@ -395,7 +395,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     [self.testContext save:&error];
     XCTAssertNil(error);
     
-    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperation];
+    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [self.syncQueue addOperation:parseSyncOperation];
     [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         XCTAssertNil(operationError);
@@ -437,7 +437,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     [self.testContext save:&error];
     XCTAssertNil(error);
     
-    APParseSyncOperation* parseSyncOperation2 = [self newParseSyncOperation];
+    APParseSyncOperation* parseSyncOperation2 = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [self.syncQueue addOperation:parseSyncOperation2];
     [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         XCTAssertNil(operationError);
@@ -481,7 +481,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     XCTAssertNil(error);
     
     //Sync
-    APParseSyncOperation* parseSyncOperation2 = [self newParseSyncOperation];
+    APParseSyncOperation* parseSyncOperation2 = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [self.syncQueue addOperation:parseSyncOperation2];
     [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         XCTAssertNil(operationError);
@@ -501,7 +501,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     
     done = NO;
     PFObject* relatedAuthor = fetchedBook[@"author"];
-    [relatedAuthor refreshInBackgroundWithBlock:^(PFObject *object, NSError *error) {
+    [relatedAuthor fetchInBackgroundWithBlock:^(PFObject *object, NSError *error) {
         XCTAssertNotNil(object);
         XCTAssertEqualObjects([object valueForKey:@"name"],kAuthorNameLocal);
         done = YES;
@@ -550,7 +550,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     XCTAssertNil(error);
     
     //Sync
-    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperation];
+    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [self.syncQueue addOperation:parseSyncOperation];
     [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         XCTAssertNil(operationError);
@@ -652,7 +652,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     XCTAssertNil(error);
     
     //Sync
-    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperation];
+    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [self.syncQueue addOperation:parseSyncOperation];
     [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         [self.testContext refreshObject:author1 mergeChanges:YES];
@@ -794,7 +794,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     while (done == NO && WAIT_PATIENTLY);
      
      //Sync
-     APParseSyncOperation* parseSyncOperation = [self newParseSyncOperation];
+     APParseSyncOperation* parseSyncOperation = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
      [self.syncQueue addOperation:parseSyncOperation];
      [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         XCTAssertNil(operationError);
@@ -820,7 +820,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 - (void) testBinaryAttributeMergingToParse {
     
     //Sync
-    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperation];
+    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [self.syncQueue addOperation:parseSyncOperation];
     [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         XCTAssertNil(operationError);
@@ -847,7 +847,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     XCTAssertNil(saveError);
     
     //Sync
-    APParseSyncOperation* parseSyncOperation2 = [self newParseSyncOperation];
+    APParseSyncOperation* parseSyncOperation2 = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [self.syncQueue addOperation:parseSyncOperation2];
     [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         XCTAssertNil(operationError);
@@ -890,7 +890,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 
     
     //Sync
-    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperation];
+    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [self.syncQueue addOperation:parseSyncOperation];
     [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         XCTAssertNil(operationError);
@@ -931,7 +931,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     XCTAssertNil(error);
     
     //Sync
-    APParseSyncOperation* parseSyncOperation2 = [self newParseSyncOperation];
+    APParseSyncOperation* parseSyncOperation2 = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [self.syncQueue addOperation:parseSyncOperation2];
     [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         XCTAssertNil(operationError);
@@ -957,7 +957,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 - (void) testConflictWhenMergingObjectsClientWinsPolicy {
     
     //Sync
-    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperation];
+    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [self.syncQueue addOperation:parseSyncOperation];
     [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         [self.testContext reset];
@@ -999,8 +999,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     XCTAssertNil(error);
     
     //Sync
-    APParseSyncOperation* parseSyncOperation2 = [self newParseSyncOperation];
-    parseSyncOperation2.mergePolicy = APMergePolicyClientWins;
+    APParseSyncOperation* parseSyncOperation2 = [self newParseSyncOperationWithMergePolicy:APMergePolicyClientWins];
     [self.syncQueue addOperation:parseSyncOperation2];
     [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         [self.testContext refreshObject:localBook mergeChanges:YES];
@@ -1010,7 +1009,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     XCTAssertEqualObjects(localBook.name, kBookNameParse3);
     
     done = NO;
-    [parseBook refreshInBackgroundWithBlock:^(PFObject *object, NSError *error) {
+    [parseBook fetchInBackgroundWithBlock:^(PFObject *object, NSError *error) {
          XCTAssertEqualObjects([object valueForKey:@"name"], kBookNameParse3);
          done = YES;
     }];
@@ -1030,7 +1029,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 - (void) testConflictWhenMergingObjectsServerWinsPolicy {
     
     //Sync
-    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperation];
+    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [self.syncQueue addOperation:parseSyncOperation];
     [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         XCTAssertNil(operationError);
@@ -1073,8 +1072,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     
     
     //Sync
-    APParseSyncOperation* parseSyncOperation2 = [self newParseSyncOperation];
-    parseSyncOperation2.mergePolicy = APMergePolicyServerWins;
+    APParseSyncOperation* parseSyncOperation2 = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [self.syncQueue addOperation:parseSyncOperation2];
     [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         [self.testContext refreshObject:localBook mergeChanges:YES];
@@ -1084,7 +1082,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     XCTAssertEqualObjects(localBook.name, kBookNameParse4);
     
     done = NO;
-    [parseBook refreshInBackgroundWithBlock:^(PFObject *object, NSError *error) {
+    [parseBook fetchInBackgroundWithBlock:^(PFObject *object, NSError *error) {
         XCTAssertEqualObjects([object valueForKey:@"name"], kBookNameParse4);
         done = YES;
     }];
@@ -1145,8 +1143,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     XCTAssertNil(error);
     
     //Sync
-    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperation];
-    parseSyncOperation.mergePolicy = APMergePolicyServerWins;
+    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [self.syncQueue addOperation:parseSyncOperation];
     [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         XCTAssertNil(operationError);
@@ -1200,8 +1197,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     XCTAssertNil(error);
     
     //Sync
-    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperation];
-    parseSyncOperation.mergePolicy = APMergePolicyServerWins;
+    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [self.syncQueue addOperation:parseSyncOperation];
     [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         XCTAssertNil(operationError);
@@ -1230,8 +1226,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 - (void) testInheritanceRemoteCreatedSubEntityObject {
     
     //Sync
-    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperation];
-    parseSyncOperation.mergePolicy = APMergePolicyServerWins;
+    APParseSyncOperation* parseSyncOperation = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [self.syncQueue addOperation:parseSyncOperation];
     [parseSyncOperation setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         XCTAssertNil(operationError);
@@ -1273,7 +1268,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
     
     
     //Sync
-    APParseSyncOperation* parseSyncOperation2 = [self newParseSyncOperation];
+    APParseSyncOperation* parseSyncOperation2 = [self newParseSyncOperationWithMergePolicy:APMergePolicyServerWins];
     [self.syncQueue addOperation:parseSyncOperation2];
     [parseSyncOperation2 setSyncCompletionBlock:^(NSDictionary *mergedObjectsUIDsNestedByEntityName, NSError *operationError) {
         XCTAssertNil(operationError);
@@ -1472,7 +1467,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
 }
 
 
-- (APParseSyncOperation*) newParseSyncOperation {
+- (APParseSyncOperation*) newParseSyncOperationWithMergePolicy:(APMergePolicy) policy {
     
     if (!self.syncPSC) {
         self.syncPSC = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:self.testModel];
@@ -1489,7 +1484,7 @@ static NSString* const testSqliteFile = @"APParseConnectorTestFile.sqlite";
         }
     }
     
-    APParseSyncOperation* parseConnector = [[APParseSyncOperation alloc]initWithMergePolicy:APMergePolicyServerWins
+    APParseSyncOperation* parseConnector = [[APParseSyncOperation alloc]initWithMergePolicy:policy
                                                                      authenticatedParseUser:[PFUser currentUser]
                                                                  persistentStoreCoordinator:self.syncPSC sendPushNotifications:NO];
     return parseConnector;

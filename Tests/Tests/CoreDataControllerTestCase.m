@@ -615,7 +615,7 @@ Expected Results:
  The intention of this test is to compare the two alternatives in terms of bandwidth, requests and time to finish.
  See the test testStressTestForToManyRelationshipsUsingParseArray for the counterpart of this test.
  
- ATTENTION: This test is disabled by default as it took a considerable amount of time to be completed, turn it on when necessary
+ ATTENTION: This test is disabled by default as it takes a considerable amount of time to be completed, turn it on when necessary
  */
 - (void) testStressTestForToManyRelationshipsUsingParseRelation {
 

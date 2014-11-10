@@ -1,9 +1,9 @@
 PODS:
-  - APIncrementalStore (0.4.1):
+  - APIncrementalStore (0.4.2):
     - Parse
   - Bolts (1.1.3)
-  - Parse (1.4.1):
-    - Bolts (~> 1.1.2)
+  - Parse (1.5.0):
+    - Bolts (~> 1.1.3)
 
 DEPENDENCIES:
   - APIncrementalStore (from `../`)
@@ -13,8 +13,8 @@ EXTERNAL SOURCES:
     :path: ../
 
 SPEC CHECKSUMS:
-  APIncrementalStore: 2ab4bab1c5a6878204c1cd6ec89820ba9ced11e7
+  APIncrementalStore: e9dd45eab87333c82dd8369eaeb68d92c53754ed
   Bolts: 3db0a875235e0c9042b013af13af0f00f79b102c
-  Parse: db1a09c832b7509edcc88a65dc07229f5e578c73
+  Parse: 7de25b6f70f0b233e5d25835f62eabfa91e4f9d7
 
 COCOAPODS: 0.34.2
