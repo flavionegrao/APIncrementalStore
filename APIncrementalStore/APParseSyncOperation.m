@@ -280,7 +280,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                 
                 // Sanity check
                 if (!objectUID) {
-                    [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Managed object without objectUID associated??"];
+                    [NSException raise:APIncrementalStoreExceptionInconsistency format:@"Invalid cached managed object: No objectUID associated: %@",managedObject];
                 }
                 
                 if ([[managedObject valueForKey:APObjectIsCreatedRemotelyAttributeName] isEqualToNumber:@NO]) {

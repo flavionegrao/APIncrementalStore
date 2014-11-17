@@ -145,7 +145,7 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
  ...
  }
  */
-@property (nonatomic, strong) NSMutableDictionary *mapBetweenManagedObjectIDsAndObjectUIDByEntityName;
+ @property (nonatomic, strong) NSMutableDictionary *mapBetweenManagedObjectIDsAndObjectUIDByEntityName;
 
 @end
 
@@ -268,15 +268,6 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
                                            localStoreFileName:self.diskCacheFileName];
     }
     return _diskCache;
-}
-
-
-- (NSMutableDictionary*) mapBetweenManagedObjectIDsAndObjectUIDByEntityName {
-    
-    if (!_mapBetweenManagedObjectIDsAndObjectUIDByEntityName) {
-        _mapBetweenManagedObjectIDsAndObjectUIDByEntityName = [NSMutableDictionary dictionary];
-    }
-    return _mapBetweenManagedObjectIDsAndObjectUIDByEntityName;
 }
 
 
@@ -708,10 +699,21 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
 
 #pragma mark - NSIncrementalStore Subclass Optional Methods
 
+/*******************************
 // Both managedObjectContextDidRegisterObjectsWithIDs: and managedObjectContextDidUnregisterObjectsWithIDs:
 // could be enhanced to implement what Apple call row cache.
-// However as we are relying on CoreData to provide us with the caching engine we don't need to investing time
+// However as we are relying on CoreData to provide us with the caching we don't need to investing time
 // here.
+ *******************************/
+
+- (NSMutableDictionary*) mapBetweenManagedObjectIDsAndObjectUIDByEntityName {
+    
+    if (!_mapBetweenManagedObjectIDsAndObjectUIDByEntityName) {
+        _mapBetweenManagedObjectIDsAndObjectUIDByEntityName = [NSMutableDictionary dictionary];
+    }
+    return _mapBetweenManagedObjectIDsAndObjectUIDByEntityName;
+}
+
 
 /*
  Once the incremental store registers a new managedObjectID we cache it and
@@ -721,7 +723,6 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
     
     if (AP_DEBUG_METHODS) {MLog()}
     
-    // [super managedObjectContextDidRegisterObjectsWithIDs:objectIDs];
     
     for (NSManagedObjectID *objectID in objectIDs) {
         id objectUID = [self referenceObjectForObjectID:objectID];
@@ -779,7 +780,9 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
             NSMutableDictionary* objectUIDDictEntry = [objectIDsAndRefereceCountByObjectUID[objectUID]mutableCopy];
             
             if (!objectUIDDictEntry) {
-                if (AP_DEBUG_ERRORS) {ELog(@"Warning - Trying to unregister a not previously registered objectUID: %@ ", objectUID)}
+                // I believe there's a bug when a object is deleted.
+                // This method is called for deleted objects even for referece count == 0.
+                //if (AP_DEBUG_ERRORS) {ELog(@"Warning - Trying to unregister a not previously registered objectUID: %@ ", objectUID)}
                 continue;
             }
             
@@ -990,12 +993,12 @@ static NSString* const APReferenceCountKey = @"APReferenceCountKey";
         }
         
     } else {
-        /*
-         After created it will call managedObjectContextDidRegisterObjectsWithIDs:
-         then we have the oportunity cache it in self.mapBetweenObjectIDsAndObjectUIDByEntityName
-         */
+     
+         // After created it will call managedObjectContextDidRegisterObjectsWithIDs:
+         // then we have the oportunity cache it in self.mapBetweenObjectIDsAndObjectUIDByEntityName
         managedObjectID = [self newObjectIDForEntity:entityDescription referenceObject:objectUID];
     }
+    
     return managedObjectID;
 }
 
