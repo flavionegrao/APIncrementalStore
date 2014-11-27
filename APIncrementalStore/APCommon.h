@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#import "APIncrementalStore.h"
 
 #pragma mark - Cache Support Attribute Key Names
 
