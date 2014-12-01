@@ -406,6 +406,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
                     }
                 }
 
+                // For some reason there might be exception being thrown here
+                // Apparently no side effects: http://stackoverflow.com/questions/8337635/nsmanagedobjectcontext-exception-breakpoint-stops-at-save-method-but-no-log-c
                 if (![self.context save:&blockError]){
                     if (blockError) {
                         localError = blockError;
@@ -1448,7 +1450,7 @@ static NSUInteger const APParseQueryFetchLimit = 100;
 
 - (void) configSaveContextObserver {
     
-    [[NSNotificationCenter defaultCenter]addObserverForName: NSManagedObjectContextDidSaveNotification object:self.context queue:nil usingBlock:^(NSNotification *note) {
+    self.contextDidSaveNotificationObserver = [[NSNotificationCenter defaultCenter]addObserverForName: NSManagedObjectContextDidSaveNotification object:self.context queue:nil usingBlock:^(NSNotification *note) {
         
         [note.userInfo enumerateKeysAndObjectsUsingBlock:^(id key, NSArray* managedObjects, BOOL *stop) {
             
