@@ -1382,6 +1382,8 @@ static NSUInteger const APParseQueryFetchLimit = 100;
             
             PFObject* relatedParseObject = (PFObject*) value;
             
+            [relatedParseObject fetchIfNeeded];
+            
             if (localError) {
                 
                 // Shit happened
