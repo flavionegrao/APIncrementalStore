@@ -232,15 +232,19 @@ static NSString* const APLocalCacheFileName = @"APCacheStore.sqlite";
 - (NSNotification*) notificationReplacingIDsWithManagedObjectsFromNotification:(NSNotification*) note
                                                              forManagedContext:(NSManagedObjectContext*) context {
     
-    
     NSMutableDictionary* userInfoWithManagedObjects = [note.userInfo[APNotificationSyncedObjectsKey] mutableCopy];
-    [userInfoWithManagedObjects enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
+    
+    [userInfoWithManagedObjects enumerateKeysAndObjectsUsingBlock:^(id key, NSArray* managedObjectIDs, BOOL *stop) {
+        
         if ([key isEqualToString:NSInsertedObjectsKey] || [key isEqualToString:NSUpdatedObjectsKey] || [key isEqualToString:NSDeletedObjectsKey]) {
-            NSArray* managedObjectIDs = (NSArray*) obj;
+            
             NSMutableArray* managedObjects = [[NSMutableArray alloc]initWithCapacity:[managedObjectIDs count]];
+            
             [managedObjectIDs enumerateObjectsUsingBlock:^(NSManagedObjectID* managedObjectID, NSUInteger idx, BOOL *stop) {
+                
                 if ([context.persistentStoreCoordinator.persistentStores containsObject:managedObjectID.persistentStore]) {
                     [managedObjects addObject:[context objectWithID:managedObjectID]];
+                
                 } else {
                     NSLog(@"Warning - notification has objectIDs that don't belong the current managed context's persistantStoreCoordinator");
                 }
