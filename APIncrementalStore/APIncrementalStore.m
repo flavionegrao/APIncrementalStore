@@ -15,9 +15,6 @@
  * limitations under the License.
  */
 
-
-#import "APIncrementalStore.h"
-
 #import "APDiskCache.h"
 #import "APParseSyncOperation.h"
 
