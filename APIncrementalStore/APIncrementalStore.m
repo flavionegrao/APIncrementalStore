@@ -15,12 +15,8 @@
  * limitations under the License.
  */
 
-
-#import "APIncrementalStore.h"
-
 #import "APDiskCache.h"
 #import "APParseSyncOperation.h"
-#import "APParseJSONSyncOperation.h"
 
 #import "NSArray+Enumerable.h"
 #import "APCommon.h"
